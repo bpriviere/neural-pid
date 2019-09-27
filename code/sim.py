@@ -2,14 +2,15 @@
 # standard package
 import torch
 import gym 
-from numpy import identity, zeros, array, vstack
+from numpy import identity, zeros, array, vstack, pi
+import argparse
 
 # my package
 import plotter 
 from systems import CartPole
 from param import param 
 
-def main():
+def main(visualize):
 
 	def run_sim(controller):
 		states = zeros((len(times), env.n))
@@ -79,5 +80,30 @@ def main():
 	plotter.save_figs()
 	plotter.open_figs()
 
+	# visualize 3D
+	if visualize:
+		import meshcat
+		import meshcat.geometry as g
+		import meshcat.transformations as tf
+		import time
+
+		# Create a new visualizer
+		vis = meshcat.Visualizer()
+		vis.open()
+
+		vis["cart"].set_object(g.Box([0.5,0.2,0.2]))
+		vis["pole"].set_object(g.Cylinder(param.get('sys_length_pole'), 0.01))
+		for t, state in zip(times, states_pid):
+			vis["cart"].set_transform(tf.translation_matrix([state[0], 0, 0]))
+
+			vis["pole"].set_transform(
+				tf.translation_matrix([state[0], 0, param.get('sys_length_pole')/2]).dot(
+				  tf.euler_matrix(pi/2, state[1], 0)))
+
+			time.sleep(0.01)
+
 if __name__ == '__main__':
-	main()
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--animate", action='store_true')
+	args = parser.parse_args()
+	main(args.animate)
