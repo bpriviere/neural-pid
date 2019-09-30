@@ -182,3 +182,18 @@ class PIDNet(nn.Module):
 		x = F.leaky_relu(self.fc3(x))
 		x = x[:,1:].detach().numpy()
 		return x
+
+
+class PlainPID:
+	"""
+	Simple PID controller with fixed gains
+	"""
+	def __init__(self, Kp, Kd):
+		self.Kp = Kp
+		self.Kd = Kd
+
+	def policy(self, state):
+		print(state)
+		action = (self.Kp[0]*state[0] + self.Kp[1]*state[1] + \
+			self.Kd[0]*state[2] + self.Kd[1]*state[3])
+		return action

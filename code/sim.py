@@ -9,6 +9,7 @@ import argparse
 import plotter 
 from systems import CartPole
 from param import param 
+from learning import PlainPID
 
 def main(visualize):
 
@@ -56,12 +57,14 @@ def main(visualize):
 	# get controllers
 	deeprl_controller = torch.load(param.get('rl_model_fn'))
 	pid_controller = torch.load(param.get('gains_model_fn'))
+	plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
-	initial_state = env.reset()
+	initial_state = env.reset() # [1, pi/4, 0, 0]
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
 	# actions_pid = temp(pid_controller,states_deeprl)
 	states_pid, actions_pid = run_sim(pid_controller, initial_state)
+	stated_plain_pid, actions_plain_pid = run_sim(plain_pid_controller, initial_state)
 
 	# extract gains
 	kp,kd = extract_gains(pid_controller,states_pid)
@@ -70,9 +73,11 @@ def main(visualize):
 	for i in range(env.n):
 		fig, ax = plotter.plot(times,states_deeprl[:,i],title=param.get('states_name')[i])
 		plotter.plot(times,states_pid[:,i], fig = fig, ax = ax)
+		plotter.plot(times,stated_plain_pid[:,i], fig = fig, ax = ax)
 	for i in range(env.m):
 		fig, ax = plotter.plot(times[1:],actions_deeprl[:,i],title=param.get('actions_name')[i])
 		plotter.plot(times[1:],actions_pid[:,i], fig = fig, ax = ax)
+		plotter.plot(times[1:],actions_plain_pid[:,i], fig = fig, ax = ax)
 
 	fig,ax = plotter.plot(times[1:],kp,title='Kp')
 	fig,ax = plotter.plot(times[1:],kd,title='Kd')
