@@ -55,8 +55,11 @@ class CartPole(Env):
 	def max_reward(self):
 		return 0.01
 
-	def reset(self):
-		self.state = multiply(self.init_state_bounds, random_uniform(size=(4,)))
+	def reset(self, initial_state = None):
+		if initial_state is None:
+			self.state = multiply(self.init_state_bounds, random_uniform(size=(4,)))
+		else:
+			self.state = initial_state
 		self.time_step = 0
 		return array(self.state)
 

@@ -12,10 +12,10 @@ from param import param
 
 def main(visualize):
 
-	def run_sim(controller):
+	def run_sim(controller, initial_state):
 		states = zeros((len(times), env.n))
-		actions = zeros((len(times) - 1, env.m))	
-		states[0] = env.reset()
+		actions = zeros((len(times) - 1, env.m))
+		states[0] = env.reset(initial_state)
 		reward = 0 
 		for step, time in enumerate(times[:-1]):
 			state = states[step]			
@@ -57,10 +57,11 @@ def main(visualize):
 	deeprl_controller = torch.load(param.get('rl_model_fn'))
 	pid_controller = torch.load(param.get('gains_model_fn'))
 
-	# run sim 
-	states_deeprl, actions_deeprl = run_sim(deeprl_controller)	
+	# run sim
+	initial_state = env.reset()
+	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
 	# actions_pid = temp(pid_controller,states_deeprl)
-	states_pid, actions_pid = run_sim(pid_controller)
+	states_pid, actions_pid = run_sim(pid_controller, initial_state)
 
 	# extract gains
 	kp,kd = extract_gains(pid_controller,states_pid)
