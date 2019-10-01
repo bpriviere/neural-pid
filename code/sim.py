@@ -50,7 +50,7 @@ def main(visualize):
 		return array(actions)
 
 	# environment
-	times = param.get('times')
+	times = param.times
 	if param.get('system') is 'CartPole':
 		env = CartPole()
 
@@ -99,12 +99,12 @@ def main(visualize):
 
 		vis["cart"].set_object(g.Box([0.5,0.2,0.2]))
 		vis["pole"].set_object(g.Cylinder(param.get('sys_length_pole'), 0.01))
-		for t, state in zip(times, states_pid):
+		for t, state in zip(times, states_deeprl):
 			vis["cart"].set_transform(tf.translation_matrix([state[0], 0, 0]))
 
 			vis["pole"].set_transform(
 				tf.translation_matrix([state[0], 0, param.get('sys_length_pole')/2]).dot(
-				  tf.euler_matrix(pi/2, state[1], 0)))
+					tf.euler_matrix(pi/2, state[1], 0)))
 
 			time.sleep(0.01)
 

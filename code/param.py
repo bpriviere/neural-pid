@@ -13,7 +13,7 @@ class Param:
 		self.rl_lr = 0.01
 		self.rl_gamma = 0.98 
 		self.rl_lmbda = 0.95
-		self.rl_eps_clip = 0.1
+		self.rl_eps_clip = 0.3
 		self.rl_K_epoch = 5
 		self.rl_max_episodes = 10000
 		self.rl_n_model_fn = 'rl_model.pt'

@@ -15,10 +15,10 @@ def make_dataset():
 	actions = []
 	for _ in range(param.get('gains_n_data')):
 		state = array((
-			param.get('sys_pos_bounds')*uniform(-1.,1.),
-			param.get('sys_angle_bounds_deg')*uniform(-1.,1.),
-			2.*uniform(-1.,1.),
-			2.*uniform(-1.,1.),         
+			param.get('sys_init_state_bounds')[0]*uniform(-1.,1.),
+			param.get('sys_init_state_bounds')[1]*uniform(-1.,1.),
+			param.get('sys_init_state_bounds')[2]*uniform(-1.,1.),
+			param.get('sys_init_state_bounds')[3]*uniform(-1.,1.),         
 			))
 		action = model.policy(state)
 		action = action.reshape((-1))
@@ -57,7 +57,7 @@ def main():
 	torch.manual_seed(1)    # pytorch 
 
 	# init model
-	model = PIDNet()
+	model = GainsNet()
 
 	# datasets
 	x_train,y_train = make_dataset() 

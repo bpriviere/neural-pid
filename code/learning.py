@@ -4,32 +4,39 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions import Categorical
+from torch.distributions import Categorical,Normal
 from param import param 
 from numpy import squeeze, array
 
-class PPO(nn.Module):
+class PPO_c(nn.Module):
 	def __init__(self):
 		super(PPO, self).__init__()
 		self.data = []
 		
 		self.fc1   = nn.Linear(param.get('sys_n'),256)
-		self.fc_pi = nn.Linear(256,param.get('sys_card_A'))
+		self.fc_pi = nn.Linear(256,2)
 		self.fc_v  = nn.Linear(256,1)
 		self.optimizer = optim.Adam(self.parameters(), lr=param.get('rl_lr'))
 		self.actions = param.get('sys_actions')		
 
 	def pi(self, x, softmax_dim = 0):
+		# x = torch.from_numpy(array(x,ndmin = 2)).float()
+
+		action = x
 		x = F.relu(self.fc1(x))
 		x = self.fc_pi(x)
-		prob = F.softmax(x, dim=softmax_dim)
+		
+		if x.dim() == 1:
+			prob = Normal(x[0],x[1])
+		elif x.dim() == 2:
+			prob = Normal(x[:,0],x[:,1])
 		return prob
 	
 	def v(self, x):
 		x = F.relu(self.fc1(x))
 		v = self.fc_v(x)
 		return v
-	  
+
 	def put_data(self, transition):
 		self.data.append(transition)
 		
@@ -46,9 +53,12 @@ class PPO(nn.Module):
 			done_mask = 0 if done else 1
 			done_lst.append([done_mask])
 			
-		s,a,r,s_prime,done_mask, prob_a = torch.tensor(s_lst, dtype=torch.float), torch.tensor(a_lst), \
-										  torch.tensor(r_lst), torch.tensor(s_prime_lst, dtype=torch.float), \
-										  torch.tensor(done_lst, dtype=torch.float), torch.tensor(prob_a_lst)
+		s = torch.tensor(s_lst, dtype=torch.float)
+		a = torch.tensor(a_lst)
+		r = torch.tensor(r_lst)
+		s_prime = torch.tensor(s_prime_lst, dtype=torch.float)
+		done_mask = torch.tensor(done_lst, dtype=torch.float)
+		prob_a = torch.tensor(prob_a_lst)							  
 		self.data = []
 		return s, a, r, s_prime, done_mask, prob_a
 		
@@ -63,18 +73,28 @@ class PPO(nn.Module):
 			advantage_lst = []
 			advantage = 0.0
 			for delta_t in delta[::-1]:
-				advantage = param.get('rl_gamma') * param.get('rl_lmbda') * advantage + delta_t[0]
+				advantage = delta_t[0] + \
+					param.get('rl_gamma')*param.get('rl_lmbda')*advantage
 				advantage_lst.append([advantage])
 			advantage_lst.reverse()
 			advantage = torch.tensor(advantage_lst, dtype=torch.float)
 
 			pi = self.pi(s, softmax_dim=1)
-			pi_a = pi.gather(1,a)
+			pi_a = torch.exp(pi.log_prob(a))
+
+			print(a)
+			print(pi)
+			print(pi_a)
+			print(prob_a)
+			exit()
+
 			ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == exp(log(a)-log(b))
 
 			surr1 = ratio * advantage
-			surr2 = torch.clamp(ratio, 1-param.get('rl_eps_clip'), 1+param.get('rl_eps_clip')) * advantage
-			loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(self.v(s) , td_target.detach())
+			surr2 = torch.clamp(ratio, 1-param.get('rl_eps_clip'), \
+				1+param.get('rl_eps_clip')) * advantage
+			loss = -torch.min(surr1, surr2) + \
+				F.smooth_l1_loss(self.v(s) , td_target.detach())
 
 			self.optimizer.zero_grad()
 			loss.mean().backward()
@@ -82,12 +102,8 @@ class PPO(nn.Module):
 
 	def policy(self, state):
 		prob = self.pi(torch.from_numpy(state).float())
-		m = Categorical(prob)
-		classification = m.sample().item()
-		return self.class_to_force(classification)
-
-	def class_to_force(self, a):
-		return self.actions[a]
+		action = prob.sample()
+		return action
 
 class GainsNet(nn.Module):
 	"""
