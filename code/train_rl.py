@@ -4,12 +4,13 @@ import gym
 import torch
 from torch.distributions import Categorical
 from numpy import array, vstack, zeros
+import time 
 
 # my packages
 from systems import CartPole
 from param import param 
 from learning import PPO 
-
+from utilities import eval_normal_prob
 
 def main():
 	
@@ -20,36 +21,38 @@ def main():
 		env = CartPole()
 	
 	# model
-	model = PPO()
+	model = PPO_c()
 
 	# train
 	score = 0.0
 	print_interval = 20
 	best_score = 0
-	ave_score_break = 0.99*len(times)*env.max_reward()	
-	if env.objective is 'track':
-		ave_score_break = 0.95*ave_score_break
 
 	for n_epi in range(param.get('rl_n_eps')):
 		s = env.reset()
 		done = False
 		for step, time in enumerate(times[:-1]):
 			prob = model.pi(torch.from_numpy(s).float())
-			classification = Categorical(prob).sample().item()
-			action = model.class_to_force(classification)
+			action = prob.sample()
+			log_prob_a = prob.log_prob(action)
 			s_prime, r, done, info = env.step(action)
-			model.put_data((s, classification, r, s_prime, prob[classification].item(), done))
+			model.put_data((s, action, r, s_prime, 
+				log_prob_a, done))
 			s = s_prime
 			score += r
+
+			# print(prob)
+			# print(action)
+			# print(prob_a)
+			# print(s)
+			# exit()
 			if done:
 			    break
 
 		model.train_net()
 
 		if n_epi%print_interval==0 and n_epi!=0:
-			print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/print_interval))
-			# if score/print_interval >= ave_score_break:
-			# 	break
+			print("# of episode :{}, avg score : {:.3f}".format(n_epi, score/print_interval))
 			if score > best_score:
 				best_score = score
 				torch.save(model, param.get('rl_model_fn'))
@@ -59,4 +62,7 @@ def main():
 	env.close()
 
 if __name__ == '__main__':
-    main()
+	t = time.time()
+	main()
+	elapsed = time.time() - t
+	print('RL Training Time:', elapsed)

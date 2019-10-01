@@ -10,7 +10,7 @@ def show():
 	plt.show()
 
 def save_figs():
-	fn = os.path.join( os.getcwd(), param.get('plots_fn'))
+	fn = os.path.join( os.getcwd(), param.plots_fn)
 
 	pp = PdfPages(fn)
 	for i in plt.get_fignums():
@@ -19,7 +19,7 @@ def save_figs():
 	pp.close()
 
 def open_figs():
-	pdf_path = os.path.join( os.getcwd(), param.get('plots_fn'))
+	pdf_path = os.path.join( os.getcwd(), param.plots_fn)
 	if os.path.exists(pdf_path):
 		subprocess.call(["xdg-open", pdf_path])
 

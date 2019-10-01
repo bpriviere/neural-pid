@@ -2,7 +2,7 @@
 # Creating OpenAI gym Envs 
 
 from gym import Env
-from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack
+from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan
 from numpy.linalg import norm,pinv
 from numpy.random import uniform as random_uniform
 from param import param 
@@ -11,49 +11,55 @@ class CartPole(Env):
 
 	def __init__(self):
 
-		self.times = param.get('times')
-		self.dt = self.times[1] - self.times[0]
+		# init
+		self.times = param.sim_times
 		self.state = None
 		self.time_step = None
 
-		# default [SI units]
-		self.n = param.get('sys_n')
-		self.m = param.get('sys_m')
-		self.actions = param.get('sys_actions')
-		self.card_A = param.get('sys_card_A')
-		self.mass_cart = param.get('sys_mass_cart') 
-		self.mass_pole = param.get('sys_mass_pole')
-		self.length_pole = param.get('sys_length_pole')
-		self.init_state_bounds = param.get('sys_init_state_bounds')
-		self.objective = param.get('sys_objective')
-		self.pos_bounds = param.get('sys_pos_bounds')
-		self.angle_bounds_deg = param.get('sys_angle_bounds_deg')
-		self.g = param.get('sys_g')
+		# default parameters [SI units]
+		self.n = 4
+		self.m = 1
+		self.mass_cart = 1.0
+		self.mass_pole = 0.1
+		self.length_pole = 0.5
+		self.init_state_bounds = array([0.05,0.05,0.05,0.05])
+		self.env_state_bounds = array([1.,12*pi/180.,None,None])
+		self.g = 9.81
+		self.states_name = [
+			'Cart Position [m]',
+			'Pole Angle [rad]',
+			'Cart Velocity [m/s]',
+			'Pole Velocity [rad/s]']
+		self.actions_name = [
+			'Cart Acceleration [m/s^2]']
 
 	def step(self, action):
 		state = self.state
 		initial_time = self.times[self.time_step]
 		final_time = self.times[self.time_step + 1]
 		self.state = self.f(state, action)
-		done = abs(state[0]) > self.pos_bounds \
-			or abs(state[1]) > self.angle_bounds_deg*pi/180. \
+		done = abs(state[0]) > self.env_state_bounds[0] \
+			or abs(state[1]) > self.env_state_bounds[1] \
 			or self.time_step == len(self.times)-1
-		# done = False
 		r = self.reward()
 		self.time_step += 1
 		return self.state, r, done, {}
 
 	def reward(self):
-		if self.objective is 'stabilize':
-			return 0.01
-		elif self.objective is 'track':
-			state_ref = param.get('reference_trajectory')[:,self.time_step]
-			error = self.state - state_ref
-			W = diag([0.0004,0.0625,0,0])
-			return 0.01 - dot(error.T,dot(W,error))
+		# state_ref = param.ref_trajectory[:,self.time_step]
+		# error = self.state - state_ref
+		# W = diag([1,1,0,0])
+		# C = 10.0
+		# r = exp(-C*dot(error.T,dot(W,error)))
+		# if isnan(r):
+		# 	print(self.time_step)
+		# 	print(state_ref)
+		# 	print(self.state)
+		# 	exit()
+		return 1.
 
 	def max_reward(self):
-		return 0.01
+		return 1.
 
 	def reset(self):
 		self.state = multiply(self.init_state_bounds, random_uniform(size=(4,)))
@@ -67,9 +73,10 @@ class CartPole(Env):
 		m_c = self.mass_cart
 		l = self.length_pole
 		g = self.g
-		dt = self.dt
+		dt = self.times[self.time_step+1]-self.times[self.time_step]
 
 		# s = [q,qdot], q = [x,th]
+		a = reshape(a,(len(a),1))
 		q = reshape(s[0:2],(2,1))
 		qdot = reshape(s[2:],(2,1))
 		th = s[1]
@@ -84,4 +91,8 @@ class CartPole(Env):
 
 		# euler integration
 		sp1 = squeeze(reshape(s,(len(s),1)) + vstack([qdot, qdotdot]) * dt)
+		# sp1[1] = mod(sp1[1],2*pi)
 		return sp1
+
+	def env_barrier(self,action):
+		pass
