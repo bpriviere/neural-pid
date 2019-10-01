@@ -118,7 +118,7 @@ def main(visualize):
 				tf.translation_matrix([state[0], 0, env.length_pole/2]).dot(
 					tf.euler_matrix(pi/2, state[1], 0)))
 
-			time.sleep(0.01)
+			time.sleep(0.1)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()

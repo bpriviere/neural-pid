@@ -8,7 +8,7 @@ class Param:
 		# reinforcement learning parameters
 		self.rl_action_std = 1.5 
 		self.rl_cuda_on = False
-		self.rl_continuous_on = True
+		self.rl_continuous_on = False
 		self.rl_log_interval = 20
 		self.rl_save_model_interval = Inf
 		self.rl_lr = 5e-4
@@ -30,7 +30,7 @@ class Param:
 
 		# dynamics (like openai env)
 		self.env_name = 'CartPole'
-		self.env_harsh_on = False
+		self.env_case = 'SmallAngle' # 'SmallAngle','Swing_90','Swing_180'
 
 		# sim parameters
 		self.sim_t0 = 0

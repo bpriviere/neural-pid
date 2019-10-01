@@ -2,7 +2,7 @@
 # Creating OpenAI gym Envs 
 
 from gym import Env
-from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan
+from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan,radians
 from numpy.linalg import norm,pinv
 from numpy.random import uniform as random_uniform
 from param import param 
@@ -15,6 +15,7 @@ class CartPole(Env):
 		self.times = param.sim_times
 		self.state = None
 		self.time_step = None
+		self.ave_dt = self.times[1]-self.times[0]
 
 		# default parameters [SI units]
 		self.n = 4
@@ -22,14 +23,20 @@ class CartPole(Env):
 		self.mass_cart = 1.0
 		self.mass_pole = 0.1
 		self.length_pole = 0.5
-		if param.env_harsh_on:
-			# train swing up
-			self.init_state_bounds = array([0.5,pi,0.05,0.05])
-			self.env_state_bounds = array([3.,1.8*pi,1e5,1e5])
-		else:
-			self.init_state_bounds = array([0.05,0.05,0.05,0.05])
-			self.env_state_bounds = array([1.,12*pi/180.,1e5,1e5])
 		self.g = 9.81
+		if param.env_case is 'SmallAngle':
+			self.init_state_start = array([0,0,0,0])
+			self.init_state_disturbance = array([0.25,radians(5),0.001/self.ave_dt,radians(1)/self.ave_dt])
+			self.env_state_bounds = array([1.,radians(12),5/self.ave_dt,radians(180)/self.ave_dt])
+		elif param.env_case is 'Swing_90':
+			self.init_state_start = array([0,radians(90),0,0])
+			self.init_state_disturbance = array([0,radians(0),0,0])
+			self.env_state_bounds = array([3.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])
+
+		self.W = diag([0.01,1,0,0])
+		self.max_error = 2*self.env_state_bounds
+		self.max_penalty = dot(self.max_error.T,dot(self.W,self.max_error))
+
 		self.states_name = [
 			'Cart Position [m]',
 			'Pole Angle [rad]',
@@ -53,22 +60,16 @@ class CartPole(Env):
 	def reward(self):
 		state_ref = param.ref_trajectory[:,self.time_step]
 		error = self.state - state_ref
-		W = diag([1,1,0,0])
 		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))
-		return 1 - dot(error.T,dot(W,error))/self.max_error()
-
-	def max_error(self):
-		W = diag([1,1,0,0])
-		error = 2*self.env_state_bounds
-		return dot(error.T,dot(W,error))
+		return 1 - dot(error.T,dot(self.W,error))/self.max_penalty
 
 	def max_reward(self):
 		return 1.
 		
 	def reset(self, initial_state = None):
 		if initial_state is None:
-			self.state = multiply(self.init_state_bounds, random_uniform(size=(4,)))
+			self.state = self.init_state_start+multiply(self.init_state_disturbance, random_uniform(size=(4,)))
 		else:
 			self.state = initial_state
 		self.time_step = 0
