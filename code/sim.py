@@ -66,8 +66,8 @@ def main(visualize):
 	# plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
-	# initial_state = env.reset()
-	initial_state = [1, radians(5), 0, 0]
+	initial_state = env.reset()
+	# initial_state = [1, radians(5), 0, 0]
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
 	# actions_pid = temp(pid_controller,states_deeprl)
 	states_pid, actions_pid = run_sim(deeprl_controller, initial_state)

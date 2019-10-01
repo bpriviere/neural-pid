@@ -137,21 +137,24 @@ class PPO(nn.Module):
 	def __init__(self):
 		super(PPO, self).__init__()
 		self.data = []
-		self.actions = linspace(-10,10,11)
-		self.fc1   = nn.Linear(4,256)
-		self.fc_pi = nn.Linear(256,len(self.actions))
-		self.fc_v  = nn.Linear(256,1)
+		self.actions = linspace(-10,10,3)
+		self.fc1   = nn.Linear(4,32)
+		self.fc2   = nn.Linear(32,32)
+		self.fc_pi = nn.Linear(32,len(self.actions))
+		self.fc_v  = nn.Linear(32,1)
 		self.optimizer = optim.Adam(self.parameters(), lr=param.rl_lr)
 
 	def pi(self, x, softmax_dim = 0):
 		state = x
-		x = F.relu(self.fc1(x))
+		x = F.tanh(self.fc1(x))
+		x = F.tanh(self.fc2(x))
 		x = self.fc_pi(x)
 		prob = F.softmax(x, dim=softmax_dim)
 		return prob
 	
 	def v(self, x):
-		x = F.relu(self.fc1(x))
+		x = F.tanh(self.fc1(x))
+		x = F.tanh(self.fc2(x))
 		v = self.fc_v(x)
 		return v
 	  

@@ -14,12 +14,7 @@ def main():
 		print('Continuous Action Space')
 	else:
 		print('Discrete Action Space')
-	if param.env_harsh_on:
-		print('Harsh Environment')
-	else:
-		print('Easy Environment')
-
-		
+	print("Case: ", param.env_case)
 
 	# creating environment
 	env_name = 'CartPole'

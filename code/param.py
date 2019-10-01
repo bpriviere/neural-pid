@@ -11,7 +11,7 @@ class Param:
 		self.rl_continuous_on = False
 		self.rl_log_interval = 20
 		self.rl_save_model_interval = Inf
-		self.rl_lr = 5e-4
+		self.rl_lr = 5e-3
 		self.rl_gamma = 0.98 
 		self.rl_lmbda = 0.95
 		self.rl_eps_clip = 0.2
@@ -30,12 +30,12 @@ class Param:
 
 		# dynamics (like openai env)
 		self.env_name = 'CartPole'
-		self.env_case = 'SmallAngle' # 'SmallAngle','Swing_90','Swing_180'
+		self.env_case = 'Swing_90' # 'SmallAngle','Swing_90','Swing_180'
 
 		# sim parameters
 		self.sim_t0 = 0
 		self.sim_tf = 10
-		self.sim_dt = 0.1
+		self.sim_dt = 0.05
 		self.sim_times = arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 

@@ -31,7 +31,7 @@ class CartPole(Env):
 		elif param.env_case is 'Swing_90':
 			self.init_state_start = array([0,radians(90),0,0])
 			self.init_state_disturbance = array([0,radians(0),0,0])
-			self.env_state_bounds = array([3.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])
+			self.env_state_bounds = array([3.,radians(200),5/self.ave_dt,radians(180)/self.ave_dt])
 
 		self.W = diag([0.01,1,0,0])
 		self.max_error = 2*self.env_state_bounds
@@ -100,10 +100,10 @@ class CartPole(Env):
 
 		# euler integration
 		sp1 = squeeze(reshape(s,(len(s),1)) + vstack([qdot, qdotdot]) * dt)
-		if sp1[1] > pi:
-			sp1[1] -= 2*pi
-		if sp1[1] < -pi:
-			sp1[1] += 2*pi
+		# if sp1[1] > pi:
+		# 	sp1[1] -= 2*pi
+		# if sp1[1] < -pi:
+		# 	sp1[1] += 2*pi
 		return sp1
 
 	def env_barrier(self,action):
