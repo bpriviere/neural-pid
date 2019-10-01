@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import MultivariateNormal, Categorical
 from param import param 
-from numpy import squeeze, array,arange
+from numpy import squeeze, array,arange, linspace
 import numpy as np 
 
 class PPO_c(nn.Module):
@@ -137,7 +137,7 @@ class PPO(nn.Module):
 	def __init__(self):
 		super(PPO, self).__init__()
 		self.data = []
-		self.actions = arange(-10,10,1)
+		self.actions = linspace(-10,10,11)
 		self.fc1   = nn.Linear(4,256)
 		self.fc_pi = nn.Linear(256,len(self.actions))
 		self.fc_v  = nn.Linear(256,1)
