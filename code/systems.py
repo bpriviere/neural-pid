@@ -94,7 +94,10 @@ class CartPole(Env):
 
 		# euler integration
 		sp1 = squeeze(reshape(s,(len(s),1)) + vstack([qdot, qdotdot]) * dt)
-		# sp1[1] = mod(sp1[1],2*pi)
+		if sp1[1] > pi:
+			sp1[1] -= 2*pi
+		if sp1[1] < -pi:
+			sp1[1] += 2*pi
 		return sp1
 
 	def env_barrier(self,action):

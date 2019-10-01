@@ -155,18 +155,30 @@ class PIDNet(nn.Module):
 		super(PIDNet, self).__init__()
 		self.fc1 = nn.Linear(param.get('sys_n'), 64)
 		self.fc2 = nn.Linear(64, 64)
-		self.fc3 = nn.Linear(64, param.get('sys_n') + 2)
+		# self.fc3 = nn.Linear(64, param.get('sys_n') + 4)
+		self.fc3 = nn.Linear(64, 4)
+
+	def evalNN(self, x):
+		x = torch.from_numpy(array(x,ndmin = 2)).float()
+		x = F.tanh(self.fc1(x))
+		x = F.tanh(self.fc2(x))
+		# # apply softplus only to PID gains part
+		# x = self.fc3(x)
+		# pid_slice = x[:,0:4]
+		# ref_slice = x[:,4:]
+		# x = torch.cat((F.softplus(pid_slice), ref_slice), dim=1)
+		x = F.softplus(self.fc3(x))
+		return x
 
 	def forward(self, x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		state = x
-		x = F.leaky_relu(self.fc1(x))
-		x = F.leaky_relu(self.fc2(x))
-		x = F.leaky_relu(self.fc3(x))
-		ref_state = x[:,2:]
-		error = state-ref_state
-		x = x[:,0]*error[:,0] + x[:,0]*error[:,1] + \
-			x[:,1]*error[:,2] + x[:,1]*error[:,3] 
+		state = torch.from_numpy(array(x,ndmin = 2)).float()
+		x = self.evalNN(x)
+		# ref_state = x[:,4:]
+		# error = state-ref_state
+		error = state
+		# print(x, error)
+		x = x[:,0]*error[:,0] + x[:,1]*error[:,1] + \
+			x[:,2]*error[:,2] + x[:,3]*error[:,3] 
 		x = x.reshape((len(x),1))
 		return x
 
@@ -176,27 +188,18 @@ class PIDNet(nn.Module):
 		return action
 
 	def get_kp(self,x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		x = F.leaky_relu(self.fc1(x))
-		x = F.leaky_relu(self.fc2(x))
-		x = F.leaky_relu(self.fc3(x))
-		x = x[:,0].detach().numpy()
+		x = self.evalNN(x)
+		x = x[:,0:2].detach().numpy()
 		return x
 
 	def get_kd(self,x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		x = F.leaky_relu(self.fc1(x))
-		x = F.leaky_relu(self.fc2(x))
-		x = F.leaky_relu(self.fc3(x))
-		x = x[:,1].detach().numpy()
+		x = self.evalNN(x)
+		x = x[:,2:4].detach().numpy()
 		return x
 
 	def get_ref_state(self,x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		x = F.leaky_relu(self.fc1(x))
-		x = F.leaky_relu(self.fc2(x))
-		x = F.leaky_relu(self.fc3(x))
-		x = x[:,1:].detach().numpy()
+		x = self.evalNN(x)
+		x = x[:,4:].detach().numpy()
 		return x
 
 
@@ -209,7 +212,6 @@ class PlainPID:
 		self.Kd = Kd
 
 	def policy(self, state):
-		print(state)
 		action = (self.Kp[0]*state[0] + self.Kp[1]*state[1] + \
 			self.Kd[0]*state[2] + self.Kd[1]*state[3])
 		return action

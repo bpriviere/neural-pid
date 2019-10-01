@@ -31,14 +31,20 @@ def main(visualize):
 		return states, actions
 
 	def extract_gains(controller, states):
-		kp = zeros((len(times)-1,1))
-		kd = zeros((len(times)-1,1))
+		kp = zeros((len(times)-1,2))
+		kd = zeros((len(times)-1,2))
 		i = 0
 		for state in states[1:]:
 			kp[i] = controller.get_kp(state)
 			kd[i] = controller.get_kd(state)
 			i += 1
 		return kp,kd
+
+	def extract_ref_state(controller, states):
+		ref_state = zeros((len(times)-1,4))
+		for i, state in enumerate(states[1:]):
+			ref_state[i] = controller.get_ref_state(state)
+		return ref_state
 
 	def temp(controller,states):
 		actions = zeros((len(times) - 1, env.m))	
@@ -68,6 +74,7 @@ def main(visualize):
 
 	# extract gains
 	kp,kd = extract_gains(pid_controller,states_pid)
+	# ref_state = extract_ref_state(pid_controller, states_pid)
 
 	# plots
 	for i in range(env.n):
@@ -79,8 +86,13 @@ def main(visualize):
 		plotter.plot(times[1:],actions_pid[:,i], fig = fig, ax = ax)
 		plotter.plot(times[1:],actions_plain_pid[:,i], fig = fig, ax = ax)
 
-	fig,ax = plotter.plot(times[1:],kp,title='Kp')
-	fig,ax = plotter.plot(times[1:],kd,title='Kd')
+	fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
+	fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
+	fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
+	fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
+
+	# for i in range(env.n):
+	# 	fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + param.get('states_name')[i])
 
 
 	plotter.save_figs()

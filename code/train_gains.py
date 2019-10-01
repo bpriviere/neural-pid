@@ -8,8 +8,10 @@ from torch.distributions import Categorical
 
 from param import param 
 from learning import PIDNet, GainsNet
+from learning import PlainPID
 
 def make_dataset():
+	# model = PlainPID([2, 40], [4, 20])
 	model = torch.load(param.get('rl_model_fn'))
 	states = []
 	actions = []
