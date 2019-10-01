@@ -11,24 +11,45 @@ from param import param
 from learning import PIDNet,PIDNet_wRef,PlainPID
 from systems import CartPole 
 
+# def make_dataset(env):
+# 	# model = PlainPID([2, 40], [4, 20])
+# 	model = torch.load(param.rl_model_fn)
+# 	states = []
+# 	actions = []
+# 	for _ in range(param.il_n_data):
+# 		state = array((
+# 			env.env_state_bounds[0]*uniform(-1.,1.),
+# 			env.env_state_bounds[1]*uniform(-1.,1.),
+# 			env.env_state_bounds[2]*uniform(-1.,1.),
+# 			env.env_state_bounds[3]*uniform(-1.,1.),         
+# 			))
+# 		action = model.policy(state)
+# 		action = action.reshape((-1))
+# 		states.append(state)
+# 		actions.append(action)
+# 	return torch.tensor(states).float(), torch.tensor(actions).float()
+
 def make_dataset(env):
-	# model = PlainPID([2, 40], [4, 20])
 	model = torch.load(param.rl_model_fn)
+	times = param.sim_times
 	states = []
 	actions = []
-	for _ in range(param.il_n_data):
-		state = array((
-			env.env_state_bounds[0]*uniform(-1.,1.),
-			env.env_state_bounds[1]*uniform(-1.,1.),
-			env.env_state_bounds[2]*uniform(-1.,1.),
-			env.env_state_bounds[3]*uniform(-1.,1.),         
-			))
-		action = model.policy(state)
-		action = action.reshape((-1))
-		states.append(state)
-		actions.append(action)
+	while len(states) < param.il_n_data:
+		states.append(env.reset())
+		action = model.policy(states[-1])
+		actions.append(action.reshape((-1)))
+		for step, time in enumerate(times[:-1]):
+			action = model.policy(states[-1])
+			s_prime, _, done, _ = env.step([action])
+			states.append(s_prime)
+			actions.append(action.reshape((-1)))
+			if done:
+				break
 
-	return torch.tensor(states).float(), torch.tensor(actions).float()
+	states = states[0:param.il_n_data]
+	actions = actions[0:param.il_n_data]			
+	return torch.tensor(states).float(),torch.tensor(actions).float()
+
 
 def train(model, loader):
 
@@ -64,7 +85,7 @@ def main():
 		env = CartPole()
 
 	# init model
-	model = PIDNet_wRef(env.n)
+	model = PIDNet(env.n)
 
 	# datasets
 	x_train,y_train = make_dataset(env) 
@@ -80,11 +101,9 @@ def main():
 		batch_size=param.il_batch_size, 
 		shuffle=True)
 
-	for epoch in range(param.il_n_epoch):
-		pre_test_epoch_loss = test(model, loader_test)
+	for epoch in range(1,param.il_n_epoch+1):
 		train_epoch_loss = train(model,loader_train)
 		post_test_epoch_loss = test(model, loader_test)
-		
 		if epoch%param.il_log_interval==0:
 			print('epoch: ', epoch)
 			print('   Train Epoch Loss: ', train_epoch_loss)
