@@ -62,20 +62,20 @@ def main(visualize):
 
 	# get controllers
 	deeprl_controller = torch.load(param.rl_model_fn)
-	# pid_controller = torch.load(param.il_model_fn)
+	pid_controller = torch.load(param.il_model_fn)
 	# plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
 	initial_state = env.reset()
-	# initial_state = [1, radians(5), 0, 0]
+	initial_state = [1, radians(5), 0, 0.5]
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
 	# actions_pid = temp(pid_controller,states_deeprl)
-	states_pid, actions_pid = run_sim(deeprl_controller, initial_state)
+	states_pid, actions_pid = run_sim(pid_controller, initial_state)
 	stated_plain_pid, actions_plain_pid = run_sim(deeprl_controller, initial_state)
 
 	# extract gains
-	# kp,kd = extract_gains(pid_controller,states_pid)
-	# ref_state = extract_ref_state(pid_controller, states_pid)
+	kp,kd = extract_gains(pid_controller,states_pid)
+	ref_state = extract_ref_state(pid_controller, states_pid)
 
 	# plots
 	for i in range(env.n):
@@ -87,13 +87,13 @@ def main(visualize):
 		plotter.plot(times[1:],actions_pid[:,i], fig = fig, ax = ax)
 		plotter.plot(times[1:],actions_plain_pid[:,i], fig = fig, ax = ax)
 
-	# fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
-	# fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
-	# fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
-	# fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
+	fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
+	fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
+	fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
+	fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
 
-	# for i in range(env.n):
-	# 	fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + param.get('states_name')[i])
+	for i in range(env.n):
+		fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
 
 
 	plotter.save_figs()
@@ -112,14 +112,16 @@ def main(visualize):
 
 		vis["cart"].set_object(g.Box([0.5,0.2,0.2]))
 		vis["pole"].set_object(g.Cylinder(env.length_pole, 0.01))
-		for t, state in zip(times, states_deeprl):
-			vis["cart"].set_transform(tf.translation_matrix([state[0], 0, 0]))
 
-			vis["pole"].set_transform(
-				tf.translation_matrix([state[0], 0, env.length_pole/2]).dot(
-					tf.euler_matrix(pi/2, state[1], 0)))
+		while True:
+			for t, state in zip(times, states_deeprl):
+				vis["cart"].set_transform(tf.translation_matrix([state[0], 0, 0]))
 
-			time.sleep(0.1)
+				vis["pole"].set_transform(
+					tf.translation_matrix([state[0], 0, env.length_pole/2]).dot(
+						tf.euler_matrix(pi/2, state[1], 0)))
+
+				time.sleep(0.1)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()

@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn.functional as F
 import torch.utils.data as Data
@@ -7,20 +8,20 @@ from numpy.random import uniform,seed
 from torch.distributions import Categorical
 
 from param import param 
-from learning import PIDNet, GainsNet
-from learning import PlainPID
+from learning import PIDNet,PIDNet_wRef,PlainPID
+from systems import CartPole 
 
-def make_dataset():
+def make_dataset(env):
 	# model = PlainPID([2, 40], [4, 20])
-	model = torch.load(param.get('rl_model_fn'))
+	model = torch.load(param.rl_model_fn)
 	states = []
 	actions = []
-	for _ in range(param.get('gains_n_data')):
+	for _ in range(param.il_n_data):
 		state = array((
-			param.get('sys_init_state_bounds')[0]*uniform(-1.,1.),
-			param.get('sys_init_state_bounds')[1]*uniform(-1.,1.),
-			param.get('sys_init_state_bounds')[2]*uniform(-1.,1.),
-			param.get('sys_init_state_bounds')[3]*uniform(-1.,1.),         
+			env.env_state_bounds[0]*uniform(-1.,1.),
+			env.env_state_bounds[1]*uniform(-1.,1.),
+			env.env_state_bounds[2]*uniform(-1.,1.),
+			env.env_state_bounds[3]*uniform(-1.,1.),         
 			))
 		action = model.policy(state)
 		action = action.reshape((-1))
@@ -31,7 +32,7 @@ def make_dataset():
 
 def train(model, loader):
 
-	optimizer = torch.optim.Adam(model.parameters(), lr=param.get('gains_lr'))
+	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
@@ -58,35 +59,38 @@ def main():
 	seed(1) # numpy random gen seed 
 	torch.manual_seed(1)    # pytorch 
 
+	# env
+	if param.env_name is 'CartPole':
+		env = CartPole()
+
 	# init model
-	model = GainsNet()
+	model = PIDNet_wRef(env.n)
 
 	# datasets
-	x_train,y_train = make_dataset() 
+	x_train,y_train = make_dataset(env) 
 	dataset_train = Data.TensorDataset(x_train, y_train)
 	loader_train = Data.DataLoader(
 		dataset=dataset_train, 
-		batch_size=param.get('gains_batch_size'), 
+		batch_size=param.il_batch_size, 
 		shuffle=True)
-	x_test,y_test = make_dataset() 
+	x_test,y_test = make_dataset(env) 
 	dataset_test = Data.TensorDataset(x_test, y_test)
 	loader_test = Data.DataLoader(
 		dataset=dataset_test, 
-		batch_size=param.get('gains_batch_size'), 
+		batch_size=param.il_batch_size, 
 		shuffle=True)
 
-	for epoch in range(param.get('gains_n_epoch')):
+	for epoch in range(param.il_n_epoch):
 		pre_test_epoch_loss = test(model, loader_test)
 		train_epoch_loss = train(model,loader_train)
 		post_test_epoch_loss = test(model, loader_test)
 		
-		if epoch%param.get('gains_print_epoch')==0:
+		if epoch%param.il_log_interval==0:
 			print('epoch: ', epoch)
-			print('   Pre Test Epoch Loss: ', pre_test_epoch_loss)
 			print('   Train Epoch Loss: ', train_epoch_loss)
-			print('   Post Test Epoch Loss: ', post_test_epoch_loss)
+			print('   Test Epoch Loss: ', post_test_epoch_loss)
 
-	torch.save(model, param.get('gains_model_fn'))
+	torch.save(model, param.il_model_fn)
 
 if __name__ == '__main__':
 	main()

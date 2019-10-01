@@ -2,7 +2,7 @@
 # Creating OpenAI gym Envs 
 
 from gym import Env
-from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan,radians
+from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan,radians,power 
 from numpy.linalg import norm,pinv
 from numpy.random import uniform as random_uniform
 from param import param 
@@ -32,6 +32,13 @@ class CartPole(Env):
 			self.init_state_start = array([0,radians(90),0,0])
 			self.init_state_disturbance = array([0,radians(0),0,0])
 			self.env_state_bounds = array([3.,radians(200),5/self.ave_dt,radians(180)/self.ave_dt])
+		elif param.env_case is 'Swing_180':
+			self.init_state_start = array([0,radians(180),0,0])
+			self.init_state_disturbance = array([0,radians(0),0,0])
+			self.env_state_bounds = array([5.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])			
+		else:
+			print('systems.py: no case')
+			exit()
 
 		self.W = diag([0.01,1,0,0])
 		self.max_error = 2*self.env_state_bounds
@@ -62,7 +69,7 @@ class CartPole(Env):
 		error = self.state - state_ref
 		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))
-		return 1 - dot(error.T,dot(self.W,error))/self.max_penalty
+		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/3)
 
 	def max_reward(self):
 		return 1.

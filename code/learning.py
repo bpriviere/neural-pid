@@ -137,7 +137,7 @@ class PPO(nn.Module):
 	def __init__(self):
 		super(PPO, self).__init__()
 		self.data = []
-		self.actions = linspace(-10,10,3)
+		self.actions = linspace(-50,50,5)
 		self.fc1   = nn.Linear(4,32)
 		self.fc2   = nn.Linear(32,32)
 		self.fc_pi = nn.Linear(32,len(self.actions))
@@ -217,25 +217,29 @@ class PPO(nn.Module):
 	def class_to_force(self, a):
 		return self.actions[a]
 
-
-class GainsNet(nn.Module):
+class PIDNet(nn.Module):
 	"""
 	neural net to predict gains, kp, kd, from state, s
 	"""
-	def __init__(self):
-		super(GainsNet, self).__init__()
-		self.fc1 = nn.Linear(param.get('sys_n'), 64)
+	def __init__(self,input_layer):
+		super(PIDNet, self).__init__()
+		self.fc1 = nn.Linear(input_layer, 64)
 		self.fc2 = nn.Linear(64, 64)
-		self.fc3 = nn.Linear(64, 3)
+		self.fc3 = nn.Linear(64, 4)
+
+	def evalNN(self, x):
+		x = torch.from_numpy(array(x,ndmin = 2)).float()
+		x = F.tanh(self.fc1(x))
+		x = F.tanh(self.fc2(x))
+		x = F.softplus(self.fc3(x))
+		return x
 
 	def forward(self, x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		state = x
-		x = F.leaky_relu(self.fc1(x))
-		x = F.leaky_relu(self.fc2(x))
-		x = F.leaky_relu(self.fc3(x))
-		x = (x[:,0]*state[:,0] + x[:,0]*state[:,1] + \
-			x[:,1]*state[:,2] + x[:,1]*state[:,3]) 
+		state = torch.from_numpy(array(x,ndmin = 2)).float()
+		x = self.evalNN(x)
+		error = state
+		x = x[:,0]*error[:,0] + x[:,1]*error[:,1] + \
+			x[:,2]*error[:,2] + x[:,3]*error[:,3] 
 		x = x.reshape((len(x),1))
 		return x
 
@@ -245,51 +249,41 @@ class GainsNet(nn.Module):
 		return action
 
 	def get_kp(self,x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		x = F.leaky_relu(self.fc1(x))
-		x = F.leaky_relu(self.fc2(x))
-		x = F.leaky_relu(self.fc3(x))
-		x = x[:,0].detach().numpy()
+		x = self.evalNN(x)
+		x = x[:,0:2].detach().numpy()
 		return x
 
 	def get_kd(self,x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		x = F.leaky_relu(self.fc1(x))
-		x = F.leaky_relu(self.fc2(x))
-		x = F.leaky_relu(self.fc3(x))
-		x = x[:,1].detach().numpy()
+		x = self.evalNN(x)
+		x = x[:,2:4].detach().numpy()
 		return x
 
-class PIDNet(nn.Module):
+class PIDNet_wRef(nn.Module):
 	"""
 	neural net to predict gains, kp, kd, from state, s
 	"""
-	def __init__(self):
-		super(PIDNet, self).__init__()
-		self.fc1 = nn.Linear(param.get('sys_n'), 64)
+	def __init__(self,input_layer):
+		super(PIDNet_wRef, self).__init__()
+		self.fc1 = nn.Linear(input_layer, 64)
 		self.fc2 = nn.Linear(64, 64)
-		# self.fc3 = nn.Linear(64, param.get('sys_n') + 4)
-		self.fc3 = nn.Linear(64, 4)
+		self.fc3 = nn.Linear(64, input_layer + 4)
 
 	def evalNN(self, x):
 		x = torch.from_numpy(array(x,ndmin = 2)).float()
 		x = F.tanh(self.fc1(x))
 		x = F.tanh(self.fc2(x))
 		# # apply softplus only to PID gains part
-		# x = self.fc3(x)
-		# pid_slice = x[:,0:4]
-		# ref_slice = x[:,4:]
-		# x = torch.cat((F.softplus(pid_slice), ref_slice), dim=1)
-		x = F.softplus(self.fc3(x))
+		x = self.fc3(x)
+		pid_slice = x[:,0:4]
+		ref_slice = x[:,4:]
+		x = torch.cat((F.softplus(pid_slice), ref_slice), dim=1)
 		return x
 
 	def forward(self, x):
 		state = torch.from_numpy(array(x,ndmin = 2)).float()
 		x = self.evalNN(x)
-		# ref_state = x[:,4:]
-		# error = state-ref_state
-		error = state
-		# print(x, error)
+		ref_state = x[:,4:]
+		error = state-ref_state
 		x = x[:,0]*error[:,0] + x[:,1]*error[:,1] + \
 			x[:,2]*error[:,2] + x[:,3]*error[:,3] 
 		x = x.reshape((len(x),1))
@@ -314,7 +308,6 @@ class PIDNet(nn.Module):
 		x = self.evalNN(x)
 		x = x[:,4:].detach().numpy()
 		return x
-
 
 class PlainPID:
 	"""

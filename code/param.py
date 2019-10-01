@@ -17,20 +17,20 @@ class Param:
 		self.rl_eps_clip = 0.2
 		self.rl_K_epoch = 5
 		self.rl_max_episodes = 50000
-		self.rl_model_fn = 'rl_model.pt'
+		self.rl_model_fn = 'rl_model_swing180_discrete_working.pt'
 		self.rl_ndata_per_epi = 1000
 
 		# imitation learning parameters
-		self.il_lr = 0.005
-		self.il_n_epoch = 300
+		self.il_lr = 5e-4
+		self.il_n_epoch = 500
 		self.il_batch_size = 250
-		self.il_n_data = 2000
+		self.il_n_data = 10000
 		self.il_log_interval = 100
 		self.il_model_fn = 'il_model.pt'
 
 		# dynamics (like openai env)
 		self.env_name = 'CartPole'
-		self.env_case = 'Swing_90' # 'SmallAngle','Swing_90','Swing_180'
+		self.env_case = 'Swing_180' # 'SmallAngle','Swing_90','Swing_180'
 
 		# sim parameters
 		self.sim_t0 = 0
