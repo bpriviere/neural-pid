@@ -22,8 +22,13 @@ class CartPole(Env):
 		self.mass_cart = 1.0
 		self.mass_pole = 0.1
 		self.length_pole = 0.5
-		self.init_state_bounds = array([0.05,0.05,0.05,0.05])
-		self.env_state_bounds = array([1.,12*pi/180.,None,None])
+		if param.env_harsh_on:
+			# train swing up
+			self.init_state_bounds = array([0.5,pi,0.05,0.05])
+			self.env_state_bounds = array([3.,1.8*pi,1e5,1e5])
+		else:
+			self.init_state_bounds = array([0.05,0.05,0.05,0.05])
+			self.env_state_bounds = array([1.,12*pi/180.,1e5,1e5])
 		self.g = 9.81
 		self.states_name = [
 			'Cart Position [m]',
@@ -46,21 +51,21 @@ class CartPole(Env):
 		return self.state, r, done, {}
 
 	def reward(self):
-		# state_ref = param.ref_trajectory[:,self.time_step]
-		# error = self.state - state_ref
-		# W = diag([1,1,0,0])
-		# C = 10.0
+		state_ref = param.ref_trajectory[:,self.time_step]
+		error = self.state - state_ref
+		W = diag([1,1,0,0])
+		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))
-		# if isnan(r):
-		# 	print(self.time_step)
-		# 	print(state_ref)
-		# 	print(self.state)
-		# 	exit()
-		return 1.
+		return 1 - dot(error.T,dot(W,error))/self.max_error()
+
+	def max_error(self):
+		W = diag([1,1,0,0])
+		error = 2*self.env_state_bounds
+		return dot(error.T,dot(W,error))
 
 	def max_reward(self):
 		return 1.
-
+		
 	def reset(self, initial_state = None):
 		if initial_state is None:
 			self.state = multiply(self.init_state_bounds, random_uniform(size=(4,)))

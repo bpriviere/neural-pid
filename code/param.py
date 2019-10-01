@@ -8,16 +8,17 @@ class Param:
 		# reinforcement learning parameters
 		self.rl_action_std = 1.5 
 		self.rl_cuda_on = False
+		self.rl_continuous_on = True
 		self.rl_log_interval = 20
 		self.rl_save_model_interval = Inf
-		self.rl_lr = 0.01
+		self.rl_lr = 5e-4
 		self.rl_gamma = 0.98 
 		self.rl_lmbda = 0.95
-		self.rl_eps_clip = 0.3
+		self.rl_eps_clip = 0.2
 		self.rl_K_epoch = 5
-		self.rl_max_episodes = 10000
-		self.rl_n_model_fn = 'rl_model.pt'
-		self.rl_ndata_per_epi = 600
+		self.rl_max_episodes = 50000
+		self.rl_model_fn = 'rl_model.pt'
+		self.rl_ndata_per_epi = 1000
 
 		# imitation learning parameters
 		self.il_lr = 0.005
@@ -29,6 +30,7 @@ class Param:
 
 		# dynamics (like openai env)
 		self.env_name = 'CartPole'
+		self.env_harsh_on = False
 
 		# sim parameters
 		self.sim_t0 = 0
@@ -42,6 +44,5 @@ class Param:
 
 		# desired tracking trajectory
 		self.ref_trajectory = zeros((4,self.sim_nt)) 
-
 
 param = Param()
