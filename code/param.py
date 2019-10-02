@@ -41,11 +41,13 @@ class Param:
 		self.sim_dt = 0.05
 		self.sim_times = arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-		self.sim_rl_model_fn = '../models/rl_model_Swing90_discrete.pt'
+		self.sim_rl_model_fn = 'rl_model.pt'
 		self.sim_il_model_fn = 'il_model.pt'
 
 		# plots
-		self.plots_fn = 'plots.pdf'
+		self.plots_fn = 'plots'
+		self.plots_type = '.pdf'
+		self.plots_combine_on = False
 
 		# desired tracking trajectory
 		self.ref_trajectory = zeros((4,self.sim_nt)) 

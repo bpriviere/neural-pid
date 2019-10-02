@@ -10,13 +10,23 @@ def show():
 	plt.show()
 
 def save_figs():
-	fn = os.path.join( os.getcwd(), param.plots_fn)
+	
 
-	pp = PdfPages(fn)
-	for i in plt.get_fignums():
-		pp.savefig(plt.figure(i))
-		plt.close(plt.figure(i))
-	pp.close()
+	if param.plots_combine_on:
+		fn = os.path.join( os.getcwd(), param.plots_fn+'.pdf')
+		pp = PdfPages(fn)
+		for i in plt.get_fignums():
+			pp.savefig(plt.figure(i))
+			plt.close(plt.figure(i))
+		pp.close()
+
+	else:
+		for i in plt.get_fignums():
+			fn = os.path.join( os.getcwd(), param.plots_fn+str(i)+'.pdf')
+			pp = PdfPages(fn)
+			pp.savefig(plt.figure(i))
+			plt.close(plt.figure(i))
+			pp.close()
 
 def open_figs():
 	pdf_path = os.path.join( os.getcwd(), param.plots_fn)
