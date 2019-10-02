@@ -38,11 +38,6 @@ def main():
 		'woRef','wRef']
 	env_cases = [
 		'SmallAngle','Swing90']
-
-	# pid_controllers = [
-	# 	'woRef','wRef']
-	# env_cases = [
-	# 	'SmallAngle']
 	
 	# environment
 	times = param.sim_times

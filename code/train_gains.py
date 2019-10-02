@@ -94,6 +94,9 @@ def main():
 		print('Error in Train Gains, programmatic controller not recognized')
 		exit()
 
+	print("Case: ",param.env_case)
+	print("Controller: ",param.programmatic_controller_name)
+
 	# datasets
 	x_train,y_train = make_dataset(env) 
 	dataset_train = Data.TensorDataset(x_train, y_train)
