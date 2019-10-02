@@ -30,7 +30,8 @@ class CartPole(Env):
 			self.env_state_bounds = array([1.,radians(12),5/self.ave_dt,radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing_90':
 			self.init_state_start = array([0,radians(90),0,0])
-			self.init_state_disturbance = array([0,radians(0),0,0])
+			# self.init_state_disturbance = array([0,radians(0),0,0])
+			self.init_state_disturbance = array([0.25,radians(5),0.001/self.ave_dt,radians(1)/self.ave_dt])
 			self.env_state_bounds = array([3.,radians(200),5/self.ave_dt,radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing_180':
 			self.init_state_start = array([0,radians(180),0,0])

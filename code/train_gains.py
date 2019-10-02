@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 import torch.utils.data as Data
 
-from numpy import array
+from numpy import array, zeros
 from numpy.random import uniform,seed
 from torch.distributions import Categorical
 
@@ -31,13 +31,14 @@ from systems import CartPole
 
 def make_dataset(env):
 	model = torch.load(param.rl_model_fn)
+	# model = PlainPID([2, 40], [4, 20])
 	times = param.sim_times
 	states = []
 	actions = []
 	while len(states) < param.il_n_data:
 		states.append(env.reset())
-		action = model.policy(states[-1])
-		actions.append(action.reshape((-1)))
+		# action = model.policy(states[-1])
+		# actions.append(action.reshape((-1)))
 		for step, time in enumerate(times[:-1]):
 			action = model.policy(states[-1])
 			s_prime, _, done, _ = env.step([action])
@@ -45,10 +46,26 @@ def make_dataset(env):
 			actions.append(action.reshape((-1)))
 			if done:
 				break
+		actions.append([0])
 
 	states = states[0:param.il_n_data]
-	actions = actions[0:param.il_n_data]			
+	actions = actions[0:param.il_n_data]
 	return torch.tensor(states).float(),torch.tensor(actions).float()
+
+	# states = zeros((len(times), env.n))
+	# actions = zeros((len(times), env.m))
+	# states[0] = env.reset()
+	# for step, time in enumerate(times[:-1]):
+	# 	state = states[step]			
+	# 	action = model.policy(state) 
+	# 	states[step + 1], _, done, _ = env.step([action])
+	# 	actions[step] = action
+	# 	if done or len(states) >= param.il_n_data:
+	# 		break
+	# env.close()
+	# return torch.from_numpy(states).float(), torch.from_numpy(actions).float()
+
+
 
 
 def train(model, loader):
@@ -85,6 +102,7 @@ def main():
 		env = CartPole()
 
 	# init model
+	# model = PIDNet_wRef(env.n)
 	model = PIDNet(env.n)
 
 	# datasets
