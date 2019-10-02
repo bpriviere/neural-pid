@@ -35,7 +35,7 @@ def main():
 		return states, actions
 
 	pid_controllers = [
-		'woRef','wRef']
+		'woRef','wRef','Ref','Plain']
 	env_cases = [
 		'SmallAngle','Swing90']
 	
@@ -53,11 +53,14 @@ def main():
 			if param.env_name is 'CartPole':
 				env = CartPole()
 
-			model_fn = '../models/il_model' + '_' + \
-				pid_controller + '_' + env_case + '.pt'
-			print(model_fn)
+			if pid_controller == 'Plain':
+				model = PlainPID([2, 40], [4, 20])
+			else:
+				model_fn = '../models/il_model' + '_' + \
+					pid_controller + '_' + env_case + '.pt'
+				print(model_fn)
 
-			model = torch.load(model_fn)
+				model = torch.load(model_fn)
 
 			initial_state = env.reset()
 			states,actions = run_sim(model, initial_state)
@@ -69,15 +72,23 @@ def main():
 
 	fig,ax = plotter.plot(times,plot_states[:,0],title=env.states_name[0],label=pid_controllers[0])
 	plotter.plot(times,plot_states[:,2],fig=fig,ax=ax,label=pid_controllers[1])
+	plotter.plot(times,plot_states[:,4],fig=fig,ax=ax,label=pid_controllers[2])
+	plotter.plot(times,plot_states[:,6],fig=fig,ax=ax,label=pid_controllers[3])
 
 	fig,ax = plotter.plot(times,plot_states[:,1],title=env.states_name[1],label=pid_controllers[0])
 	plotter.plot(times,plot_states[:,3],fig=fig,ax=ax,label=pid_controllers[1])
+	plotter.plot(times,plot_states[:,5],fig=fig,ax=ax,label=pid_controllers[2])
+	plotter.plot(times,plot_states[:,7],fig=fig,ax=ax,label=pid_controllers[3])
 
-	fig,ax = plotter.plot(times,plot_states[:,4],title=env.states_name[0],label=pid_controllers[0])
-	plotter.plot(times,plot_states[:,6],fig=fig,ax=ax,label=pid_controllers[1])
+	fig,ax = plotter.plot(times,plot_states[:,8],title=env.states_name[0],label=pid_controllers[0])
+	plotter.plot(times,plot_states[:,10],fig=fig,ax=ax,label=pid_controllers[1])
+	plotter.plot(times,plot_states[:,12],fig=fig,ax=ax,label=pid_controllers[2])
+	plotter.plot(times,plot_states[:,14],fig=fig,ax=ax,label=pid_controllers[3])
 
-	fig,ax = plotter.plot(times,plot_states[:,5],title=env.states_name[1],label=pid_controllers[0])
-	plotter.plot(times,plot_states[:,7],fig=fig,ax=ax,label=pid_controllers[1])
+	fig,ax = plotter.plot(times,plot_states[:,9],title=env.states_name[1],label=pid_controllers[0])
+	plotter.plot(times,plot_states[:,11],fig=fig,ax=ax,label=pid_controllers[1])
+	plotter.plot(times,plot_states[:,13],fig=fig,ax=ax,label=pid_controllers[2])
+	plotter.plot(times,plot_states[:,15],fig=fig,ax=ax,label=pid_controllers[3])
 
 	plotter.save_figs()
 	plotter.open_figs()
