@@ -106,16 +106,16 @@ def main(visualize):
 		vis = meshcat.Visualizer()
 		vis.open()
 
-		vis["cart"].set_object(g.Box([0.5,0.2,0.2]))
+		vis["cart"].set_object(g.Box([0.2,0.5,0.2]))
 		vis["pole"].set_object(g.Cylinder(env.length_pole, 0.01))
 
 		while True:
 			for t, state in zip(times, states_deeprl):
-				vis["cart"].set_transform(tf.translation_matrix([state[0], 0, 0]))
+				vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
 
 				vis["pole"].set_transform(
-					tf.translation_matrix([state[0], 0, env.length_pole/2]).dot(
-						tf.euler_matrix(pi/2, state[1], 0)))
+					tf.translation_matrix([0, state[0] + env.length_pole/2, 0]).dot(
+					tf.rotation_matrix(pi/2 + state[1], [1,0,0], [0,-env.length_pole/2,0])))
 
 				time.sleep(0.1)
 
