@@ -3,17 +3,17 @@ import torch
 import torch.nn.functional as F
 import torch.utils.data as Data
 
-from numpy import array, zeros
+from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
 from torch.distributions import Categorical
 
 from param import param 
-from learning import PIDNet,PIDNet_wRef,PlainPID
+from learning import PID_Net,PID_wRef_Net,PlainPID
 from systems import CartPole 
 
 # def make_dataset(env):
 # 	# model = PlainPID([2, 40], [4, 20])
-# 	model = torch.load(param.rl_model_fn)
+# 	model = torch.load(param.il_imitate_model_fn)
 # 	states = []
 # 	actions = []
 # 	for _ in range(param.il_n_data):
@@ -29,16 +29,15 @@ from systems import CartPole
 # 		actions.append(action)
 # 	return torch.tensor(states).float(), torch.tensor(actions).float()
 
+
 def make_dataset(env):
-	model = torch.load(param.rl_model_fn)
+	model = torch.load(param.il_imitate_model_fn)
 	# model = PlainPID([2, 40], [4, 20])
 	times = param.sim_times
 	states = []
 	actions = []
 	while len(states) < param.il_n_data:
 		states.append(env.reset())
-		# action = model.policy(states[-1])
-		# actions.append(action.reshape((-1)))
 		for step, time in enumerate(times[:-1]):
 			action = model.policy(states[-1])
 			s_prime, _, done, _ = env.step([action])
@@ -51,21 +50,6 @@ def make_dataset(env):
 	states = states[0:param.il_n_data]
 	actions = actions[0:param.il_n_data]
 	return torch.tensor(states).float(),torch.tensor(actions).float()
-
-	# states = zeros((len(times), env.n))
-	# actions = zeros((len(times), env.m))
-	# states[0] = env.reset()
-	# for step, time in enumerate(times[:-1]):
-	# 	state = states[step]			
-	# 	action = model.policy(state) 
-	# 	states[step + 1], _, done, _ = env.step([action])
-	# 	actions[step] = action
-	# 	if done or len(states) >= param.il_n_data:
-	# 		break
-	# env.close()
-	# return torch.from_numpy(states).float(), torch.from_numpy(actions).float()
-
-
 
 
 def train(model, loader):
@@ -102,8 +86,13 @@ def main():
 		env = CartPole()
 
 	# init model
-	# model = PIDNet_wRef(env.n)
-	model = PIDNet(env.n)
+	if param.programmatic_controller_name is 'PID':
+		model = PID_Net(env.n)
+	elif param.programmatic_controller_name is 'PID_wRef':
+		model = PID_wRef_Net(env.n)
+	else:
+		print('Error in Train Gains, programmatic controller not recognized')
+		exit()
 
 	# datasets
 	x_train,y_train = make_dataset(env) 
@@ -119,15 +108,18 @@ def main():
 		batch_size=param.il_batch_size, 
 		shuffle=True)
 
+	best_test_loss = Inf
 	for epoch in range(1,param.il_n_epoch+1):
 		train_epoch_loss = train(model,loader_train)
-		post_test_epoch_loss = test(model, loader_test)
+		test_epoch_loss = test(model, loader_test)
 		if epoch%param.il_log_interval==0:
 			print('epoch: ', epoch)
 			print('   Train Epoch Loss: ', train_epoch_loss)
-			print('   Test Epoch Loss: ', post_test_epoch_loss)
-
-	torch.save(model, param.il_model_fn)
+			print('   Test Epoch Loss: ', test_epoch_loss)
+			if test_epoch_loss < best_test_loss:
+				best_test_loss = test_epoch_loss
+				print('      saving @ best test loss:', best_test_loss)
+				torch.save(model,param.il_train_model_fn)
 
 if __name__ == '__main__':
 	main()

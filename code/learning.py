@@ -30,20 +30,23 @@ class PPO_c(nn.Module):
 		self.eps_clip = eps_clip
 
 		# actor critic network 
-		self.fc1 = nn.Linear(state_dim,256)
-		self.fc_pi = nn.Linear(256,action_dim)
-		self.fc_v = nn.Linear(256,1)
+		self.fc1 = nn.Linear(state_dim,32)
+		self.fc2 = nn.Linear(32,32)
+		self.fc_pi = nn.Linear(32,action_dim)
+		self.fc_v = nn.Linear(32,1)
 
 		self.optimizer = optim.Adam(self.parameters(), lr = self.lr)
 		self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
 
 	def actor(self,state):
-		x = F.relu(self.fc1(state))
+		x = F.tanh(self.fc1(state))
+		x = F.tanh(self.fc2(x))
 		x = self.fc_pi(x)
 		return x
 
 	def critic(self,state):
-		x = F.relu(self.fc1(state))
+		x = F.tanh(self.fc1(state))
+		x = F.tanh(self.fc2(x))
 		x = self.fc_v(x)
 		return x
 
@@ -134,15 +137,24 @@ class PPO_c(nn.Module):
 
 
 class PPO(nn.Module):
-	def __init__(self):
+	def __init__(self,action_list,state_dim,action_dim,action_std,cuda_on,lr,gamma,K_epoch,lmda,eps_clip):
 		super(PPO, self).__init__()
+
 		self.data = []
-		self.actions = linspace(-50,50,5)
-		self.fc1   = nn.Linear(4,32)
+		self.actions = action_list 
+
+		# hyperparameters
+		self.lr = lr
+		self.gamma = gamma
+		self.K_epoch = K_epoch
+		self.lmbda = lmda
+		self.eps_clip = eps_clip
+
+		self.fc1   = nn.Linear(state_dim,32)
 		self.fc2   = nn.Linear(32,32)
 		self.fc_pi = nn.Linear(32,len(self.actions))
 		self.fc_v  = nn.Linear(32,1)
-		self.optimizer = optim.Adam(self.parameters(), lr=param.rl_lr)
+		self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
 	def pi(self, x, softmax_dim = 0):
 		state = x
@@ -183,15 +195,15 @@ class PPO(nn.Module):
 	def train_net(self):
 		s, a, r, s_prime, done_mask, prob_a = self.make_batch()
 
-		for i in range(param.rl_K_epoch):
-			td_target = r + param.rl_gamma * self.v(s_prime) * done_mask
+		for i in range(self.K_epoch):
+			td_target = r + self.gamma * self.v(s_prime) * done_mask
 			delta = td_target - self.v(s)
 			delta = delta.detach().numpy()
 
 			advantage_lst = []
 			advantage = 0.0
 			for delta_t in delta[::-1]:
-				advantage = param.rl_gamma * param.rl_lmbda * advantage + delta_t[0]
+				advantage = self.gamma * self.lmbda * advantage + delta_t[0]
 				advantage_lst.append([advantage])
 			advantage_lst.reverse()
 			advantage = torch.tensor(advantage_lst, dtype=torch.float)
@@ -201,7 +213,7 @@ class PPO(nn.Module):
 			ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == exp(log(a)-log(b))
 
 			surr1 = ratio * advantage
-			surr2 = torch.clamp(ratio, 1-param.rl_eps_clip, 1+param.rl_eps_clip) * advantage
+			surr2 = torch.clamp(ratio, 1-self.eps_clip, 1+self.eps_clip) * advantage
 			loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(self.v(s) , td_target.detach())
 
 			self.optimizer.zero_grad()
@@ -217,12 +229,12 @@ class PPO(nn.Module):
 	def class_to_force(self, a):
 		return self.actions[a]
 
-class PIDNet(nn.Module):
+class PID_Net(nn.Module):
 	"""
 	neural net to predict gains, kp, kd, from state, s
 	"""
 	def __init__(self,input_layer):
-		super(PIDNet, self).__init__()
+		super(PID_Net, self).__init__()
 		self.fc1 = nn.Linear(input_layer, 64)
 		self.fc2 = nn.Linear(64, 64)
 		self.fc3 = nn.Linear(64, 4)
@@ -258,12 +270,12 @@ class PIDNet(nn.Module):
 		x = x[:,2:4].detach().numpy()
 		return x
 
-class PIDNet_wRef(nn.Module):
+class PID_wRef_Net(nn.Module):
 	"""
 	neural net to predict gains, kp, kd, from state, s
 	"""
 	def __init__(self,input_layer):
-		super(PIDNet_wRef, self).__init__()
+		super(PID_wRef_Net, self).__init__()
 		self.fc1 = nn.Linear(input_layer, 64)
 		self.fc2 = nn.Linear(64, 64)
 		self.fc3 = nn.Linear(64, input_layer + 4)

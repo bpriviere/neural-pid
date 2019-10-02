@@ -54,36 +54,20 @@ def main(visualize):
 			ref_state[i] = controller.get_ref_state(state)
 		return ref_state
 
-	def temp(controller,states):
-		actions = zeros((len(times) - 1, env.m))	
-		step = 0
-		for state in states[:-1]:
-			action = controller.policy(state)
-			actions[step] = action
-			step+=1
-		return array(actions)
-
 	# environment
 	times = param.sim_times
 	if param.env_name is 'CartPole':
 		env = CartPole()
 
 	# get controllers
-	deeprl_controller = torch.load(param.rl_model_fn)
-	pid_controller = torch.load(param.il_model_fn)
+	deeprl_controller = torch.load(param.sim_rl_model_fn)
+	pid_controller = torch.load(param.sim_il_model_fn)
 	plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
 	initial_state = env.reset()
-	# initial_state = [1, radians(5), 0, 0.5]
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
-	# actions_pid = temp(pid_controller,states_deeprl)
 	states_pid, actions_pid = run_sim(pid_controller, initial_state)
-
-	# states_pid = states_deeprl
-	# actions_pid = compute_actions(pid_controller, states_pid)
-
-	# stated_plain_pid, actions_plain_pid = run_sim(deeprl_controller, initial_state)
 
 	# extract gains
 	kp,kd = extract_gains(pid_controller,states_pid)

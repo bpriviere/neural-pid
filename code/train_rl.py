@@ -13,7 +13,7 @@ def main():
 	if param.rl_continuous_on:
 		print('Continuous Action Space')
 	else:
-		print('Discrete Action Space')
+		print('Discrete Action Space: ',param.rl_discrete_action_space)
 	print("Case: ", param.env_case)
 
 	# creating environment
@@ -40,7 +40,8 @@ def main():
 		model = PPO_c(state_dim,action_dim,param.rl_action_std,param.rl_cuda_on,param.rl_lr, 
 			param.rl_gamma, param.rl_K_epoch, param.rl_lmbda, param.rl_eps_clip)
 	else:
-		model = PPO()
+		model = PPO(param.rl_discrete_action_space, state_dim,action_dim,param.rl_action_std,param.rl_cuda_on,param.rl_lr, 
+			param.rl_gamma, param.rl_K_epoch, param.rl_lmbda, param.rl_eps_clip)
 
 	# logging variables
 	running_reward = 0
@@ -74,26 +75,20 @@ def main():
 		# stop training if avg_reward > solved_reward
 		if running_reward/count > solved_reward:
 			print("########## Solved! ##########")
-			torch.save(model, param.rl_model_fn)
+			torch.save(model, param.rl_train_model_fn)
 			break
 
 		# save best iteration
 		if running_reward/count > best_reward:
 			best_reward = running_reward/count
-			best_fn = 'rl_model_best.pt'
-			torch.save(model, best_fn)
-		
-		# save every __ episodes
-		if i_episode % param.rl_save_model_interval == 0:
-			torch.save(model, param.rl_model_fn)
-			
+			print('   saving @ ave reward:',best_reward)
+			torch.save(model, param.rl_train_model_fn)
+					
 		# logging
 		if i_episode % param.rl_log_interval == 0:			
 			print('Episode {} \t Avg reward: {:2f}'.format(i_episode, running_reward/count))
 			running_reward = 0
 			count = 0 
 
-	torch.save(model, param.rl_model_fn)
-	print('Training Complete, Model Saved')
 if __name__ == '__main__':
 	main()
