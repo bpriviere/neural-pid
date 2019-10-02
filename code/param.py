@@ -33,7 +33,7 @@ class Param:
 		# dynamics (like openai env)
 		self.env_name = 'CartPole'
 		self.env_case = 'Swing90' # 'SmallAngle','Swing90','Swing180'
-		self.programmatic_controller_name = 'PID_wRef' # PID, PID_wRef
+		self.programmatic_controller_name = 'PID_wRef' # PID, PID_wRef, Ref
 
 		# sim parameters
 		self.sim_t0 = 0

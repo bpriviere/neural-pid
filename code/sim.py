@@ -71,7 +71,7 @@ def main(visualize):
 
 	# extract gains
 	kp,kd = extract_gains(pid_controller,states_pid)
-	# ref_state = extract_ref_state(pid_controller, states_pid)
+	ref_state = extract_ref_state(pid_controller, states_pid)
 
 	# plots
 	for i in range(env.n):
@@ -88,8 +88,8 @@ def main(visualize):
 	fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
 	fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
 
-	# for i in range(env.n):
-	# 	fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
+	for i in range(env.n):
+		fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
 
 
 	plotter.save_figs()

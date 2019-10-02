@@ -8,7 +8,7 @@ from numpy.random import uniform,seed
 from torch.distributions import Categorical
 
 from param import param 
-from learning import PID_Net,PID_wRef_Net,PlainPID
+from learning import PID_Net,PID_wRef_Net,Ref_Net,PlainPID
 from systems import CartPole 
 
 # def make_dataset(env):
@@ -90,6 +90,8 @@ def main():
 		model = PID_Net(env.n)
 	elif param.programmatic_controller_name is 'PID_wRef':
 		model = PID_wRef_Net(env.n)
+	elif param.programmatic_controller_name is 'Ref':
+		model = Ref_Net(env.n, [2, 40], [4, 20])
 	else:
 		print('Error in Train Gains, programmatic controller not recognized')
 		exit()
