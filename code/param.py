@@ -23,16 +23,16 @@ class Param:
 
 		# imitation learning parameters
 		self.il_lr = 5e-4
-		self.il_n_epoch = 500 # number of epochs per batch 
+		self.il_n_epoch = 1000 # number of epochs per batch 
 		self.il_batch_size = 2000 # number of data points per batch
 		self.il_n_data = 10000 # total number of data points 
 		self.il_log_interval = 100
 		self.il_train_model_fn = 'il_model.pt'
-		self.il_imitate_model_fn = '../models/rl_model_swing90_discrete.pt'
+		self.il_imitate_model_fn = '../models/rl_model_Swing90_discrete.pt'
 
 		# dynamics (like openai env)
 		self.env_name = 'CartPole'
-		self.env_case = 'Swing_90' # 'SmallAngle','Swing_90','Swing_180'
+		self.env_case = 'Swing90' # 'SmallAngle','Swing90','Swing180'
 		self.programmatic_controller_name = 'PID_wRef' # PID, PID_wRef
 
 		# sim parameters
@@ -41,7 +41,7 @@ class Param:
 		self.sim_dt = 0.05
 		self.sim_times = arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-		self.sim_rl_model_fn = '../models/rl_model_swing90_discrete.pt'
+		self.sim_rl_model_fn = 'rl_model.pt'
 		self.sim_il_model_fn = 'il_model.pt'
 
 		# plots

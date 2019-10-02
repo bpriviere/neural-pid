@@ -28,11 +28,11 @@ class CartPole(Env):
 			self.init_state_start = array([0,0,0,0])
 			self.init_state_disturbance = array([0.25,radians(5),0.001/self.ave_dt,radians(1)/self.ave_dt])
 			self.env_state_bounds = array([1.,radians(12),5/self.ave_dt,radians(180)/self.ave_dt])
-		elif param.env_case is 'Swing_90':
+		elif param.env_case is 'Swing90':
 			self.init_state_start = array([0,radians(90),0,0])
 			self.init_state_disturbance = array([0.1,radians(5),0,0])
 			self.env_state_bounds = array([3.,radians(200),5/self.ave_dt,radians(180)/self.ave_dt])
-		elif param.env_case is 'Swing_180':
+		elif param.env_case is 'Swing180':
 			self.init_state_start = array([0,radians(180),0,0])
 			self.init_state_disturbance = array([0,radians(0),0,0])
 			self.env_state_bounds = array([10.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])			
@@ -69,8 +69,8 @@ class CartPole(Env):
 		error = self.state - state_ref
 		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))
-		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/3)
-		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
+		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/3)
+		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
 
 	def max_reward(self):
 		return 1.

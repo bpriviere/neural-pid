@@ -23,14 +23,20 @@ def open_figs():
 	if os.path.exists(pdf_path):
 		subprocess.call(["xdg-open", pdf_path])
 
-def plot(T,X,title = None,fig = None,ax = None):
+def plot(T,X,title=None,fig=None,ax=None,label=None):
+	
 	if fig is None or ax is None:
 		fig, ax = plt.subplots()
-	plt.plot(T,X)
+	
+	if label is not None:
+		plt.plot(T,X,label=label)
+		plt.legend()
+	else:
+		plt.plot(T,X)
+	
 	if title is not None:
 		plt.title(title)
-	#TEMP
-	# plt.xlim(0,1)
+
 	return fig, ax
 
 def make_fig():

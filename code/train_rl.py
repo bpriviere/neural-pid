@@ -77,18 +77,21 @@ def main():
 			print("########## Solved! ##########")
 			torch.save(model, param.rl_train_model_fn)
 			break
-
-		# save best iteration
-		if running_reward/count > best_reward:
-			best_reward = running_reward/count
-			print('   saving @ ave reward:',best_reward)
-			torch.save(model, param.rl_train_model_fn)
 					
 		# logging
 		if i_episode % param.rl_log_interval == 0:			
 			print('Episode {} \t Avg reward: {:2f}'.format(i_episode, running_reward/count))
+			
+			# save best iteration
+			if running_reward/count > best_reward:
+				best_reward = running_reward/count
+				print('   saving best model')
+				torch.save(model, param.rl_train_model_fn)
+
 			running_reward = 0
 			count = 0 
+
+
 
 if __name__ == '__main__':
 	main()
