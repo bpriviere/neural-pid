@@ -9,24 +9,13 @@ from matplotlib.backends.backend_pdf import PdfPages
 def show():
 	plt.show()
 
-def save_figs():
-	
-
-	if param.plots_combine_on:
-		fn = os.path.join( os.getcwd(), param.plots_fn+'.pdf')
-		pp = PdfPages(fn)
-		for i in plt.get_fignums():
-			pp.savefig(plt.figure(i))
-			plt.close(plt.figure(i))
-		pp.close()
-
-	else:
-		for i in plt.get_fignums():
-			fn = os.path.join( os.getcwd(), param.plots_fn+str(i)+'.pdf')
-			pp = PdfPages(fn)
-			pp.savefig(plt.figure(i))
-			plt.close(plt.figure(i))
-			pp.close()
+def save_figs():	
+	fn = os.path.join( os.getcwd(), param.plots_fn)
+	pp = PdfPages(fn)
+	for i in plt.get_fignums():
+		pp.savefig(plt.figure(i))
+		plt.close(plt.figure(i))
+	pp.close()
 
 def open_figs():
 	pdf_path = os.path.join( os.getcwd(), param.plots_fn)
@@ -39,13 +28,13 @@ def plot(T,X,title=None,fig=None,ax=None,label=None):
 		fig, ax = plt.subplots()
 	
 	if label is not None:
-		plt.plot(T,X,label=label)
-		plt.legend()
+		ax.plot(T,X,label=label)
+		ax.legend()
 	else:
-		plt.plot(T,X)
+		ax.plot(T,X)
 	
 	if title is not None:
-		plt.title(title)
+		ax.set_title(title)
 
 	return fig, ax
 
