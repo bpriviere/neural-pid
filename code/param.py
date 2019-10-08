@@ -1,6 +1,6 @@
 
 from numpy import array,arange,zeros,Inf,linspace
-
+import os,sys 
 
 class Param:
 	def __init__(self):
@@ -12,7 +12,7 @@ class Param:
 		self.rl_save_model_interval = Inf
 		self.rl_max_episodes = 50000
 		self.rl_train_model_fn = 'rl_model.pt'
-		self.rl_batch_size = 500
+		self.rl_batch_size = 1000
 		self.rl_gamma = 0.98
 		self.rl_K_epoch = 5
 		self.rl_control_lim = 50
@@ -26,11 +26,11 @@ class Param:
 		self.rl_lmbda = 0.95
 		self.rl_eps_clip = 0.2
 		# ddpg param
-		self.rl_lr_mu = 5e-3
-		self.rl_lr_q = 5e-3
+		self.rl_lr_mu = 1e-4
+		self.rl_lr_q = 1e-3
 		self.rl_buffer_limit = 5e6
 		self.rl_action_std = 10
-		self.rl_tau = 0.005
+		self.rl_tau = 0.995
 
 		# imitation learning parameters
 		self.il_lr = 5e-4
@@ -39,12 +39,12 @@ class Param:
 		self.il_n_data = 10000 # total number of data points 
 		self.il_log_interval = 100
 		self.il_train_model_fn = 'il_model.pt'
-		self.il_imitate_model_fn = '../models/rl_model_SmallAngle_continuous.pt'
+		self.il_imitate_model_fn = '../models/rl_model_Swing90_continuous.pt'
 
 		# dynamics (like openai env)
 		self.env_name = 'CartPole'
 		self.env_case = 'Swing90' # 'SmallAngle','Swing90','Swing180'
-		self.programmatic_controller_name = 'Ref' # PID, PID_wRef, Ref
+		self.programmatic_controller_name = 'PID_wRef' # PID, PID_wRef, Ref
 
 		# sim parameters
 		self.sim_t0 = 0
@@ -62,3 +62,7 @@ class Param:
 		self.ref_trajectory = zeros((4,self.sim_nt)) 
 
 param = Param()
+
+
+sys.path.insert(1, os.path.join(os.getcwd(),'learning'))
+sys.path.insert(1, os.path.join(os.getcwd(),'systems'))

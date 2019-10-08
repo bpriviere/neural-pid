@@ -7,9 +7,8 @@ import argparse
 
 # my package
 import plotter 
-from systems import CartPole
+from cartpole import CartPole
 from param import param 
-from learning import PlainPID
 
 def main(visualize):
 
@@ -59,10 +58,12 @@ def main(visualize):
 	if param.env_name is 'CartPole':
 		env = CartPole()
 
+	device = "cpu"
+
 	# get controllers
 	deeprl_controller = torch.load(param.sim_rl_model_fn)
 	pid_controller = torch.load(param.sim_il_model_fn)
-	plain_pid_controller = PlainPID([2, 40], [4, 20])
+	# plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
 	initial_state = env.reset()
@@ -71,7 +72,7 @@ def main(visualize):
 
 	# extract gains
 	kp,kd = extract_gains(pid_controller,states_pid)
-	# ref_state = extract_ref_state(pid_controller, states_pid)
+	ref_state = extract_ref_state(pid_controller, states_pid)
 
 	# plots
 	for i in range(env.n):
@@ -83,13 +84,13 @@ def main(visualize):
 		plotter.plot(times[1:],actions_pid[:,i], fig = fig, ax = ax)
 		# plotter.plot(times[1:],actions_plain_pid[:,i], fig = fig, ax = ax)
 
-	# fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
-	# fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
-	# fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
-	# fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
+	fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
+	fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
+	fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
+	fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
 
-	# for i in range(env.n):
-	# 	fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
+	for i in range(env.n):
+		fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
 
 
 	plotter.save_figs()

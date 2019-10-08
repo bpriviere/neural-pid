@@ -69,7 +69,7 @@ class CartPole(Env):
 		error = self.state - state_ref
 		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))
-		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/3)
+		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/6)
 		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
 
 	def max_reward(self):

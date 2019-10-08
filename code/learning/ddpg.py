@@ -29,10 +29,12 @@ class DDPG():
 		gpu_on):
 
 		if gpu_on:
+			self.gpu_on = True
 			self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 			print('Cuda Available: ', torch.cuda.is_available())
 			torch.set_default_tensor_type('torch.cuda.FloatTensor')
 		else:
+			self.gpu_on = False
 			self.device = "cpu"
 
 		# some param
@@ -54,11 +56,11 @@ class DDPG():
 		# self.data = []
 
 		# network
-		self.q = QNet(state_dim,action_dim)
-		self.mu = MuNet(state_dim,control_lim)
-		self.q_target = QNet(state_dim,action_dim)
-		self.q_target.load_state_dict(self.q.state_dict())
-		self.mu_target = MuNet(state_dim,control_lim)
+		self.q = QNet(state_dim,action_dim,self.device)
+		self.q_target = QNet(state_dim,action_dim,self.device)
+		self.q_target.load_state_dict(self.q.state_dict())		
+		self.mu = MuNet(state_dim,control_lim,self.device)
+		self.mu_target = MuNet(state_dim,control_lim,self.device)
 		self.mu_target.load_state_dict(self.mu.state_dict())
 
 		self.mu_optimizer = optim.Adam(self.mu.parameters(), lr=self.lr_mu)
@@ -88,10 +90,12 @@ class DDPG():
 
 	def train_net(self):
 		s,a,r,s_prime,done_mask  = self.data.sample(self.batch_size)
+		done_mask = done_mask.float()
 		# s,a,r,s_prime,done_mask  = self.make_batch()
 		
 		for _ in range(self.K_epoch):
-			target = r + self.gamma * self.q_target(s_prime, self.mu_target(s_prime))
+			target = r + self.gamma*(1-done_mask)*self.q_target(s_prime, self.mu_target(s_prime))
+
 			q_loss = F.smooth_l1_loss(self.q(s,a), target.detach())
 			self.q_optimizer.zero_grad()
 			q_loss.backward()
@@ -110,19 +114,25 @@ class DDPG():
 	def soft_update(self,net,net_target):
 		for param_target, param in zip(net_target.parameters(), net.parameters()):
 			param_target.data.copy_(\
-				param_target.data*(1.0 - self.tau)+\
-				param.data*self.tau)
+				self.tau*param_target.data+\
+				(1.0-self.tau)*param.data*self.tau)
 
 	
 	def train_policy(self,s):
-		a = self.mu(torch.from_numpy(s).float()).detach()
+		s = torch.from_numpy(s).float().to(self.device)
+		a = self.mu(s).detach()
 		b = torch.randn(self.action_dim)*self.action_std 
 		a = a + b
+		a = a.cpu().numpy()
 		return a
 
+
 	def policy(self,s):
-		a = self.mu(torch.from_numpy(s).float()).detach().numpy()
+		s = torch.from_numpy(s).float().to(self.device)
+		a = self.mu(s).detach()
+		a = a.cpu().numpy()
 		return a
+
 
 	def put_data(self,transition):
 		# self.data.append(transition)
@@ -145,7 +155,7 @@ class ReplayBuffer():
 		for transition in mini_batch:
 			s, a, r, s_prime, done_mask = transition
 			s_lst.append(s)
-			a_lst.append([a])
+			a_lst.append(a)
 			r_lst.append([r])
 			s_prime_lst.append(s_prime)
 			done_mask_lst.append([done_mask])
@@ -161,8 +171,11 @@ class ReplayBuffer():
 
 # mu(s) = a
 class MuNet(nn.Module):
-	def __init__(self,state_dim,control_lim):
+	def __init__(self,state_dim,control_lim,device):
 		super(MuNet, self).__init__()
+
+		self.to(device)
+
 		self.control_lim = control_lim
 		self.fc1 = nn.Linear(state_dim, 64)
 		self.fc2 = nn.Linear(64, 64)
@@ -176,9 +189,11 @@ class MuNet(nn.Module):
 
 # q = q(s,a)
 class QNet(nn.Module):
-	def __init__(self,state_dim,action_dim):
+	def __init__(self,state_dim,action_dim,device):
 		super(QNet, self).__init__()
 		
+		self.to(device)
+
 		self.fc_s = nn.Linear(state_dim, 32)
 		self.fc_a = nn.Linear(action_dim,32)
 		self.fc_q = nn.Linear(64, 32)

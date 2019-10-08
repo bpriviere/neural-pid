@@ -78,16 +78,19 @@ def main():
 			done = False
 			trial_count += 1.
 			for step, time in enumerate(times[:-1]):
+
 				if continuous:
 					a = model.train_policy(s)
 					s_prime, r, done, _ = env.step(a)
 					model.put_data((s,a,r,s_prime,done))
+
 				else:
 					prob = model.pi(torch.from_numpy(s).float())
 					c = Categorical(prob).sample().item()
 					a = model.class_to_force(c)
 					s_prime, r, done, _ = env.step([a])
 					model.put_data((s,c,r,s_prime,prob[c].item(),done))
+					
 				s = s_prime
 				running_reward += r
 				data_count += 1
