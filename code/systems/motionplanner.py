@@ -6,12 +6,11 @@ from gym import Env
 import numpy as np 
 
 # my package
-from param import param 
 import plotter 
 
 class MotionPlanner(Env):
 
-	def __init__(self):
+	def __init__(self, param):
 
 		# init
 		self.times = param.sim_times

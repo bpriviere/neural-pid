@@ -5,11 +5,10 @@ from gym import Env
 from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan,radians,power 
 from numpy.linalg import norm,pinv
 from numpy.random import uniform as random_uniform
-from param import param 
 
 class CartPole(Env):
 
-	def __init__(self):
+	def __init__(self, param):
 
 		# init
 		self.times = param.sim_times
@@ -37,8 +36,7 @@ class CartPole(Env):
 			self.init_state_disturbance = array([0,radians(0),0,0])
 			self.env_state_bounds = array([10.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])			
 		else:
-			print('systems.py: no case')
-			exit()
+			raise Exception('param.env_case invalid ' + param.env_case)
 
 		self.W = diag([0.01,1,0,0])
 		self.max_error = 2*self.env_state_bounds
@@ -52,6 +50,7 @@ class CartPole(Env):
 			'Pole Velocity [rad/s]']
 		self.actions_name = [
 			'Cart Acceleration [m/s^2]']
+		self.param = param
 
 	def step(self, action):
 		state = self.state
@@ -66,7 +65,7 @@ class CartPole(Env):
 		return self.state, r, done, {}
 
 	def reward(self):
-		state_ref = param.ref_trajectory[:,self.time_step]
+		state_ref = self.param.ref_trajectory[:,self.time_step]
 		error = self.state - state_ref
 		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))

@@ -66,5 +66,5 @@ class Param:
 param = Param()
 
 
-sys.path.insert(1, os.path.join(os.getcwd(),'learning'))
-sys.path.insert(1, os.path.join(os.getcwd(),'systems'))
+# sys.path.insert(1, os.path.join(os.getcwd(),'learning'))
+# sys.path.insert(1, os.path.join(os.getcwd(),'systems'))

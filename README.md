@@ -20,17 +20,17 @@ sudo pip3 install meshcat
 ### Train policy using RL
 
 ```
-python3 train_rl.py
+python3 examples/motionplanner.py --rl
 ```
 
 ### Train PID controller an motion planner
 
 ```
-python3 train_gains.py
+python3 examples/motionplanner.py --il
 ```
 
 ### Evaluate RL and PID solutions
 
 ```
-python3 sim.py [--animate]
+python3 examples/motionplanner.py [--animate]
 ```

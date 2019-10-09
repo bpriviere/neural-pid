@@ -1,17 +1,14 @@
 
 # my packages
-from param import param 
-from ppo import PPO
-from ddpg import DDPG
-from cartpole import CartPole
-from motionplanner import MotionPlanner
+from learning.ppo import PPO
+from learning.ddpg import DDPG
 
 # standard packages
 import torch 
 from torch.distributions import MultivariateNormal,Categorical
 import numpy as np 
 
-def main():
+def train_rl(param, env):
 
 	continuous = param.rl_continuous_on
 	if param.rl_continuous_on:
@@ -20,11 +17,6 @@ def main():
 		print('Discrete Action Space: ',param.rl_discrete_action_space)
 	print("Case: ", param.env_case)
 
-	# creating environment
-	if param.env_name is 'CartPole':
-		env = CartPole()
-	elif param.env_name is 'MotionPlanner':
-		env = MotionPlanner()
 	state_dim = env.n
 	action_dim = env.m
 	times = param.sim_times
@@ -129,8 +121,3 @@ def main():
 
 			running_reward = 0
 			trial_count = 0 
-
-
-
-if __name__ == '__main__':
-	main()

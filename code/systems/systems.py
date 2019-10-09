@@ -37,7 +37,7 @@ class CartPole(Env):
 			self.init_state_disturbance = array([0,radians(0),0,0])
 			self.env_state_bounds = array([10.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])			
 		else:
-			print('systems.py: no case')
+			print('systems.py: no case', param.env_case)
 			exit()
 
 		self.W = diag([0.01,1,0,0])

@@ -4,15 +4,11 @@ import torch
 import gym 
 from numpy import identity, zeros, array, vstack, pi, radians
 import numpy as np 
-import argparse
 
 # my package
 import plotter 
-from cartpole import CartPole
-from motionplanner import MotionPlanner
-from param import param 
 
-def main(visualize):
+def sim(param, env, visualize):
 
 	def run_sim(controller, initial_state):
 		states = zeros((len(times), env.n))
@@ -54,11 +50,6 @@ def main(visualize):
 
 	# environment
 	times = param.sim_times
-	if param.env_name is 'CartPole':
-		env = CartPole()
-	elif param.env_name is 'MotionPlanner':
-		env = MotionPlanner()
-
 	device = "cpu"
 
 	# get controllers
@@ -104,13 +95,3 @@ def main(visualize):
 
 	plotter.save_figs()
 	plotter.open_figs()
-
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument("--animate", action='store_true')
-	args = parser.parse_args()
-	main(args.animate)
-
-
-
-	

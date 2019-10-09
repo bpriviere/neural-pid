@@ -7,9 +7,10 @@ from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
 from torch.distributions import Categorical
 
-from param import param 
-from learning import PID_Net,PID_wRef_Net,Ref_Net,PlainPID
-from systems import CartPole 
+from learning.pid_net import PID_Net
+from learning.pid_wref_net import PID_wRef_Net
+from learning.ref_net import Ref_Net
+from learning.plain_pid import PlainPID
 
 # def make_dataset(env):
 # 	# model = PlainPID([2, 40], [4, 20])
@@ -30,7 +31,7 @@ from systems import CartPole
 # 	return torch.tensor(states).float(), torch.tensor(actions).float()
 
 
-def make_dataset(env):
+def make_dataset(param, env):
 	model = torch.load(param.il_imitate_model_fn)
 	# model = PlainPID([2, 40], [4, 20])
 	times = param.sim_times
@@ -52,7 +53,7 @@ def make_dataset(env):
 	return torch.tensor(states).float(),torch.tensor(actions).float()
 
 
-def train(model, loader):
+def train(param, model, loader):
 
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
@@ -76,14 +77,10 @@ def test(model, loader):
 		epoch_loss += loss 
 	return epoch_loss/step
 
-def main():
+def train_il(param, env):
 
 	seed(1) # numpy random gen seed 
 	torch.manual_seed(1)    # pytorch 
-
-	# env
-	if param.env_name is 'CartPole':
-		env = CartPole()
 
 	# init model
 	if param.controller_class is 'PID':
@@ -100,13 +97,13 @@ def main():
 	print("Controller: ",param.controller_class)
 
 	# datasets
-	x_train,y_train = make_dataset(env) 
+	x_train,y_train = make_dataset(param, env)
 	dataset_train = Data.TensorDataset(x_train, y_train)
 	loader_train = Data.DataLoader(
 		dataset=dataset_train, 
 		batch_size=param.il_batch_size, 
 		shuffle=True)
-	x_test,y_test = make_dataset(env) 
+	x_test,y_test = make_dataset(param, env)
 	dataset_test = Data.TensorDataset(x_test, y_test)
 	loader_test = Data.DataLoader(
 		dataset=dataset_test, 
@@ -115,7 +112,7 @@ def main():
 
 	best_test_loss = Inf
 	for epoch in range(1,param.il_n_epoch+1):
-		train_epoch_loss = train(model,loader_train)
+		train_epoch_loss = train(param, model, loader_train)
 		test_epoch_loss = test(model, loader_test)
 		if epoch%param.il_log_interval==0:
 			print('epoch: ', epoch)
@@ -125,6 +122,3 @@ def main():
 				best_test_loss = test_epoch_loss
 				print('      saving @ best test loss:', best_test_loss)
 				torch.save(model,param.il_train_model_fn)
-
-if __name__ == '__main__':
-	main()
