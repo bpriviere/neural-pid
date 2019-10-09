@@ -3,11 +3,13 @@
 import torch
 import gym 
 from numpy import identity, zeros, array, vstack, pi, radians
+import numpy as np 
 import argparse
 
 # my package
 import plotter 
 from cartpole import CartPole
+from motionplanner import MotionPlanner
 from param import param 
 
 def main(visualize):
@@ -21,21 +23,15 @@ def main(visualize):
 			state = states[step]			
 			action = controller.policy(state) 
 			reward += env.reward()
-			states[step + 1], _, done, _ = env.step([action])
-			actions[step] = action
+			states[step + 1], _, done, _ = env.step(action)
+			actions[step] = np.squeeze(action)
 			if done:
 				break
+			if param.sim_render_on: # and step%20==0:
+				env.render()
 		print('reward: ',reward)
 		env.close()
 		return states, actions
-
-	def compute_actions(controller, states):
-		actions = zeros((len(times) - 1, env.m))
-		for step, time in enumerate(times[:-1]):
-			state = states[step]			
-			action = controller.policy(state) 
-			actions[step] = action
-		return actions
 
 	def extract_gains(controller, states):
 		kp = zeros((len(times)-1,2))
@@ -53,10 +49,15 @@ def main(visualize):
 			ref_state[i] = controller.get_ref_state(state)
 		return ref_state
 
+
+	# -------------------------------------------
+
 	# environment
 	times = param.sim_times
 	if param.env_name is 'CartPole':
 		env = CartPole()
+	elif param.env_name is 'MotionPlanner':
+		env = MotionPlanner()
 
 	device = "cpu"
 
@@ -66,59 +67,43 @@ def main(visualize):
 	# plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
+	# s0 = array([-4,0,0,0])
 	initial_state = env.reset()
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
 	states_pid, actions_pid = run_sim(pid_controller, initial_state)
+	
+	# states_pid = states_deeprl
+	# actions_pid = actions_deeprl
 
-	# extract gains
-	kp,kd = extract_gains(pid_controller,states_pid)
-	ref_state = extract_ref_state(pid_controller, states_pid)
 
 	# plots
 	for i in range(env.n):
 		fig, ax = plotter.plot(times,states_deeprl[:,i],title=env.states_name[i])
 		plotter.plot(times,states_pid[:,i], fig = fig, ax = ax)
-		# plotter.plot(times,stated_plain_pid[:,i], fig = fig, ax = ax)
 	for i in range(env.m):
 		fig, ax = plotter.plot(times[1:],actions_deeprl[:,i],title=env.actions_name[i])
 		plotter.plot(times[1:],actions_pid[:,i], fig = fig, ax = ax)
-		# plotter.plot(times[1:],actions_plain_pid[:,i], fig = fig, ax = ax)
 
-	fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
-	fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
-	fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
-	fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
+	# extract gains
+	if param.controller_class in ['PID_wRef','PID']:
+		kp,kd = extract_gains(pid_controller,states_pid)
+		fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
+		fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
+		fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
+		fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
 
-	for i in range(env.n):
-		fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
+	# extract reference trajectory
+	if param.controller_class in ['PID_wRef','Ref']:
+		ref_state = extract_ref_state(pid_controller, states_pid)
+		for i in range(env.n):
+			fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
 
+	# visualize
+	if visualize:
+		plotter.visualize(env,states_deeprl)
 
 	plotter.save_figs()
 	plotter.open_figs()
-
-	# visualize 3D
-	if visualize:
-		import meshcat
-		import meshcat.geometry as g
-		import meshcat.transformations as tf
-		import time
-
-		# Create a new visualizer
-		vis = meshcat.Visualizer()
-		vis.open()
-
-		vis["cart"].set_object(g.Box([0.2,0.5,0.2]))
-		vis["pole"].set_object(g.Cylinder(env.length_pole, 0.01))
-
-		while True:
-			for t, state in zip(times, states_deeprl):
-				vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
-
-				vis["pole"].set_transform(
-					tf.translation_matrix([0, state[0] + env.length_pole/2, 0]).dot(
-					tf.rotation_matrix(pi/2 + state[1], [1,0,0], [0,-env.length_pole/2,0])))
-
-				time.sleep(0.1)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()

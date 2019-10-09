@@ -43,6 +43,7 @@ class CartPole(Env):
 		self.W = diag([0.01,1,0,0])
 		self.max_error = 2*self.env_state_bounds
 		self.max_penalty = dot(self.max_error.T,dot(self.W,self.max_error))
+		self.max_reward = 1.
 
 		self.states_name = [
 			'Cart Position [m]',
@@ -72,8 +73,6 @@ class CartPole(Env):
 		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/6)
 		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
 
-	def max_reward(self):
-		return 1.
 		
 	def reset(self, initial_state = None):
 		if initial_state is None:
@@ -93,7 +92,7 @@ class CartPole(Env):
 		dt = self.times[self.time_step+1]-self.times[self.time_step]
 
 		# s = [q,qdot], q = [x,th]
-		a = reshape(a,(len(a),1))
+		a = reshape(a,(self.m,1))
 		q = reshape(s[0:2],(2,1))
 		qdot = reshape(s[2:],(2,1))
 		th = s[1]

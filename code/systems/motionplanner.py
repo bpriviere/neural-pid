@@ -1,11 +1,13 @@
 
 # Creating OpenAI gym Envs 
 
+# standard package
 from gym import Env
-from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan,radians,power 
-from numpy.linalg import norm,pinv
-from numpy.random import uniform as random_uniform
+import numpy as np 
+
+# my package
 from param import param 
+import plotter 
 
 class MotionPlanner(Env):
 
@@ -15,89 +17,127 @@ class MotionPlanner(Env):
 		self.times = param.sim_times
 		self.state = None
 		self.time_step = None
-		self.ave_dt = self.times[1]-self.times[0]
+		self.ave_dt = np.mean(self.times[1:]-self.times[:-1])
+
+		self.n_agents = 1
+		self.n_obs = 1
+
+		# 
+		self.delta_a = 0.2
+		self.delta_o = 2
+		self.delta_g = 0.2
+		self.o_x = 0
+		self.o_y = 0
+		self.s_g = np.array([4,0,0,0])
 
 		# default parameters [SI units]
 		self.n = 4
-		self.m = 1
-		self.mass_cart = 1.0
-		self.mass_pole = 0.1
-		self.length_pole = 0.5
-		self.g = 9.81
-		
-		self.W = diag([0.01,1,0,0])
-		self.max_error = 2*self.env_state_bounds
-		self.max_penalty = dot(self.max_error.T,dot(self.W,self.max_error))
+		self.m = 2
+
+		# environment 
+		self.env_state_bounds = np.array(
+			[5,5,5/self.ave_dt,5/self.ave_dt])
+		self.init_state_start = np.array(
+			[0,0,0,0])
+		self.init_state_disturbance = np.array(
+			[self.env_state_bounds[0],self.env_state_bounds[1],0,0])
 
 		self.states_name = [
-			'Cart Position [m]',
-			'Pole Angle [rad]',
-			'Cart Velocity [m/s]',
-			'Pole Velocity [rad/s]']
+			'x-Position [m]',
+			'y-Position [m]',
+			'x-Velocity [m/s]',
+			'y-Velocity [m/s]',]
 		self.actions_name = [
-			'Cart Acceleration [m/s^2]']
+			'x-Acceleration [m/s^2]',
+			'y-Acceleration [m/s^2]']
 
-	def step(self, action):
-		state = self.state
-		initial_time = self.times[self.time_step]
-		final_time = self.times[self.time_step + 1]
-		self.state = self.f(state, action)
-		done = abs(state[0]) > self.env_state_bounds[0] \
-			or abs(state[1]) > self.env_state_bounds[1] \
-			or self.time_step == len(self.times)-1
+		# weigh error
+		self.W = np.diag([1,1,0,0])
+		self.max_e = self.s_g + self.env_state_bounds
+		self.max_d = np.dot(np.dot(self.max_e,self.W),self.max_e)
+		self.max_reward = 1.
+
+
+	def render(self):
+		fig,ax = plotter.make_fig(axlim = [self.env_state_bounds[0],self.env_state_bounds[1]])
+		title = 'State at t: ' + str(np.round(self.times[self.time_step]))
+
+		for j in range(self.n_obs):
+			plotter.plot_circle(self.o_x,self.o_y,self.delta_o,fig=fig,ax=ax,label='obs')
+		for i in range(self.n_agents):
+			plotter.plot_circle(self.s[0],self.s[1],self.delta_a,fig=fig,ax=ax,label='agent')
+		plotter.plot_circle(self.s_g[0],self.s_g[1],self.delta_g,fig=fig,ax=ax,title=title,label='goal')
+		
+
+	def step(self, a):
+		self.s = self.f(self.s, a)
+		d = self.done() 
 		r = self.reward()
 		self.time_step += 1
-		return self.state, r, done, {}
+		return self.s, r, d, {}
+
+
+	def done(self):
+		return self.collision_check_obs() or self.collision_check_env()
+
 
 	def reward(self):
-		state_ref = param.ref_trajectory[:,self.time_step]
-		error = self.state - state_ref
-		C = 1.
-		# r = exp(-C*dot(error.T,dot(W,error)))
-		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/6)
-		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
-
-	def max_reward(self):
-		return 1.
-		
-	def reset(self, initial_state = None):
-		if initial_state is None:
-			self.state = self.init_state_start+multiply(self.init_state_disturbance, random_uniform(size=(4,)))
+		if self.collision_check_obs() or self.collision_check_env():
+			return -100
 		else:
-			self.state = initial_state
+			e = self.s - self.s_g
+			d = np.dot(np.dot(e,self.W),e)
+			return (1 - d/self.max_d)**2.
+
+
+	def reset(self, initial_state = None):
+		
+		if initial_state is None:
+			self.s = self.init_state_start+np.multiply(
+					self.init_state_disturbance,np.random.uniform(size=(4,)))
+			# self.s[0] = np.min((self.s[0],0))
+			# check that you don't initialize inside obstacle! 
+			while self.collision_check_obs():
+				self.s = self.init_state_start+np.multiply(
+					self.init_state_disturbance,np.random.uniform(size=(4,)))
+				# self.s[0] = np.min((self.s[0],0))
+		else:
+			self.s = initial_state
+			# check that you don't initialize inside obstacle! 
+			if self.collision_check_obs():
+				print('Initialized Inside Obstacle')
+				exit()
 		self.time_step = 0
-		return array(self.state)
+		return np.array(self.s) 
+
 
 	def f(self,s,a):
+		dt = self.times[self.time_step+1] - self.times[self.time_step]
+		sdot = np.array((
+			self.s[2],self.s[3],a[0],a[1]))
+		s = s + sdot*dt
+		return np.array(s)
 
-		# parameters
-		m_p = self.mass_pole
-		m_c = self.mass_cart
-		l = self.length_pole
-		g = self.g
-		dt = self.times[self.time_step+1]-self.times[self.time_step]
 
-		# s = [q,qdot], q = [x,th]
-		a = reshape(a,(len(a),1))
-		q = reshape(s[0:2],(2,1))
-		qdot = reshape(s[2:],(2,1))
-		th = s[1]
-		thdot = s[3]
+	def collision_check_obs(self):
+		if np.linalg.norm(
+			self.s[0:2]-[self.o_x,self.o_y]) <= self.delta_o+self.delta_a:
+			return True
+		else:
+			return False
 
-		# EOM from learning+control@caltech
-		D = array([[m_c+m_p,m_p*l*cos(th)],[m_p*l*cos(th),m_p*(l**2)]])
-		C = array([[0,-m_p*l*thdot*sin(th)],[0,0]])
-		G = array([[0],[-m_p*g*l*sin(th)]])
-		B = array([[1],[0]])
-		qdotdot = dot(pinv(D), dot(B,a) - dot(C,qdot) - G)
 
-		# euler integration
-		sp1 = squeeze(reshape(s,(len(s),1)) + vstack([qdot, qdotdot]) * dt)
-		# if sp1[1] > pi:
-		# 	sp1[1] -= 2*pi
-		# if sp1[1] < -pi:
-		# 	sp1[1] += 2*pi
-		return sp1
+	def collision_check_goal(self):
+		if np.linalg.norm(
+			self.s[0:2]-self.s_g[0:2]) <= self.delta_g+self.delta_a:
+			return True
+		return False
 
-	def env_barrier(self,action):
-		pass
+
+	def collision_check_env(self):
+		if np.abs(self.s[0]) + self.delta_a > self.env_state_bounds[0]:
+			return True
+		elif np.abs(self.s[1]) + self.delta_a > self.env_state_bounds[1]:
+			return True
+		return False 
+

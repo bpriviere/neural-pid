@@ -26,6 +26,7 @@ class DDPG():
 		action_std,
 		tau,
 		K_epoch,
+		max_action_perturb,
 		gpu_on):
 
 		if gpu_on:
@@ -50,6 +51,7 @@ class DDPG():
 		self.buffer_limit = buffer_limit
 		self.tau = tau
 		self.K_epoch = K_epoch
+		self.eps = max_action_perturb
 
 		# memory
 		self.data = ReplayBuffer(int(self.buffer_limit))
@@ -59,8 +61,8 @@ class DDPG():
 		self.q = QNet(state_dim,action_dim,self.device)
 		self.q_target = QNet(state_dim,action_dim,self.device)
 		self.q_target.load_state_dict(self.q.state_dict())		
-		self.mu = MuNet(state_dim,control_lim,self.device)
-		self.mu_target = MuNet(state_dim,control_lim,self.device)
+		self.mu = MuNet(state_dim,action_dim,control_lim,self.device)
+		self.mu_target = MuNet(state_dim,action_dim,control_lim,self.device)
 		self.mu_target.load_state_dict(self.mu.state_dict())
 
 		self.mu_optimizer = optim.Adam(self.mu.parameters(), lr=self.lr_mu)
@@ -122,6 +124,7 @@ class DDPG():
 		s = torch.from_numpy(s).float().to(self.device)
 		a = self.mu(s).detach()
 		b = torch.randn(self.action_dim)*self.action_std 
+		b = torch.clamp(b,-self.eps,self.eps)
 		a = a + b
 		a = a.cpu().numpy()
 		return a
@@ -131,6 +134,7 @@ class DDPG():
 		s = torch.from_numpy(s).float().to(self.device)
 		a = self.mu(s).detach()
 		a = a.cpu().numpy()
+		a = np.reshape(np.squeeze(a),(self.action_dim,1))
 		return a
 
 
@@ -171,7 +175,7 @@ class ReplayBuffer():
 
 # mu(s) = a
 class MuNet(nn.Module):
-	def __init__(self,state_dim,control_lim,device):
+	def __init__(self,state_dim,action_dim,control_lim,device):
 		super(MuNet, self).__init__()
 
 		self.to(device)
@@ -179,7 +183,7 @@ class MuNet(nn.Module):
 		self.control_lim = control_lim
 		self.fc1 = nn.Linear(state_dim, 64)
 		self.fc2 = nn.Linear(64, 64)
-		self.fc_mu = nn.Linear(64, 1)
+		self.fc_mu = nn.Linear(64, action_dim)
 
 	def forward(self, x):
 		x = F.relu(self.fc1(x))

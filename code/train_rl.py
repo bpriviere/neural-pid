@@ -1,10 +1,12 @@
 
-# from continuous_ppo import PPO, Memory
-# from learning import PPO, PPO_c
+# my packages
+from param import param 
 from ppo import PPO
 from ddpg import DDPG
-from systems import CartPole
-from param import param 
+from cartpole import CartPole
+from motionplanner import MotionPlanner
+
+# standard packages
 import torch 
 from torch.distributions import MultivariateNormal,Categorical
 import numpy as np 
@@ -19,8 +21,10 @@ def main():
 	print("Case: ", param.env_case)
 
 	# creating environment
-	env_name = 'CartPole'
-	env = CartPole()
+	if param.env_name is 'CartPole':
+		env = CartPole()
+	elif param.env_name is 'MotionPlanner':
+		env = MotionPlanner()
 	state_dim = env.n
 	action_dim = env.m
 	times = param.sim_times
@@ -34,7 +38,7 @@ def main():
 		np.random.seed(random_seed)
 
 	# exit condition
-	solved_reward = 0.97*env.max_reward()*param.sim_nt
+	solved_reward = 0.97*env.max_reward*param.sim_nt
 	print('Solved Reward: ',solved_reward)
 
 	# init model 
@@ -51,6 +55,7 @@ def main():
 			param.rl_action_std,
 			param.rl_tau,
 			param.rl_K_epoch,
+			param.rl_max_action_perturb,
 			param.rl_gpu_on)
 	else:
 		model = PPO(
@@ -68,7 +73,7 @@ def main():
 	# logging variables
 	running_reward = 0
 	trial_count = 0
-	best_reward = 0 
+	best_reward = -np.Inf
 	data_count = 0
 	
 	# training loop
@@ -90,7 +95,7 @@ def main():
 					a = model.class_to_force(c)
 					s_prime, r, done, _ = env.step([a])
 					model.put_data((s,c,r,s_prime,prob[c].item(),done))
-					
+
 				s = s_prime
 				running_reward += r
 				data_count += 1

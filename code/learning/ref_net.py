@@ -17,9 +17,9 @@ class Ref_Net(nn.Module):
 		super(Ref_Net, self).__init__()
 		self.Kp = Kp
 		self.Kd = Kd
-		self.fc1 = nn.Linear(input_layer, 64)
-		self.fc2 = nn.Linear(64, 64)
-		self.fc3 = nn.Linear(64, input_layer)
+		self.fc1 = nn.Linear(input_layer, 16)
+		self.fc2 = nn.Linear(16, 16)
+		self.fc3 = nn.Linear(16, input_layer)
 
 	def evalNN(self, x):
 		x = torch.from_numpy(array(x,ndmin = 2)).float()

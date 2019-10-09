@@ -40,7 +40,7 @@ def make_dataset(env):
 		states.append(env.reset())
 		for step, time in enumerate(times[:-1]):
 			action = model.policy(states[-1])
-			s_prime, _, done, _ = env.step([action])
+			s_prime, _, done, _ = env.step(action)
 			states.append(s_prime)
 			actions.append(action.reshape((-1)))
 			if done:
@@ -86,18 +86,18 @@ def main():
 		env = CartPole()
 
 	# init model
-	if param.programmatic_controller_name is 'PID':
+	if param.controller_class is 'PID':
 		model = PID_Net(env.n)
-	elif param.programmatic_controller_name is 'PID_wRef':
+	elif param.controller_class is 'PID_wRef':
 		model = PID_wRef_Net(env.n)
-	elif param.programmatic_controller_name is 'Ref':
-		model = Ref_Net(env.n, [2, 40], [4, 20])
+	elif param.controller_class is 'Ref':
+		model = Ref_Net(env.n, [2, 40.], [2., 40.])
 	else:
 		print('Error in Train Gains, programmatic controller not recognized')
 		exit()
 
 	print("Case: ",param.env_case)
-	print("Controller: ",param.programmatic_controller_name)
+	print("Controller: ",param.controller_class)
 
 	# datasets
 	x_train,y_train = make_dataset(env) 
