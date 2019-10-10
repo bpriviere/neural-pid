@@ -2,7 +2,6 @@
 # standard package
 import torch
 import gym 
-from numpy import identity, zeros, array, vstack, pi, radians
 import numpy as np 
 
 # my package
@@ -11,8 +10,8 @@ import plotter
 def sim(param, env, visualize):
 
 	def run_sim(controller, initial_state):
-		states = zeros((len(times), env.n))
-		actions = zeros((len(times) - 1, env.m))
+		states = np.zeros((len(times), env.n))
+		actions = np.zeros((len(times) - 1, env.m))
 		states[0] = env.reset(initial_state)
 		reward = 0 
 		for step, time in enumerate(times[:-1]):
@@ -30,8 +29,8 @@ def sim(param, env, visualize):
 		return states, actions
 
 	def extract_gains(controller, states):
-		kp = zeros((len(times)-1,2))
-		kd = zeros((len(times)-1,2))
+		kp = np.zeros((len(times)-1,2))
+		kd = np.zeros((len(times)-1,2))
 		i = 0
 		for state in states[1:]:
 			kp[i] = controller.get_kp(state)
@@ -40,7 +39,7 @@ def sim(param, env, visualize):
 		return kp,kd
 
 	def extract_ref_state(controller, states):
-		ref_state = zeros((len(times)-1,4))
+		ref_state = np.zeros((len(times)-1,4))
 		for i, state in enumerate(states[1:]):
 			ref_state[i] = controller.get_ref_state(state)
 		return ref_state
@@ -54,17 +53,18 @@ def sim(param, env, visualize):
 
 	# get controllers
 	deeprl_controller = torch.load(param.sim_rl_model_fn)
-	pid_controller = torch.load(param.sim_il_model_fn)
+	# pid_controller = torch.load(param.sim_il_model_fn)
 	# plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
-	# s0 = array([-4,0,0,0])
-	initial_state = env.reset()
+	s0 = np.array([-2.5,1,0,0])
+	initial_state = env.reset(s0)
+	# initial_state = env.reset()
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
-	states_pid, actions_pid = run_sim(pid_controller, initial_state)
+	# states_pid, actions_pid = run_sim(pid_controller, initial_state)
 	
-	# states_pid = states_deeprl
-	# actions_pid = actions_deeprl
+	states_pid = states_deeprl
+	actions_pid = actions_deeprl
 
 
 	# plots
@@ -84,10 +84,10 @@ def sim(param, env, visualize):
 		fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
 
 	# extract reference trajectory
-	if param.controller_class in ['PID_wRef','Ref']:
-		ref_state = extract_ref_state(pid_controller, states_pid)
-		for i in range(env.n):
-			fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
+	# if param.controller_class in ['PID_wRef','Ref']:
+	# 	ref_state = extract_ref_state(pid_controller, states_pid)
+	# 	for i in range(env.n):
+	# 		fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
 
 	# visualize
 	if visualize:

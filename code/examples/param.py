@@ -1,6 +1,7 @@
 
-from numpy import array,arange,zeros,Inf,linspace
+
 import os,sys 
+import numpy as np 
 
 class Param:
 	def __init__(self):
@@ -9,7 +10,7 @@ class Param:
 		self.rl_gpu_on = False
 		self.rl_continuous_on = True
 		self.rl_log_interval = 20
-		self.rl_save_model_interval = Inf
+		self.rl_save_model_interval = np.Inf
 		self.rl_max_episodes = 50000
 		self.rl_train_model_fn = 'rl_model.pt'
 		self.rl_batch_size = 1000
@@ -17,7 +18,7 @@ class Param:
 		self.rl_K_epoch = 5
 		self.rl_control_lim = 10
 		self.rl_card_A = 25
-		self.rl_discrete_action_space = linspace(\
+		self.rl_discrete_action_space = np.linspace(\
 			-self.rl_control_lim,
 			 self.rl_control_lim,
 			 self.rl_card_A)
@@ -37,7 +38,7 @@ class Param:
 		self.il_lr = 5e-4
 		self.il_n_epoch = 50000 # number of epochs per batch 
 		self.il_batch_size = 2000 # number of data points per batch
-		self.il_n_data = 20000 # total number of data points 
+		self.il_n_data = 2000 # total number of data points 
 		self.il_log_interval = 100
 		self.il_train_model_fn = 'il_model.pt'
 		self.il_imitate_model_fn = '../models/CartPole/rl_model_Swing90_continuous.pt'
@@ -51,17 +52,17 @@ class Param:
 		self.sim_t0 = 0
 		self.sim_tf = 10
 		self.sim_dt = 0.05
-		self.sim_times = arange(self.sim_t0,self.sim_tf,self.sim_dt)
+		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.sim_rl_model_fn = 'rl_model.pt'
 		self.sim_il_model_fn = 'il_model.pt'
-		self.sim_render_on = False 
+		self.sim_render_on = True
 
 		# plots
 		self.plots_fn = 'plots.pdf'
 
 		# desired tracking trajectory
-		self.ref_trajectory = zeros((4,self.sim_nt)) 
+		self.ref_trajectory = np.zeros((4,self.sim_nt)) 
 
 param = Param()
 

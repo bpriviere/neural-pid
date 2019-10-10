@@ -43,13 +43,14 @@ def make_dataset(param, env):
 			action = model.policy(states[-1])
 			s_prime, _, done, _ = env.step(action)
 			states.append(s_prime)
-			actions.append(action.reshape((-1)))
+			actions.append(action.reshape(-1))
 			if done:
 				break
-		actions.append([0])
+		actions.append(zeros(env.m))
 
 	states = states[0:param.il_n_data]
 	actions = actions[0:param.il_n_data]
+
 	return torch.tensor(states).float(),torch.tensor(actions).float()
 
 
@@ -60,6 +61,16 @@ def train(param, model, loader):
 	epoch_loss = 0
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 		prediction = model(b_x)     # input x and predict based on x
+
+		print(prediction.grad)
+		exit()
+
+		# print(prediction)
+		# print(prediction.shape)
+		# print(b_y)
+		# print(b_y.shape)
+		# exit()
+
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
 		optimizer.zero_grad()   # clear gradients for next train
 		loss.backward()         # backpropagation, compute gradients
@@ -84,11 +95,11 @@ def train_il(param, env):
 
 	# init model
 	if param.controller_class is 'PID':
-		model = PID_Net(env.n)
+		model = PID_Net(env.n, env.m)
 	elif param.controller_class is 'PID_wRef':
-		model = PID_wRef_Net(env.n)
+		model = PID_wRef_Net(env.n, env.m)
 	elif param.controller_class is 'Ref':
-		model = Ref_Net(env.n, [2, 40.], [2., 40.])
+		model = Ref_Net(env.n, env.m, param.kp, param.kd)
 	else:
 		print('Error in Train Gains, programmatic controller not recognized')
 		exit()

@@ -111,6 +111,14 @@ class MotionPlanner(Env):
 
 
 	def f(self,s,a):
+
+		# input:
+		# 	s, ndarray, (n,) = [p_x,p_y,v_x,v_y]
+		# 	a, ndarray, (m,1)
+		# output:
+		# 	sp1, ndarray, (n,)
+
+		a = np.squeeze(a)
 		dt = self.times[self.time_step+1] - self.times[self.time_step]
 		sdot = np.array((
 			self.s[2],self.s[3],a[0],a[1]))

@@ -82,6 +82,11 @@ class CartPole(Env):
 		return array(self.state)
 
 	def f(self,s,a):
+		# input:
+		# 	s, nd array, (n,)
+		# 	a, nd array, (m,1)
+		# output
+		# 	sp1, nd array, (n,)
 
 		# parameters
 		m_p = self.mass_pole
@@ -110,6 +115,7 @@ class CartPole(Env):
 		# 	sp1[1] -= 2*pi
 		# if sp1[1] < -pi:
 		# 	sp1[1] += 2*pi
+
 		return sp1
 
 	def env_barrier(self,action):

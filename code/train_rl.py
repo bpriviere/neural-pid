@@ -99,6 +99,7 @@ def train_rl(param, env):
 		
 		# stop training if avg_reward > solved_reward
 		if running_reward/trial_count > solved_reward:
+			print('Episode {} \t Avg reward: {:2f}'.format(i_episode, running_reward/trial_count))
 			print("########## Solved! ##########")
 			temp_buffer = model.data
 			model.data = []

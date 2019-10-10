@@ -121,6 +121,11 @@ class DDPG():
 
 	
 	def train_policy(self,s):
+		# input: 
+		# s, nd array, (n,)
+		# output: 
+		# a, nd array, (m,1)
+
 		s = torch.from_numpy(s).float().to(self.device)
 		a = self.mu(s).detach()
 		b = torch.randn(self.action_dim)*self.action_std 
@@ -131,10 +136,16 @@ class DDPG():
 
 
 	def policy(self,s):
+		# input: 
+		# s, nd array, (n,)
+		# output: 
+		# a, nd array, (m,1)
+		
 		s = torch.from_numpy(s).float().to(self.device)
 		a = self.mu(s).detach()
 		a = a.cpu().numpy()
 		a = np.reshape(np.squeeze(a),(self.action_dim,1))
+
 		return a
 
 
