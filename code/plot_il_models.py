@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 # my package
 import plotter 
 from systems import CartPole
-from param import param 
 from learning import PlainPID
 
 

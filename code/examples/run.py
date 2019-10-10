@@ -7,11 +7,13 @@ import argparse
 from train_rl import train_rl
 from train_il import train_il
 from sim import sim
+from planning.rrt import rrt
 
 def run(param, env):
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--rl", action='store_true')
 	parser.add_argument("--il", action='store_true')
+	parser.add_argument("--rrt", action='store_true')
 	parser.add_argument("--animate", action='store_true')
 	args = parser.parse_args()
 
@@ -19,5 +21,7 @@ def run(param, env):
 		train_rl(param, env)
 	elif args.il:
 		train_il(param, env)
+	elif args.rrt:
+		rrt(param, env)
 	else:
 		sim(param, env, args.animate)

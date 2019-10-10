@@ -61,25 +61,27 @@ def sim(param, env, visualize):
 	# initial_state = env.reset(s0)
 	initial_state = env.reset()
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
-	plotter.plot_ss(env,states_deeprl)
+	if param.sim_render_on:
+		plotter.plot_ss(env,states_deeprl)
+
 	states_pid, actions_pid = run_sim(pid_controller, initial_state)
-	plotter.plot_ss(env,states_pid)
+
+	# states_csv = data_csv[:,0:4]
+	# actions_csv = data_csv[:,4:5]
 	
 	# states_pid = states_deeprl
 	# actions_pid = actions_deeprl
 
 
-	# plots
-	# state space
-	plotter.plot_ss(env,states_deeprl)
-
 	# time varying states
 	for i in range(env.n):
 		fig, ax = plotter.plot(times,states_deeprl[:,i],title=env.states_name[i])
 		plotter.plot(times,states_pid[:,i], fig = fig, ax = ax)
+		# plotter.plot(times[0:len(states_csv)],states_csv[:,i], fig = fig, ax = ax)
 	for i in range(env.m):
 		fig, ax = plotter.plot(times[1:],actions_deeprl[:,i],title=env.actions_name[i])
 		plotter.plot(times[1:],actions_pid[:,i], fig = fig, ax = ax)
+		# plotter.plot(times[1:len(actions_csv)+1],actions_csv[:,i], fig = fig, ax = ax)
 
 	# extract gains
 	if param.controller_class in ['PID_wRef','PID']:
@@ -97,7 +99,7 @@ def sim(param, env, visualize):
 
 	# visualize
 	if visualize:
-		plotter.visualize(env,states_deeprl)
+		plotter.visualize(param, env, states_deeprl)
 
-	plotter.save_figs()
-	plotter.open_figs()
+	plotter.save_figs(param.plots_fn)
+	plotter.open_figs(param.plots_fn)

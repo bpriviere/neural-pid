@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import MultivariateNormal, Categorical
-from param import param 
 from numpy import squeeze, array,arange, linspace
 import numpy as np 
 
@@ -12,7 +11,7 @@ class PID_Net(nn.Module):
 	"""
 	neural net to predict gains, kp, kd, from state, s
 	"""
-	def __init__(self,input_layer):
+	def __init__(self, input_layer):
 		super(PID_Net, self).__init__()
 		self.fc1 = nn.Linear(input_layer, 64)
 		self.fc2 = nn.Linear(64, 64)

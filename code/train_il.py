@@ -91,9 +91,9 @@ def train_il(param, env):
 
 	# init model
 	if param.controller_class is 'PID':
-		model = PID_Net(env.n, env.m)
+		model = PID_Net(env.n)
 	elif param.controller_class is 'PID_wRef':
-		model = PID_wRef_Net(env.n, env.m)
+		model = PID_wRef_Net(env.n)
 	elif param.controller_class is 'Ref':
 		model = Ref_Net(env.n, env.m, param.kp, param.kd)
 	else:

@@ -1,5 +1,4 @@
 
-from param import param
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np 
@@ -11,8 +10,8 @@ def show():
 	plt.show()
 
 
-def save_figs():	
-	fn = os.path.join( os.getcwd(), param.plots_fn)
+def save_figs(filename):
+	fn = os.path.join( os.getcwd(), filename)
 	pp = PdfPages(fn)
 	for i in plt.get_fignums():
 		pp.savefig(plt.figure(i))
@@ -20,8 +19,8 @@ def save_figs():
 	pp.close()
 
 
-def open_figs():
-	pdf_path = os.path.join( os.getcwd(), param.plots_fn)
+def open_figs(filename):
+	pdf_path = os.path.join( os.getcwd(), filename)
 	if os.path.exists(pdf_path):
 		subprocess.call(["xdg-open", pdf_path])
 
@@ -81,12 +80,12 @@ def plot_ss(env,states):
 
 
 
-def visualize(env,states):
+def visualize(param, env, states):
 	if param.env_name is 'CartPole':
-		visualize_cartpole(env,states)
+		visualize_cartpole(param, env, states)
 
 
-def visualize_cartpole(env,states):
+def visualize_cartpole(param, env, states):
 
 	import meshcat
 	import meshcat.geometry as g

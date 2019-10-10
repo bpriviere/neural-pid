@@ -5,7 +5,6 @@ from gym import Env
 from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan,radians,power 
 from numpy.linalg import norm,pinv
 from numpy.random import uniform as random_uniform
-from param import param 
 
 class CartPole(Env):
 

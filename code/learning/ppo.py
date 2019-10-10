@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import MultivariateNormal, Categorical
-from param import param 
 from numpy import squeeze, array,arange, linspace
 import numpy as np 
 
