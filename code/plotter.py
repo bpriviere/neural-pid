@@ -75,6 +75,12 @@ def plot_circle(x,y,r,fig=None,ax=None,title=None,label=None):
 	return fig,ax
 	
 
+def plot_ss(env,states):
+	fig,ax = env.render()
+	ax.plot(states[:,0],states[:,1],linestyle='dashed')
+
+
+
 def visualize(env,states):
 	if param.env_name is 'CartPole':
 		visualize_cartpole(env,states)

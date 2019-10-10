@@ -14,6 +14,8 @@ class CartpoleParam(Param):
 		# IL
 		self.il_train_model_fn = 'il_model.pt'
 		self.il_imitate_model_fn = 'rl_model.pt'
+		self.kp = [2,40]
+		self.kd = [2,40]
 
 		# Sim
 		self.sim_rl_model_fn = 'rl_model.pt'

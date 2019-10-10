@@ -53,21 +53,27 @@ def sim(param, env, visualize):
 
 	# get controllers
 	deeprl_controller = torch.load(param.sim_rl_model_fn)
-	# pid_controller = torch.load(param.sim_il_model_fn)
+	pid_controller = torch.load(param.sim_il_model_fn)
 	# plain_pid_controller = PlainPID([2, 40], [4, 20])
 
 	# run sim
-	s0 = np.array([-2.5,1,0,0])
-	initial_state = env.reset(s0)
-	# initial_state = env.reset()
+	# s0 = np.array([-2.5,1,0,0])
+	# initial_state = env.reset(s0)
+	initial_state = env.reset()
 	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
-	# states_pid, actions_pid = run_sim(pid_controller, initial_state)
+	plotter.plot_ss(env,states_deeprl)
+	states_pid, actions_pid = run_sim(pid_controller, initial_state)
+	plotter.plot_ss(env,states_pid)
 	
-	states_pid = states_deeprl
-	actions_pid = actions_deeprl
+	# states_pid = states_deeprl
+	# actions_pid = actions_deeprl
 
 
 	# plots
+	# state space
+	plotter.plot_ss(env,states_deeprl)
+
+	# time varying states
 	for i in range(env.n):
 		fig, ax = plotter.plot(times,states_deeprl[:,i],title=env.states_name[i])
 		plotter.plot(times,states_pid[:,i], fig = fig, ax = ax)
@@ -84,10 +90,10 @@ def sim(param, env, visualize):
 		fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
 
 	# extract reference trajectory
-	# if param.controller_class in ['PID_wRef','Ref']:
-	# 	ref_state = extract_ref_state(pid_controller, states_pid)
-	# 	for i in range(env.n):
-	# 		fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
+	if param.controller_class in ['PID_wRef','Ref']:
+		ref_state = extract_ref_state(pid_controller, states_pid)
+		for i in range(env.n):
+			fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
 
 	# visualize
 	if visualize:

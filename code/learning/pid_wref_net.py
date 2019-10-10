@@ -12,7 +12,7 @@ class PID_wRef_Net(nn.Module):
 	"""
 	neural net to predict gains, kp, kd, from state, s
 	"""
-	def __init__(self,input_layer):
+	def __init__(self,input_layer,output_layer):
 		super(PID_wRef_Net, self).__init__()
 		self.fc1 = nn.Linear(input_layer, 64)
 		self.fc2 = nn.Linear(64, 64)

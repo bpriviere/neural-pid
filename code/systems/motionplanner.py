@@ -66,6 +66,8 @@ class MotionPlanner(Env):
 		for i in range(self.n_agents):
 			plotter.plot_circle(self.s[0],self.s[1],self.delta_a,fig=fig,ax=ax,label='agent')
 		plotter.plot_circle(self.s_g[0],self.s_g[1],self.delta_g,fig=fig,ax=ax,title=title,label='goal')
+
+		return fig,ax
 		
 
 	def step(self, a):
@@ -86,7 +88,7 @@ class MotionPlanner(Env):
 		else:
 			e = self.s - self.s_g
 			d = np.dot(np.dot(e,self.W),e)
-			return (1 - d/self.max_d)**2.
+			return (1 - d/self.max_d)**5.
 
 
 	def reset(self, initial_state = None):
@@ -94,12 +96,12 @@ class MotionPlanner(Env):
 		if initial_state is None:
 			self.s = self.init_state_start+np.multiply(
 					self.init_state_disturbance,np.random.uniform(size=(4,)))
-			# self.s[0] = np.min((self.s[0],0))
+			self.s[0] = -3
 			# check that you don't initialize inside obstacle! 
 			while self.collision_check_obs():
 				self.s = self.init_state_start+np.multiply(
 					self.init_state_disturbance,np.random.uniform(size=(4,)))
-				# self.s[0] = np.min((self.s[0],0))
+				self.s[0] = -3
 		else:
 			self.s = initial_state
 			# check that you don't initialize inside obstacle! 

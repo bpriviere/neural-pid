@@ -62,13 +62,9 @@ def train(param, model, loader):
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 		prediction = model(b_x)     # input x and predict based on x
 
-		print(prediction.grad)
-		exit()
-
-		# print(prediction)
-		# print(prediction.shape)
-		# print(b_y)
+		# print(b_x.shape)
 		# print(b_y.shape)
+		# print(prediction.shape)
 		# exit()
 
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)

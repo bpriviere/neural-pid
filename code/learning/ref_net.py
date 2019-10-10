@@ -46,6 +46,7 @@ class Ref_Net(nn.Module):
 		state = torch.from_numpy(np.array(x,ndmin = 2)).float()
 		ref_state = self.evalNN(x)
 
+		# error (proportional and derivative)
 		error = state-ref_state
 		ep = error[:,0:int(self.n/2)]
 		ed = error[:,int(self.n/2):]
@@ -54,21 +55,8 @@ class Ref_Net(nn.Module):
 		Kp = torch.tensor(self.Kp*np.ones((self.m,int(self.n/2)))).float()
 		Kd = torch.tensor(self.Kd*np.ones((self.m,int(self.n/2)))).float()
 
-		self.Kp = torch.tensor(self.Kp)
-		self.Kd = torch.tensor(self.Kd)
-
-		print('Kp:',self.Kp[0])
-		print('Kd:',self.Kd[1])
-
-		# PD action 
-		a = torch.tensor([
-			[self.Kp*ep[:,0] + self.Kd*ed[:,0]],
-			[self.Kp*ep[:,1] + self.Kd*ed[:,1]] ])
-
-		# a = (torch.mm(Kp,ep.T) + torch.mm(Kd,ed.T)).T
-
-		# print(a)
-		# print(a.shape)
+		# PD control 
+		a = (torch.mm(Kp,ep.T) + torch.mm(Kd,ed.T)).T
 
 		return a
 

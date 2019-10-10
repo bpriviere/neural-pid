@@ -38,7 +38,7 @@ class Param:
 		self.il_lr = 5e-4
 		self.il_n_epoch = 50000 # number of epochs per batch 
 		self.il_batch_size = 2000 # number of data points per batch
-		self.il_n_data = 2000 # total number of data points 
+		self.il_n_data = 3000 # total number of data points 
 		self.il_log_interval = 100
 		self.il_train_model_fn = 'il_model.pt'
 		self.il_imitate_model_fn = '../models/CartPole/rl_model_Swing90_continuous.pt'
@@ -56,7 +56,7 @@ class Param:
 		self.sim_nt = len(self.sim_times)
 		self.sim_rl_model_fn = 'rl_model.pt'
 		self.sim_il_model_fn = 'il_model.pt'
-		self.sim_render_on = True
+		self.sim_render_on = False
 
 		# plots
 		self.plots_fn = 'plots.pdf'
