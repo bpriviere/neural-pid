@@ -3,6 +3,7 @@
 import torch
 import gym 
 import numpy as np 
+import os
 
 # my package
 import plotter 
@@ -26,7 +27,7 @@ def sim(param, env, visualize):
 				env.render()
 		print('reward: ',reward)
 		env.close()
-		return states, actions
+		return states, actions, step
 
 	def extract_gains(controller, states):
 		kp = np.zeros((len(times)-1,2))
@@ -60,14 +61,16 @@ def sim(param, env, visualize):
 	# s0 = np.array([-2.5,1,0,0])
 	# initial_state = env.reset(s0)
 	initial_state = env.reset()
-	states_deeprl, actions_deeprl = run_sim(deeprl_controller, initial_state)
+	states_deeprl, actions_deeprl, step_deeprl = run_sim(deeprl_controller, initial_state)
 	if param.sim_render_on:
 		plotter.plot_ss(env,states_deeprl)
 
-	states_pid, actions_pid = run_sim(pid_controller, initial_state)
+	states_pid, actions_pid, step_pid = run_sim(pid_controller, initial_state)
 
-	# states_csv = data_csv[:,0:4]
-	# actions_csv = data_csv[:,4:5]
+	if os.path.isfile(param.scp_fn):
+		data_csv = np.loadtxt(param.scp_fn, delimiter=',')
+		states_csv = data_csv[:,0:env.n]
+		actions_csv = data_csv[:,env.n:env.n+env.m]
 	
 	# states_pid = states_deeprl
 	# actions_pid = actions_deeprl
@@ -75,27 +78,29 @@ def sim(param, env, visualize):
 
 	# time varying states
 	for i in range(env.n):
-		fig, ax = plotter.plot(times,states_deeprl[:,i],title=env.states_name[i])
-		plotter.plot(times,states_pid[:,i], fig = fig, ax = ax)
-		# plotter.plot(times[0:len(states_csv)],states_csv[:,i], fig = fig, ax = ax)
+		fig, ax = plotter.plot(times[0:step_deeprl],states_deeprl[0:step_deeprl,i],title=env.states_name[i])
+		plotter.plot(times[0:step_pid],states_pid[0:step_pid,i], fig = fig, ax = ax)
+		if os.path.isfile(param.scp_fn):
+			plotter.plot(times[0:len(states_csv)],states_csv[:,i], fig = fig, ax = ax)
 	for i in range(env.m):
-		fig, ax = plotter.plot(times[1:],actions_deeprl[:,i],title=env.actions_name[i])
-		plotter.plot(times[1:],actions_pid[:,i], fig = fig, ax = ax)
-		# plotter.plot(times[1:len(actions_csv)+1],actions_csv[:,i], fig = fig, ax = ax)
+		fig, ax = plotter.plot(times[1:step_deeprl+1],actions_deeprl[0:step_deeprl,i],title=env.actions_name[i])
+		plotter.plot(times[1:step_pid+1],actions_pid[0:step_pid,i], fig = fig, ax = ax)
+		if os.path.isfile(param.scp_fn):
+			plotter.plot(times[1:len(actions_csv)+1],actions_csv[:,i], fig = fig, ax = ax)
 
 	# extract gains
 	if param.controller_class in ['PID_wRef','PID']:
 		kp,kd = extract_gains(pid_controller,states_pid)
-		fig,ax = plotter.plot(times[1:],kp[:,0],title='Kp pos')
-		fig,ax = plotter.plot(times[1:],kp[:,1],title='Kp theta')
-		fig,ax = plotter.plot(times[1:],kd[:,0],title='Kd pos')
-		fig,ax = plotter.plot(times[1:],kd[:,1],title='Kd theta')
+		fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,0],title='Kp pos')
+		fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,1],title='Kp theta')
+		fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,0],title='Kd pos')
+		fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,1],title='Kd theta')
 
 	# extract reference trajectory
 	if param.controller_class in ['PID_wRef','Ref']:
 		ref_state = extract_ref_state(pid_controller, states_pid)
 		for i in range(env.n):
-			fig,ax = plotter.plot(times[1:],ref_state[:,i],title="ref " + env.states_name[i])
+			fig,ax = plotter.plot(times[1:step_pid+1],ref_state[0:step_pid,i],title="ref " + env.states_name[i])
 
 	# visualize
 	if visualize:

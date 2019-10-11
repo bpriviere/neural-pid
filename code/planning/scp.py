@@ -9,9 +9,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.backends.backend_pdf
 
 
-def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, goalState = None, goalPos = None, pdfFile = None):
-  partialFx = jacobian(robot.f, 0)
-  partialFu = jacobian(robot.f, 1)
+def scp(param, env):
+
+  partialFx = jacobian(env.f_scp, 0)
+  partialFu = jacobian(env.f_scp, 1)
 
   def constructA(xbar, ubar):
     return partialFx(xbar, ubar)
@@ -19,26 +20,19 @@ def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, 
   def constructB(xbar, ubar):
     return partialFu(xbar, ubar)
 
-  if initialFile is not None:
-    data = np.loadtxt(
-      initialFile,
-      skiprows=1,
-      delimiter=',')
-    xprev = data[:,robot.idxState:robot.idxState+robot.stateDim]
-    uprev = data[:,robot.idxCtrl:robot.idxCtrl+robot.ctrlDim]
-    T = data.shape[0]
-    dt = data[0,-1]
-    print(T)
-    print(xprev, uprev)
-  else:
-    xprev = initialX
-    uprev = initialU
-    T = xprev.shape[0]
+  data = np.loadtxt(param.rrt_fn, delimiter=',')
+
+  xprev = data[:,0:env.n]
+  uprev = data[:,env.n:env.n + env.m]
+  T = data.shape[0]
+  dt = param.sim_dt
+
+  goalState = param.ref_trajectory[:,-1]
 
   x0 = xprev[0]
 
-  if pdfFile is not None:
-    pdf = matplotlib.backends.backend_pdf.PdfPages(pdfFile)
+  if param.scp_pdf_fn is not None:
+    pdf = matplotlib.backends.backend_pdf.PdfPages(param.scp_pdf_fn)
 
   objectiveValues = []
   xChanges = []
@@ -48,8 +42,8 @@ def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, 
 
     for iteration in range(0, 10):
 
-      x = cp.Variable((T, robot.stateDim))
-      u = cp.Variable((T, robot.ctrlDim))
+      x = cp.Variable((T, env.n))
+      u = cp.Variable((T, env.m))
 
       if obj == 'minimizeError':
         delta = cp.Variable()
@@ -92,7 +86,7 @@ def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, 
         # print(robot.f(xbar, ubar))
         # # simple version:
         constraints.append(
-          x[t+1] == x[t] + dt * (robot.f(xbar, ubar) + A @ (x[t] - xbar) + B @ (u[t] - ubar))
+          x[t+1] == x[t] + dt * (env.f_scp(xbar, ubar) + A @ (x[t] - xbar) + B @ (u[t] - ubar))
           )
         # # discretized zero-order hold
         # F = scipy.linalg.expm(A * dt)
@@ -108,10 +102,10 @@ def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, 
       # bounds (x and u)
       for t in range(0, T):
         constraints.extend([
-          robot.x_min <= x[t],
-          x[t] <= robot.x_max,
-          robot.u_min <= u[t],
-          u[t] <= robot.u_max
+          -env.env_state_bounds <= x[t],
+          x[t] <= env.env_state_bounds,
+          -param.rl_control_lim <= u[t],
+          u[t] <= param.rl_control_lim
           ])
 
       prob = cp.Problem(objective, constraints)
@@ -140,40 +134,31 @@ def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, 
       xprop = np.empty(x.value.shape)
       xprop[0] = x0
       for t in range(0, T-1):
-        xprop[t+1] = xprop[t] + dt * robot.f(xprop[t], u.value[t])
+        xprop[t+1] = xprop[t] + dt * env.f_scp(xprop[t], u.value[t])
 
       # print(xprop)
-      if pdfFile is not None:
-        if robot.is2D:
-          fig, ax = plt.subplots()
-          ax.plot(xprev[:,0], xprev[:,1], label="input")
-          ax.plot(x.value[:,0], x.value[:,1], label="opt")
-          ax.plot(xprop[:,0], xprop[:,1], label="opt forward prop")
+      if param.scp_pdf_fn is not None:
+        fig, ax = plt.subplots()
+        ax.plot(xprev[:,0], xprev[:,1], label="input")
+        ax.plot(x.value[:,0], x.value[:,1], label="opt")
+        ax.plot(xprop[:,0], xprop[:,1], label="opt forward prop")
 
-          plt.legend()
-          # plt.show()
-          pdf.savefig(fig)
-          plt.close(fig)
+        plt.legend()
+        # plt.show()
+        pdf.savefig(fig)
+        plt.close(fig)
 
-          fig, ax = plt.subplots()
-          ax.plot(u.value[:,0], label="u")
+        fig, ax = plt.subplots()
+        ax.plot(u.value[:,0], label="u")
 
-          plt.legend()
-          # plt.show()
-          pdf.savefig(fig)
-          plt.close(fig)
+        plt.legend()
+        # plt.show()
+        pdf.savefig(fig)
+        plt.close(fig)
 
-          fig, ax = plt.subplots()
-          ax.plot(x.value[:,0], label="pos")
-          ax.plot(x.value[:,1], label="angle")
-
-
-        else:
-          fig = plt.figure()
-          ax = fig.add_subplot(111, projection='3d')
-          ax.plot(xprev[:,0], xprev[:,1], xprev[:,2], label="input")
-          ax.plot(x.value[:,0], x.value[:,1], x.value[:,2], label="opt")
-          # ax.plot(xprop[:,0], xprop[:,1], xprop[:,2], label="opt forward prop")
+        fig, ax = plt.subplots()
+        ax.plot(x.value[:,0], label="pos")
+        ax.plot(x.value[:,1], label="angle")
 
         plt.legend()
         # plt.show()
@@ -187,7 +172,7 @@ def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, 
   finally:
     # print(xprev)
     # print(uprev)
-    if pdfFile is not None:
+    if param.scp_pdf_fn is not None:
       fig, ax = plt.subplots()
       ax.plot(np.arange(1,len(objectiveValues)+1), objectiveValues, '*-', label='cost')
       ax.plot(np.arange(1,len(objectiveValues)+1), xChanges, '*-', label='|x-xp|')
@@ -197,4 +182,6 @@ def scp(robot, initialFile = None, initialU = None, initialX = None, dt = None, 
       pdf.close()
 
   if obj == 'minimizeU':
+    result = np.hstack([xprev, uprev])
+    np.savetxt(param.scp_fn, result, delimiter=',')
     return xprev, uprev

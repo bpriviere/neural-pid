@@ -61,7 +61,12 @@ class Param:
 		self.plots_fn = 'plots.pdf'
 
 		# desired tracking trajectory
-		self.ref_trajectory = np.zeros((4,self.sim_nt)) 
+		self.ref_trajectory = np.zeros((4,self.sim_nt))
+
+		# Planning
+		self.rrt_fn = 'rrt.csv'
+		self.scp_fn = 'scp.csv'
+		self.scp_pdf_fn = 'scp.pdf'
 
 param = Param()
 

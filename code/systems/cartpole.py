@@ -3,6 +3,7 @@
 
 from gym import Env
 import numpy as np
+import autograd.numpy as agnp  # Thinly-wrapped numpy
 
 class CartPole(Env):
 
@@ -27,7 +28,7 @@ class CartPole(Env):
 			self.env_state_bounds = np.array([1.,np.radians(12),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing90':
 			self.init_state_start = np.array([0,np.radians(90),0,0])
-			self.init_state_disturbance = array([0.1,np.radians(5),0,0])
+			self.init_state_disturbance = np.array([0.1,np.radians(5),0,0])
 			self.env_state_bounds = np.array([3.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing180':
 			self.init_state_start = np.array([0,np.radians(180),0,0])
@@ -80,6 +81,7 @@ class CartPole(Env):
 		return np.array(self.state)
 
 	# xdot = f(x, u)
+	# use autograd here so we can support SCP
 	def f(self, x, u):
 		# input:
 		# 	x, nd array, (n,)
@@ -94,22 +96,24 @@ class CartPole(Env):
 		g = self.g
 
 		# s = [q,qdot], q = [x,th]
-		u = np.reshape(u,(self.m,1))
-		q = np.reshape(x[0:2],(2,1))
-		qdot = np.reshape(x[2:],(2,1))
+		u = agnp.reshape(u,(self.m,1))
+		q = agnp.reshape(x[0:2],(2,1))
+		qdot = agnp.reshape(x[2:],(2,1))
 		th = x[1]
 		thdot = x[3]
 
 		# EOM from learning+control@caltech
-		D = np.array([[m_c+m_p,m_p*l*np.cos(th)],[m_p*l*np.cos(th),m_p*(l**2)]])
-		C = np.array([[0,-m_p*l*thdot*np.sin(th)],[0,0]])
-		G = np.array([[0],[-m_p*g*l*np.sin(th)]])
-		B = np.array([[1],[0]])
-		qdotdot = np.dot(np.linalg.pinv(D), np.dot(B,u) - np.dot(C,qdot) - G)
+		D = agnp.array([[m_c+m_p,m_p*l*agnp.cos(th)],[m_p*l*agnp.cos(th),m_p*(l**2)]])
+		C = agnp.array([[0,-m_p*l*thdot*agnp.sin(th)],[0,0]])
+		G = agnp.array([[0],[-m_p*g*l*agnp.sin(th)]])
+		B = agnp.array([[1],[0]])
+		qdotdot = agnp.dot(agnp.linalg.pinv(D), agnp.dot(B,u) - agnp.dot(C,qdot) - G)
 
-		res = np.vstack([qdot, qdotdot])
-		# print(res)
+		res = agnp.vstack([qdot, qdotdot])
 		return res
+
+	def f_scp(self, x, u):
+		return np.squeeze(self.f(x, u))
 
 	def next_state(self, x, u):
 		dt = self.times[self.time_step+1]-self.times[self.time_step]

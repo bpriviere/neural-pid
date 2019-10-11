@@ -6,7 +6,7 @@ class CartpoleParam(Param):
 	def __init__(self):
 		super().__init__()
 		self.env_name = 'CartPole'
-		self.env_case = 'SmallAngle' #'SmallAngle','Swing90','Swing180'
+		self.env_case = 'Swing90' #'SmallAngle','Swing90','Swing180'
 
 		# RL
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
@@ -23,6 +23,11 @@ class CartpoleParam(Param):
 		self.sim_render_on = False
 
 		self.controller_class = 'Ref' # PID, PID_wRef, Ref
+
+		# planning
+		# self.rrt_fn = '../models/CartPole/rrt.csv'
+		self.scp_fn = '../models/CartPole/scp.csv'
+		self.scp_pdf_fn = '../models/CartPole/scp.pdf'
 
 
 if __name__ == '__main__':
