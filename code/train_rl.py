@@ -55,7 +55,7 @@ def train_rl(param, env):
 			state_dim,
 			action_dim,
 			param.rl_action_std,
-			param.rl_cuda_on,
+			param.rl_gpu_on,
 			param.rl_lr, 
 			param.rl_gamma, 
 			param.rl_K_epoch, 
