@@ -15,14 +15,14 @@ class CartpoleParam(Param):
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
 		self.il_imitate_model_fn = '../models/CartPole/rl_current.pt'
 		self.kp = [2,40]
-		self.kd = [2,40]
+		self.kd = [4, 20]
 
 		# Sim
 		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
 
-		self.controller_class = 'PID' # PID, PID_wRef, Ref
+		self.controller_class = 'Ref' # PID, PID_wRef, Ref
 
 
 if __name__ == '__main__':
