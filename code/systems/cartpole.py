@@ -2,9 +2,7 @@
 # Creating OpenAI gym Envs 
 
 from gym import Env
-from numpy import array,arange,diag,pi,multiply,cos,sin,dot,reshape,squeeze,vstack,mod,exp,isnan,radians,power 
-from numpy.linalg import norm,pinv
-from numpy.random import uniform as random_uniform
+import numpy as np
 
 class CartPole(Env):
 
@@ -24,23 +22,23 @@ class CartPole(Env):
 		self.length_pole = 0.5
 		self.g = 9.81
 		if param.env_case is 'SmallAngle':
-			self.init_state_start = array([0,0,0,0])
-			self.init_state_disturbance = array([0.25,radians(5),0.001/self.ave_dt,radians(1)/self.ave_dt])
-			self.env_state_bounds = array([1.,radians(12),5/self.ave_dt,radians(180)/self.ave_dt])
+			self.init_state_start = np.array([0,0,0,0])
+			self.init_state_disturbance = np.array([0.25,np.radians(5),0.001/self.ave_dt,np.radians(1)/self.ave_dt])
+			self.env_state_bounds = np.array([1.,np.radians(12),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing90':
-			self.init_state_start = array([0,radians(90),0,0])
-			self.init_state_disturbance = array([0.1,radians(5),0,0])
-			self.env_state_bounds = array([3.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])
+			self.init_state_start = np.array([0,np.radians(90),0,0])
+			self.init_state_disturbance = array([0.1,np.radians(5),0,0])
+			self.env_state_bounds = np.array([3.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing180':
-			self.init_state_start = array([0,radians(180),0,0])
-			self.init_state_disturbance = array([0,radians(0),0,0])
-			self.env_state_bounds = array([10.,radians(360),5/self.ave_dt,radians(180)/self.ave_dt])			
+			self.init_state_start = np.array([0,np.radians(180),0,0])
+			self.init_state_disturbance = np.array([0,np.radians(0),0,0])
+			self.env_state_bounds = np.array([10.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		else:
 			raise Exception('param.env_case invalid ' + param.env_case)
 
-		self.W = diag([0.01,1,0,0])
+		self.W = np.diag([0.01,1,0,0])
 		self.max_error = 2*self.env_state_bounds
-		self.max_penalty = dot(self.max_error.T,dot(self.W,self.max_error))
+		self.max_penalty = np.dot(self.max_error.T,np.dot(self.W,self.max_error))
 		self.max_reward = 1.
 
 		self.states_name = [
@@ -69,17 +67,17 @@ class CartPole(Env):
 		error = self.state - state_ref
 		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))
-		return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1/6)
+		return 1 - np.power(np.dot(error.T,np.dot(self.W,error))/self.max_penalty,1/6)
 		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
 
 		
 	def reset(self, initial_state = None):
 		if initial_state is None:
-			self.state = self.init_state_start+multiply(self.init_state_disturbance, random_uniform(size=(4,)))
+			self.state = self.init_state_start+np.multiply(self.init_state_disturbance, np.random.uniform(size=(4,)))
 		else:
 			self.state = initial_state
 		self.time_step = 0
-		return array(self.state)
+		return np.array(self.state)
 
 	def f(self,s,a):
 		# input:
@@ -96,21 +94,21 @@ class CartPole(Env):
 		dt = self.times[self.time_step+1]-self.times[self.time_step]
 
 		# s = [q,qdot], q = [x,th]
-		a = reshape(a,(self.m,1))
-		q = reshape(s[0:2],(2,1))
-		qdot = reshape(s[2:],(2,1))
+		a = np.reshape(a,(self.m,1))
+		q = np.reshape(s[0:2],(2,1))
+		qdot = np.reshape(s[2:],(2,1))
 		th = s[1]
 		thdot = s[3]
 
 		# EOM from learning+control@caltech
-		D = array([[m_c+m_p,m_p*l*cos(th)],[m_p*l*cos(th),m_p*(l**2)]])
-		C = array([[0,-m_p*l*thdot*sin(th)],[0,0]])
-		G = array([[0],[-m_p*g*l*sin(th)]])
-		B = array([[1],[0]])
-		qdotdot = dot(pinv(D), dot(B,a) - dot(C,qdot) - G)
+		D = np.array([[m_c+m_p,m_p*l*np.cos(th)],[m_p*l*np.cos(th),m_p*(l**2)]])
+		C = np.array([[0,-m_p*l*thdot*np.sin(th)],[0,0]])
+		G = np.array([[0],[-m_p*g*l*np.sin(th)]])
+		B = np.array([[1],[0]])
+		qdotdot = np.dot(np.linalg.pinv(D), np.dot(B,a) - np.dot(C,qdot) - G)
 
 		# euler integration
-		sp1 = squeeze(reshape(s,(len(s),1)) + vstack([qdot, qdotdot]) * dt)
+		sp1 = np.squeeze(np.reshape(s,(len(s),1)) + np.vstack([qdot, qdotdot]) * dt)
 		# if sp1[1] > pi:
 		# 	sp1[1] -= 2*pi
 		# if sp1[1] < -pi:
