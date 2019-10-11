@@ -54,7 +54,7 @@ class CartPole(Env):
 		state = self.state
 		initial_time = self.times[self.time_step]
 		final_time = self.times[self.time_step + 1]
-		self.state = self.f(state, action)
+		self.state = self.next_state(state, action)
 		done = abs(state[0]) > self.env_state_bounds[0] \
 			or abs(state[1]) > self.env_state_bounds[1] \
 			or self.time_step == len(self.times)-1
@@ -79,10 +79,11 @@ class CartPole(Env):
 		self.time_step = 0
 		return np.array(self.state)
 
-	def f(self,s,a):
+	# xdot = f(x, u)
+	def f(self, x, u):
 		# input:
-		# 	s, nd array, (n,)
-		# 	a, nd array, (m,1)
+		# 	x, nd array, (n,)
+		# 	u, nd array, (m,1)
 		# output
 		# 	sp1, nd array, (n,)
 
@@ -91,24 +92,30 @@ class CartPole(Env):
 		m_c = self.mass_cart
 		l = self.length_pole
 		g = self.g
-		dt = self.times[self.time_step+1]-self.times[self.time_step]
 
 		# s = [q,qdot], q = [x,th]
-		a = np.reshape(a,(self.m,1))
-		q = np.reshape(s[0:2],(2,1))
-		qdot = np.reshape(s[2:],(2,1))
-		th = s[1]
-		thdot = s[3]
+		u = np.reshape(u,(self.m,1))
+		q = np.reshape(x[0:2],(2,1))
+		qdot = np.reshape(x[2:],(2,1))
+		th = x[1]
+		thdot = x[3]
 
 		# EOM from learning+control@caltech
 		D = np.array([[m_c+m_p,m_p*l*np.cos(th)],[m_p*l*np.cos(th),m_p*(l**2)]])
 		C = np.array([[0,-m_p*l*thdot*np.sin(th)],[0,0]])
 		G = np.array([[0],[-m_p*g*l*np.sin(th)]])
 		B = np.array([[1],[0]])
-		qdotdot = np.dot(np.linalg.pinv(D), np.dot(B,a) - np.dot(C,qdot) - G)
+		qdotdot = np.dot(np.linalg.pinv(D), np.dot(B,u) - np.dot(C,qdot) - G)
 
+		res = np.vstack([qdot, qdotdot])
+		# print(res)
+		return res
+
+	def next_state(self, x, u):
+		dt = self.times[self.time_step+1]-self.times[self.time_step]
+		xdot = self.f(x, u)
 		# euler integration
-		sp1 = np.squeeze(np.reshape(s,(len(s),1)) + np.vstack([qdot, qdotdot]) * dt)
+		sp1 = np.squeeze(np.reshape(x,(len(x),1)) + xdot * dt)
 		# if sp1[1] > pi:
 		# 	sp1[1] -= 2*pi
 		# if sp1[1] < -pi:
