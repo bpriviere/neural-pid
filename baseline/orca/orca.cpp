@@ -9,22 +9,31 @@
 /* Store the goals of the agents. */
 std::vector<RVO::Vector2> goals;
 
+static const int numAgents = 10;
+static const float radius = 50;
+
 void setupScenario(RVO::RVOSimulator *sim)
 {
   /* Specify the global time step of the simulation. */
   sim->setTimeStep(0.25f);
 
   /* Specify the default parameters for agents that are subsequently added. */
-  sim->setAgentDefaults(15.0f, 10, 10.0f, 10.0f, 1.5f, 2.0f);
+  sim->setAgentDefaults(
+    /* neighborDist*/ 15.0f,
+    /* maxNeighbors*/ 10,
+    /* timeHorizon*/ 10.0f,
+    /* timeHorizonObst*/ 10.0f,
+    /* radius*/ 1.5f,
+    /* maxSpeed*/ 2.0f);
 
   /*
    * Add agents, specifying their start position, and store their goals on the
    * opposite side of the environment.
    */
-  for (size_t i = 0; i < 250; ++i) {
-    sim->addAgent(200.0f *
-                  RVO::Vector2(std::cos(i * 2.0f * M_PI / 250.0f),
-                               std::sin(i * 2.0f * M_PI / 250.0f)));
+  for (size_t i = 0; i < numAgents; ++i) {
+    sim->addAgent(radius *
+                  RVO::Vector2(std::cos(i * 2.0f * M_PI / numAgents),
+                               std::sin(i * 2.0f * M_PI / numAgents)));
     goals.push_back(-sim->getAgentPosition(i));
   }
 }
@@ -43,6 +52,15 @@ void setPreferredVelocities(RVO::RVOSimulator *sim)
     }
 
     sim->setAgentPrefVelocity(i, goalVector);
+
+    /*
+     * Perturb a little to avoid deadlocks due to perfect symmetry.
+     */
+    float angle = std::rand() * 2.0f * M_PI / RAND_MAX;
+    float dist = std::rand() * 0.001f / RAND_MAX;
+
+    sim->setAgentPrefVelocity(i, sim->getAgentPrefVelocity(i) +
+                              dist * RVO::Vector2(std::cos(angle), std::sin(angle)));
   }
 }
 
