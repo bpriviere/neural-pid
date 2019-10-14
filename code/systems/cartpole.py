@@ -34,6 +34,10 @@ class CartPole(Env):
 			self.init_state_start = np.array([0,np.radians(180),0,0])
 			self.init_state_disturbance = np.array([0,np.radians(0),0,0])
 			self.env_state_bounds = np.array([10.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
+		elif param.env_case is 'Any90':
+			self.init_state_start = np.array([0,np.radians(45),0,0])
+			self.init_state_disturbance = np.array([0.1,np.radians(45),0,0])
+			self.env_state_bounds = np.array([3.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		else:
 			raise Exception('param.env_case invalid ' + param.env_case)
 

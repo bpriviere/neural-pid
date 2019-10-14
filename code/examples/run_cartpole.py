@@ -6,7 +6,7 @@ class CartpoleParam(Param):
 	def __init__(self):
 		super().__init__()
 		self.env_name = 'CartPole'
-		self.env_case = 'Swing90' #'SmallAngle','Swing90','Swing180'
+		self.env_case = 'Any90' #'SmallAngle','Swing90','Swing180', 'Any90'
 
 		# RL
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
