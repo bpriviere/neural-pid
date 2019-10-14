@@ -1,0 +1,3 @@
+[submodule "baseline/orca/RVO2"]
+	path = baseline/orca/RVO2
+	url = https://github.com/snape/RVO2.git
