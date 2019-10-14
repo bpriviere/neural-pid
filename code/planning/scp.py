@@ -20,7 +20,7 @@ def scp(param, env):
   def constructB(xbar, ubar):
     return partialFu(xbar, ubar)
 
-  data = np.loadtxt(param.rrt_fn, delimiter=',')
+  data = np.loadtxt(param.rrt_fn, delimiter=',', ndmin=2)
 
   xprev = data[:,0:env.n]
   uprev = data[:,env.n:env.n + env.m]
@@ -38,9 +38,9 @@ def scp(param, env):
   xChanges = []
   uChanges = []
   try:
-    obj = 'minimizeError'
+    obj = 'minimizeX' # 'minimizeError'
 
-    for iteration in range(0, 10):
+    for iteration in range(0, 20):
 
       x = cp.Variable((T, env.n))
       u = cp.Variable((T, env.m))
@@ -48,6 +48,8 @@ def scp(param, env):
       if obj == 'minimizeError':
         delta = cp.Variable()
         objective = cp.Minimize(delta)
+      elif obj == 'minimizeX':
+        objective = cp.Minimize(cp.sum_squares(x[:,0:2]))
       else:
         # objective = cp.Minimize(cp.sum_squares(u) + 10 * cp.sum_squares(x[:,3:5]))
         objective = cp.Minimize(cp.sum_squares(u))
@@ -61,6 +63,8 @@ def scp(param, env):
           constraints.append( cp.abs(x[-1] - goalState) <= delta )
         else:
           constraints.append(cp.abs(x[-1,0:2] - goalPos) <= delta )
+      elif obj == 'minimizeX':
+        pass
       else:
         if goalState is not None:
           constraints.append( x[-1] == goalState )
@@ -123,7 +127,7 @@ def scp(param, env):
       xChanges.append(np.linalg.norm(x.value - xprev))
       uChanges.append(np.linalg.norm(u.value - uprev))
 
-      if result < 1e-6:
+      if obj == 'minimizeError' and result < 1e-6:
         obj = 'minimizeU'
 
       # The optimal value for x is stored in `x.value`.
@@ -167,21 +171,26 @@ def scp(param, env):
 
       xprev = np.array(x.value)
       uprev = np.array(u.value)
-  except:
-    raise
+
+    if obj == 'minimizeU':
+      result = np.hstack([xprev, uprev])
+      np.savetxt(param.scp_fn, result, delimiter=',')
+      return xprev, uprev
+
+  except Exception as e:
+    print(e)
   finally:
     # print(xprev)
     # print(uprev)
     if param.scp_pdf_fn is not None:
       fig, ax = plt.subplots()
-      ax.plot(np.arange(1,len(objectiveValues)+1), objectiveValues, '*-', label='cost')
-      ax.plot(np.arange(1,len(objectiveValues)+1), xChanges, '*-', label='|x-xp|')
-      ax.plot(np.arange(1,len(objectiveValues)+1), uChanges, '*-', label='|u-up|')
+      try:
+        ax.plot(np.arange(1,len(objectiveValues)+1), objectiveValues, '*-', label='cost')
+        ax.plot(np.arange(1,len(objectiveValues)+1), xChanges, '*-', label='|x-xp|')
+        ax.plot(np.arange(1,len(objectiveValues)+1), uChanges, '*-', label='|u-up|')
+      except:
+        print("Error during plotting!")
       plt.legend()
       pdf.savefig(fig)
       pdf.close()
 
-  if obj == 'minimizeU':
-    result = np.hstack([xprev, uprev])
-    np.savetxt(param.scp_fn, result, delimiter=',')
-    return xprev, uprev
