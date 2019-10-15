@@ -16,8 +16,12 @@ def sim(param, env, visualize):
 		states[0] = env.reset(initial_state)
 		reward = 0 
 		for step, time in enumerate(times[:-1]):
-			state = states[step]			
-			action = controller.policy(state) 
+			state = states[step]
+			if param.pomdp_on:
+				observation = env.observe()
+				action = controller.policy(observation)
+			else:
+				action = controller.policy(state) 
 			reward += env.reward()
 			states[step + 1], _, done, _ = env.step(action)
 			actions[step] = np.squeeze(action)
@@ -45,6 +49,19 @@ def sim(param, env, visualize):
 			ref_state[i] = controller.get_ref_state(state)
 		return ref_state
 
+	class ZeroPolicy:
+		def policy(self,state):
+			return np.zeros((env.m))
+
+	class BoringConsensusPolicy:
+		def policy(self,observation):
+			a = np.zeros((env.m))
+			dt = env.times[env.time_step] - env.times[env.time_step-1]			
+			for agent in env.agents:
+				# observation_i = {s^j - s^i} \forall j in N^i
+				# a[agent.i] = sum(observation[agent.i])*dt
+				a[agent.i] = sum(observation[agent.i])*0.1				
+			return a
 
 	# -------------------------------------------
 
@@ -52,44 +69,55 @@ def sim(param, env, visualize):
 	times = param.sim_times
 	device = "cpu"
 
-	# get controllers
-	deeprl_controller = torch.load(param.sim_rl_model_fn)
-	pid_controller = torch.load(param.sim_il_model_fn)
-	# plain_pid_controller = PlainPID([2, 40], [4, 20])
+	if False:
+		# get controllers
+		deeprl_controller = torch.load(param.sim_rl_model_fn)
+		pid_controller = torch.load(param.sim_il_model_fn)
+	else:
+		# set to empty controllers
+		deeprl_controller = BoringConsensusPolicy()
+		pid_controller = ZeroPolicy()
+
+	if False:
+		s0 = np.array([-2.5,1,0,0])
+		initial_state = env.reset(s0)
+	else:
+		initial_state = env.reset()
 
 	# run sim
-	# s0 = np.array([-2.5,1,0,0])
-	# initial_state = env.reset(s0)
-	initial_state = env.reset()
 	states_deeprl, actions_deeprl, step_deeprl = run_sim(deeprl_controller, initial_state)
-	if param.sim_render_on:
-		plotter.plot_ss(env,states_deeprl)
-
+	save_rl_env = env
 	states_pid, actions_pid, step_pid = run_sim(pid_controller, initial_state)
+	save_il_env = env
 
 	if os.path.isfile(param.scp_fn):
 		data_csv = np.loadtxt(param.scp_fn, delimiter=',')
 		states_csv = data_csv[:,0:env.n]
 		actions_csv = data_csv[:,env.n:env.n+env.m]
+
+	if param.sim_render_on:
+		plotter.plot_ss(save_rl_env,states_deeprl)
+		plotter.plot_ss(save_il_env,states_pid)
 	
-	# states_pid = states_deeprl
-	# actions_pid = actions_deeprl
-
-
 	# time varying states
-	for i in range(env.n):
-		fig, ax = plotter.plot(times[0:step_deeprl],states_deeprl[0:step_deeprl,i],title=env.states_name[i])
-		plotter.plot(times[0:step_pid],states_pid[0:step_pid,i], fig = fig, ax = ax)
-		if os.path.isfile(param.scp_fn):
-			plotter.plot(times[0:len(states_csv)],states_csv[:,i], fig = fig, ax = ax)
-	for i in range(env.m):
-		fig, ax = plotter.plot(times[1:step_deeprl+1],actions_deeprl[0:step_deeprl,i],title=env.actions_name[i])
-		plotter.plot(times[1:step_pid+1],actions_pid[0:step_pid,i], fig = fig, ax = ax)
-		if os.path.isfile(param.scp_fn):
-			plotter.plot(times[1:len(actions_csv)+1],actions_csv[:,i], fig = fig, ax = ax)
+	if False:
+		for i in range(env.n):
+			fig, ax = plotter.plot(times[0:step_deeprl],states_deeprl[0:step_deeprl,i]) #,title=env.states_name[i])
+			plotter.plot(times[0:step_pid],states_pid[0:step_pid,i], fig = fig, ax = ax)
+			if os.path.isfile(param.scp_fn):
+				plotter.plot(times[0:len(states_csv)],states_csv[:,i], fig = fig, ax = ax)
+		for i in range(env.m):
+			fig, ax = plotter.plot(times[1:step_deeprl+1],actions_deeprl[0:step_deeprl,i]) #,title=env.actions_name[i])
+			plotter.plot(times[1:step_pid+1],actions_pid[0:step_pid,i], fig = fig, ax = ax)
+			if os.path.isfile(param.scp_fn):
+				plotter.plot(times[1:len(actions_csv)+1],actions_csv[:,i], fig = fig, ax = ax)
+	else:
+		fig,ax = plotter.make_fig()
+		for agent in env.agents:
+			plotter.plot(times[0:step_deeprl],states_deeprl[0:step_deeprl,agent.i],fig=fig,ax=ax)
 
 	# extract gains
-	if param.controller_class in ['PID_wRef','PID']:
+	if param.controller_class in ['PID_wRef','PID'] and not isinstance(pid_controller,ZeroPolicy):
 		kp,kd = extract_gains(pid_controller,states_pid)
 		fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,0],title='Kp pos')
 		fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,1],title='Kp theta')
@@ -97,7 +125,7 @@ def sim(param, env, visualize):
 		fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,1],title='Kd theta')
 
 	# extract reference trajectory
-	if param.controller_class in ['PID_wRef','Ref']:
+	if param.controller_class in ['PID_wRef','Ref'] and not isinstance(pid_controller,ZeroPolicy):
 		ref_state = extract_ref_state(pid_controller, states_pid)
 		for i in range(env.n):
 			fig,ax = plotter.plot(times[1:step_pid+1],ref_state[0:step_pid,i],title="ref " + env.states_name[i])
