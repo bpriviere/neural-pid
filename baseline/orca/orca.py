@@ -1,20 +1,44 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import meshcat
+import meshcat.geometry as g
+import meshcat.transformations as tf
+import time
+import argparse
 
 if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--animate", action='store_true')
+	args = parser.parse_args()
 
-  data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
 
-  print(data.dtype)
+	data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
 
-  # store in binary format
-  with open("orca.npy", "wb") as f:
-    np.save(f, data, allow_pickle=False)
+	print(data.dtype)
 
-  num_agents = int((data.shape[1] - 1) / 4)
-  print(num_agents)
+	# store in binary format
+	with open("orca.npy", "wb") as f:
+		np.save(f, data, allow_pickle=False)
 
-  fig, ax = plt.subplots()
-  for i in range(num_agents):
-    ax.plot(data[:,i*4+1], data[:,i*4+2])
-  plt.show()
+	num_agents = int((data.shape[1] - 1) / 4)
+	print(num_agents)
+
+	fig, ax = plt.subplots()
+	for i in range(num_agents):
+		ax.plot(data[:,i*4+1], data[:,i*4+2])
+	plt.show()
+
+	if args.animate:
+		# Create a new visualizer
+		vis = meshcat.Visualizer()
+		vis.open()
+
+		for i in range(num_agents):
+			vis["agent"+str(i)].set_object(g.Sphere(1.5))
+
+		for row in data:
+			t = row[0]
+			for i in range(num_agents):
+				state = row[i*4+1:i*4+5]
+				vis["agent" + str(i)].set_transform(tf.translation_matrix([state[0], state[1], 0]))
+			time.sleep(0.01)
