@@ -45,7 +45,8 @@ def plot(T,X,title=None,fig=None,ax=None,label=None):
 def make_fig(axlim = None):
 	fig, ax = plt.subplots()
 	if axlim is None:
-		ax.set_aspect('equal')
+		# ax.set_aspect('equal')
+		pass
 	else:
 		ax.set_xlim(-axlim[0],axlim[0])
 		ax.set_ylim(-axlim[1],axlim[1])

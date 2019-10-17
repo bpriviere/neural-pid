@@ -1,23 +1,25 @@
 
 
-from numpy import reshape,identity,dot,array,sqrt,pi,exp
+import numpy as np 
 
-
-def eval_normal_prob(prob,x):
-	# normal distribution
-	mu = prob.loc.detach()
-	std = prob.scale.detach()
-	var = std**2
-	return 1/sqrt(2*pi*var)*exp(-((x-mu)**2)/(2*var))
 
 def to_cvec(x):
-	return reshape(x,(len(x),-1))
+	return np.reshape(x,(len(x),-1))
 
-def permute_states(s):
-	pi_s = array([
-		[1,0,0,0],
-		[0,0,1,0],
-		[0,1,0,0],
-		[0,0,0,1]
-		]) 
-	return dot(s, pi_s)
+def extract_gains(controller, states):
+	kp = np.zeros((len(times)-1,2))
+	kd = np.zeros((len(times)-1,2))
+	i = 0
+	for state in states[1:]:
+		kp[i] = controller.get_kp(state)
+		kd[i] = controller.get_kd(state)
+		i += 1
+	return kp,kd
+
+def extract_ref_state(controller, states):
+	ref_state = np.zeros((len(times)-1,4))
+	for i, state in enumerate(states[1:]):
+		ref_state[i] = controller.get_ref_state(state)
+	return ref_state
+
+

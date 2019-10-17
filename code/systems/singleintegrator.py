@@ -9,12 +9,11 @@ import numpy as np
 import plotter 
 
 class Agent:
-	def __init__(self,x=None,p=None,i=None):
-		self.x = x # value
-		self.p = np.array(p) # position
+	def __init__(self,s=None,i=None):
+		self.s = s
 		self.i = i # index 
 
-class Consensus(Env):
+class SingleIntegrator(Env):
 
 	def __init__(self, param):
 
@@ -23,24 +22,16 @@ class Consensus(Env):
 		self.state = None
 		self.time_step = None
 
-		self.n_agents = param.n_agents
-		self.r_comm = param.r_comm
-		self.state_dim_per_agent = 3
-		self.action_dim_per_agent = 1
+		self.n_agents = 10
+		self.config_dim = 4
 
 		# default parameters [SI units]
-		self.n = self.state_dim_per_agent*self.n_agents
-		self.m = self.action_dim_per_agent*self.n_agents
+		self.n = self.config_dim*self.n_agents
+		self.m = 2*self.n_agents
 
-		# initialize agents
 		self.agents = []
 		for i in range(self.n_agents):
 			self.agents.append(Agent(i=i))
-
-		# determine malicious node 
-		self.s2_idx = np.array((1,0,0,0,0))
-		self.s1_idx = np.ones(self.n_agents, dtype=bool) - self.s2_idx
-		self.true_ave = None
 
 		# environment 
 		self.env_state_bounds = np.array([5])
@@ -48,7 +39,10 @@ class Consensus(Env):
 		self.init_state_disturbance = 10*np.ones((self.n_agents))
 
 		self.states_name = [
-			'Node Value'
+			'x-Position [m]',
+			'y-Position [m]',
+			'x-Velocity [m/s]',
+			'y-Velocity [m/s]',
 			]
 		self.actions_name = [
 			'Node Update'
@@ -58,21 +52,7 @@ class Consensus(Env):
 
 
 	def render(self):
-
-		fig,ax = plotter.make_fig()
-		# plot edges
-		for agent_i in self.agents:
-			p_i = agent_i.p 
-			for agent_j in self.agents:
-				p_j = agent_j.p 
-
-				if np.linalg.norm(p_i - p_j) < self.r_comm:
-					plotter.plot([p_i[0],p_j[0]],[p_i[1],p_j[1]],fig=fig,ax=ax)
-
-		# plot nodes
-		for agent_i in self.agents:
-			p_i = agent_i.p 
-			plotter.plot_circle(p_i[0],p_i[1],0.25,fig=fig,ax=ax)
+		pass		
 
 	def step(self, a):
 		self.s = self.next_state(self.s, a)
@@ -81,8 +61,10 @@ class Consensus(Env):
 		self.time_step += 1
 		return self.s, r, d, {}
 
+
 	def done(self):
 		return False
+
 
 	def observe(self):
 		observation = []
@@ -91,17 +73,18 @@ class Consensus(Env):
 			observation_i = [] 
 			for agent_j in self.agents:
 				p_j = agent_j.p
-				if np.linalg.norm(p_i-p_j) < self.r_comm:
-					observation_i.append(agent_j.x-agent_i.x)
+				if np.linalg.norm(p_i-p_j) < self.param.r_comm:
+					try:
+						o = np.concatenate((o,agent_j.p-agent_i.p, agent_j.v-agent_i.v))
+					except:
+						o = np.concatenate((agent_j.p-agent_i.p, agent_j.v-agent_i.v))
+			observation_i.append(o)
 			observation.append(observation_i)
 		return observation
 
+
 	def reward(self):
-		if self.true_ave is None:
-			self.true_ave = np.mean(self.s[self.s1_idx])
-		curr_ave = np.mean(self.s[self.s1_idx])
-		return 1-np.linalg.norm(self.s[self.s1_idx]-self.true_ave)/\
-			np.linalg.norm(self.s[~self.s1_idx]-self.true_ave)
+		return 0
 
 
 	def reset(self, initial_state = None):
@@ -113,26 +96,22 @@ class Consensus(Env):
 			self.s = initial_state
 
 		self.update_agents(self.s)			
-		return np.array(self.s)
+		return np.array(self.s) 
 
 
 	def next_state(self,s,a):
 
-		# input:
-		# 	s, ndarray, (n,) 
-		# 	a, ndarray, (m,1)
-		# output:
-		# 	sp1, ndarray, (n,)
+		sp1 = np.zeros((self.n))
+		dt = self.times[self.time_step+1]-self.times[self.time_step]
 
-		sp1 = s
-		dt = self.times[self.time_step+1]-self.times[self.time_step]		
+		# single integrator
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
+			p_idx = np.arange(idx,idx+2)
+			v_idx = np.arange(idx+2,idx+4)
 
-			if self.s1_idx[agent_i.i]:
-				sp1[idx] = self.s[idx] + a[agent_i.i]*dt
-			else:
-				sp1[idx] = self.s[idx]
+			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
+			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,:].T*dt
 
 		self.update_agents(sp1)
 		return sp1
@@ -140,8 +119,8 @@ class Consensus(Env):
 	def update_agents(self,s):
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
-			agent_i.x = s[idx+0]
-			agent_i.p = s[idx+1:idx+3]
+			agent_i.p = s[idx:idx+2]
+			agent_i.v = s[idx+2:idx+4]
 
 	def agent_idx_to_state_idx(self,i):
-		return i*self.state_dim_per_agent
+		return self.config_dim*i 
