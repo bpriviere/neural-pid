@@ -22,6 +22,8 @@ class CartPole(Env):
 		self.mass_pole = 0.1
 		self.length_pole = 0.5
 		self.g = 9.81
+		self.a_min = np.array([-10])
+		self.a_max = np.array([10])
 		if param.env_case is 'SmallAngle':
 			self.init_state_start = np.array([0,0,0,0])
 			self.init_state_disturbance = np.array([0.25,np.radians(5),0.001/self.ave_dt,np.radians(1)/self.ave_dt])
@@ -35,9 +37,9 @@ class CartPole(Env):
 			self.init_state_disturbance = np.array([0,np.radians(0),0,0])
 			self.env_state_bounds = np.array([10.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Any90':
-			self.init_state_start = np.array([0,np.radians(45),0,0])
-			self.init_state_disturbance = np.array([0.1,np.radians(45),0,0])
-			self.env_state_bounds = np.array([3.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
+			self.init_state_start = np.array([0,np.radians(0),0,0])
+			self.init_state_disturbance = np.array([3.,np.radians(90),4.,10.])
+			self.env_state_bounds = np.array([3.,np.radians(360),4., 10.])
 		else:
 			raise Exception('param.env_case invalid ' + param.env_case)
 
@@ -56,12 +58,12 @@ class CartPole(Env):
 		self.param = param
 
 	def step(self, action):
-		state = self.state
-		initial_time = self.times[self.time_step]
-		final_time = self.times[self.time_step + 1]
-		self.state = self.next_state(state, action)
-		done = abs(state[0]) > self.env_state_bounds[0] \
-			or abs(state[1]) > self.env_state_bounds[1] \
+		# state = self.state
+		# initial_time = self.times[self.time_step]
+		# final_time = self.times[self.time_step + 1]
+		self.state = self.next_state(self.state, action)
+		done = abs(self.state[0]) > self.env_state_bounds[0] \
+			or abs(self.state[1]) > self.env_state_bounds[1] \
 			or self.time_step == len(self.times)-1
 		r = self.reward()
 		self.time_step += 1
@@ -85,8 +87,45 @@ class CartPole(Env):
 		return np.array(self.state)
 
 	# xdot = f(x, u)
-	# use autograd here so we can support SCP
 	def f(self, x, u):
+		# input:
+		# 	x, nd array, (n,)
+		# 	u, nd array, (m,1)
+		# output
+		# 	sp1, nd array, (n,)
+
+		# parameters
+		m_p = self.mass_pole
+		m_c = self.mass_cart
+		l = self.length_pole
+		g = self.g
+
+		# s = [q,qdot], q = [x,th]
+		u = np.reshape(u,(self.m,1))
+		q = np.reshape(x[0:2],(2,1))
+		qdot = np.reshape(x[2:],(2,1))
+		th = x[1]
+		thdot = x[3]
+
+		# EOM from learning+control@caltech
+		# D = np.array([[m_c+m_p,m_p*l*np.cos(th)],[m_p*l*np.cos(th),m_p*(l**2)]])
+		a = m_c+m_p
+		b = m_p*l*np.cos(th)
+		c = m_p*l*np.cos(th)
+		d = m_p*(l**2)
+		Dinv = 1/(a*d-b*c) * np.array([[d, -b], [-c, a]])
+
+		C = np.array([[0,-m_p*l*thdot*np.sin(th)],[0,0]])
+		G = np.array([[0],[-m_p*g*l*np.sin(th)]])
+		B = np.array([[1],[0]])
+		qdotdot = np.dot(Dinv, np.dot(B,u) - np.dot(C,qdot) - G)
+
+		res = np.vstack([qdot, qdotdot])
+		return res
+
+	# xdot = f(x, u)
+	# use autograd here so we can support SCP
+	def f_scp(self, x, u):
 		# input:
 		# 	x, nd array, (n,)
 		# 	u, nd array, (m,1)
@@ -107,20 +146,23 @@ class CartPole(Env):
 		thdot = x[3]
 
 		# EOM from learning+control@caltech
-		D = agnp.array([[m_c+m_p,m_p*l*agnp.cos(th)],[m_p*l*agnp.cos(th),m_p*(l**2)]])
+		# D = agnp.array([[m_c+m_p,m_p*l*agnp.cos(th)],[m_p*l*agnp.cos(th),m_p*(l**2)]])
+		a = m_c+m_p
+		b = m_p*l*agnp.cos(th)
+		c = m_p*l*agnp.cos(th)
+		d = m_p*(l**2)
+		Dinv = 1/(a*d-b*c) * agnp.array([[d, -b], [-c, a]])
+
 		C = agnp.array([[0,-m_p*l*thdot*agnp.sin(th)],[0,0]])
 		G = agnp.array([[0],[-m_p*g*l*agnp.sin(th)]])
 		B = agnp.array([[1],[0]])
-		qdotdot = agnp.dot(agnp.linalg.pinv(D), agnp.dot(B,u) - agnp.dot(C,qdot) - G)
+		qdotdot = agnp.dot(Dinv, agnp.dot(B,u) - agnp.dot(C,qdot) - G)
 
 		res = agnp.vstack([qdot, qdotdot])
-		return res
-
-	def f_scp(self, x, u):
-		return np.squeeze(self.f(x, u))
+		return agnp.squeeze(res)
 
 	def next_state(self, x, u):
-		dt = self.times[self.time_step+1]-self.times[self.time_step]
+		dt = self.ave_dt #self.times[self.time_step+1]-self.times[self.time_step]
 		xdot = self.f(x, u)
 		# euler integration
 		sp1 = np.squeeze(np.reshape(x,(len(x),1)) + xdot * dt)

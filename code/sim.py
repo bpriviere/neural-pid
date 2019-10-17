@@ -24,8 +24,8 @@ def sim(param, env, visualize):
 				action = controller.policy(observation)
 			else:
 				action = controller.policy(state) 
-			reward += env.reward()
-			states[step + 1], _, done, _ = env.step(action)
+			states[step + 1], r, done, _ = env.step(action)
+			reward += r
 			actions[step] = action.flatten()
 			if done:
 				break

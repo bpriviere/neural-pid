@@ -1,12 +1,18 @@
 from param import Param
 from run import run
 from systems.cartpole import CartPole
+import numpy as np
 
 class CartpoleParam(Param):
 	def __init__(self):
 		super().__init__()
 		self.env_name = 'CartPole'
-		self.env_case = 'Any90' #'SmallAngle','Swing90','Swing180', 'Any90'
+		self.env_case = 'SmallAngle' #'SmallAngle','Swing90','Swing180', 'Any90'
+
+		# flags
+		self.pomdp_on = False
+		self.single_agent_sim = True
+		self.multi_agent_sim = False
 
 		# RL
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
@@ -18,6 +24,12 @@ class CartpoleParam(Param):
 		self.kd = [4, 20]
 
 		# Sim
+		self.sim_t0 = 0
+		self.sim_tf = 5
+		self.sim_dt = 0.05
+		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
+		self.sim_nt = len(self.sim_times)
+
 		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
