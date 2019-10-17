@@ -16,7 +16,7 @@ class SingleIntegratorParam(Param):
 		self.multi_agent_sim = True
 
 		# param
-		self.n_agents = 2
+		self.n_agents = 10
 		self.r_comm = 15
 
 		# learning hyperparameters

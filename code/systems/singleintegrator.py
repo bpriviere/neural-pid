@@ -24,6 +24,7 @@ class SingleIntegrator(Env):
 
 		self.n_agents = param.n_agents
 		self.config_dim = 4
+		self.agent_radius = 0.75
 
 		# default parameters [SI units]
 		self.n = self.config_dim*self.n_agents
@@ -139,11 +140,12 @@ class SingleIntegrator(Env):
 		vis.open()
 
 		for i in range(self.n_agents):
-			vis["agent"+str(i)].set_object(g.Sphere(1.5))
+			vis["agent"+str(i)].set_object(g.Sphere(self.agent_radius))
 
-		for state in states:
-			for i in range(self.n_agents):
-				idx = self.agent_idx_to_state_idx(i) + np.arange(0,2)
-				pos = state[idx]
-				vis["agent" + str(i)].set_transform(tf.translation_matrix([pos[0], pos[1], 0]))
-			time.sleep(dt)
+		while True:
+			for state in states:
+				for i in range(self.n_agents):
+					idx = self.agent_idx_to_state_idx(i) + np.arange(0,2)
+					pos = state[idx]
+					vis["agent" + str(i)].set_transform(tf.translation_matrix([pos[0], pos[1], 0]))
+				time.sleep(dt)
