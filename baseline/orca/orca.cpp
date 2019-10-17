@@ -107,5 +107,20 @@ int main()
   }
   while (!reachedGoal(&sim));
 
+  // keep simulation running a bit longer
+  for (size_t i = 0; i < 500; ++i) {
+    // output current simulation result
+    output << sim.getGlobalTime();
+    for (size_t i = 0; i < sim.getNumAgents(); ++i) {
+      auto pos = sim.getAgentPosition(i);
+      auto vel = sim.getAgentVelocity(i);
+      output << "," << pos.x() << "," << pos.y() << "," << vel.x() << "," << vel.y();
+    }
+    output << std::endl;
+
+    setPreferredVelocities(&sim);
+    sim.doStep();    
+  }
+
   return 0;
 }

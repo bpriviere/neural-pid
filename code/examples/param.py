@@ -38,24 +38,14 @@ class Param:
 		self.il_n_epoch = 50000 # number of epochs per batch 
 		self.il_batch_size = 2000 # number of data points per batch
 		self.il_n_data = 3000 # total number of data points 
-		self.il_log_interval = 100
-		self.il_train_model_fn = 'il_model.pt'
-		self.il_imitate_model_fn = '../models/CartPole/rl_model_Swing90_continuous.pt'
-
-		# dynamics (like openai env)
-		self.env_name = 'MotionPlanner' # 'CartPole','MotionPlanner'
-		self.env_case = None # Cartpole: 'SmallAngle','Swing90','Swing180', MotionPlanner: 'None'
-		self.controller_class = 'Ref' # PID, PID_wRef, Ref
+		self.il_log_interval = 1
 
 		# sim parameters
 		self.sim_t0 = 0
-		self.sim_tf = 10
-		self.sim_dt = 0.05
+		self.sim_tf = 200
+		self.sim_dt = 0.25
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-		self.sim_rl_model_fn = 'rl_model.pt'
-		self.sim_il_model_fn = 'il_model.pt'
-		self.sim_render_on = False
 
 		# plots
 		self.plots_fn = 'plots.pdf'

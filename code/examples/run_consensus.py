@@ -1,6 +1,9 @@
+
 from param import Param
 from run import run
 from systems.consensus import Consensus
+
+import numpy as np 
 
 class ConsensusParam(Param):
 	def __init__(self):
@@ -10,7 +13,9 @@ class ConsensusParam(Param):
 
 		#
 		self.pomdp_on = True
-		self.r_comm = 1.2
+		self.r_comm = 2.2
+		self.n_agents = 5
+		self.n_malicious = 1
 
 		# RL
 		self.rl_train_model_fn = '../models/consensus/rl_current.pt'
@@ -22,7 +27,7 @@ class ConsensusParam(Param):
 		# Sim
 		self.sim_rl_model_fn = '../models/consensus/rl_current.pt'
 		self.sim_il_model_fn = '../models/consensus/il_current.pt'
-		self.sim_render_on = False
+		self.sim_render_on = True
 
 
 if __name__ == '__main__':

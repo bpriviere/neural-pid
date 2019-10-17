@@ -3,3 +3,6 @@ __pycache__/
 code/plots.pdf
 *.pyc
 gurobi.log
+*rl_current.pt
+*il_current.pt
+
