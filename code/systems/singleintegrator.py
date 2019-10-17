@@ -22,7 +22,7 @@ class SingleIntegrator(Env):
 		self.state = None
 		self.time_step = None
 
-		self.n_agents = 10
+		self.n_agents = param.n_agents
 		self.config_dim = 4
 
 		# default parameters [SI units]
@@ -71,13 +71,11 @@ class SingleIntegrator(Env):
 		for agent_i in self.agents:
 			p_i = agent_i.p
 			observation_i = [] 
+			o = np.concatenate((agent_i.p, agent_i.v, agent_i.sg))
 			for agent_j in self.agents:
 				p_j = agent_j.p
 				if np.linalg.norm(p_i-p_j) < self.param.r_comm:
-					try:
-						o = np.concatenate((o,agent_j.p-agent_i.p, agent_j.v-agent_i.v))
-					except:
-						o = np.concatenate((agent_j.p-agent_i.p, agent_j.v-agent_i.v))
+					o = np.concatenate((o,agent_j.p-agent_i.p, agent_j.v-agent_i.v))
 			observation_i.append(o)
 			observation.append(observation_i)
 		return observation
@@ -95,6 +93,12 @@ class SingleIntegrator(Env):
 		else:
 			self.s = initial_state
 
+		# assign goal state 
+		for agent in self.agents:
+			idx = self.agent_idx_to_state_idx(agent.i) + \
+				np.arange(0,self.config_dim)
+			agent.sg = -initial_state[idx]
+
 		self.update_agents(self.s)			
 		return np.array(self.s) 
 
@@ -109,10 +113,8 @@ class SingleIntegrator(Env):
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			p_idx = np.arange(idx,idx+2)
 			v_idx = np.arange(idx+2,idx+4)
-
 			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
-			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,:].T*dt
-
+			sp1[v_idx] = a[agent_i.i,:]
 		self.update_agents(sp1)
 		return sp1
 
@@ -123,4 +125,25 @@ class SingleIntegrator(Env):
 			agent_i.v = s[idx+2:idx+4]
 
 	def agent_idx_to_state_idx(self,i):
-		return self.config_dim*i 
+		return self.config_dim*i 		
+
+	def visualize(self,states,dt):
+
+		import meshcat
+		import meshcat.geometry as g
+		import meshcat.transformations as tf
+		import time 
+
+		# Create a new visualizer
+		vis = meshcat.Visualizer()
+		vis.open()
+
+		for i in range(self.n_agents):
+			vis["agent"+str(i)].set_object(g.Sphere(1.5))
+
+		for state in states:
+			for i in range(self.n_agents):
+				idx = self.agent_idx_to_state_idx(i) + np.arange(0,2)
+				pos = state[idx]
+				vis["agent" + str(i)].set_transform(tf.translation_matrix([pos[0], pos[1], 0]))
+			time.sleep(dt)

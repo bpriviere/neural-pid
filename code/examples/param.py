@@ -42,7 +42,7 @@ class Param:
 
 		# sim parameters
 		self.sim_t0 = 0
-		self.sim_tf = 50
+		self.sim_tf = 200
 		self.sim_dt = 0.25
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)

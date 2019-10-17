@@ -16,7 +16,7 @@ class SingleIntegratorParam(Param):
 		self.multi_agent_sim = True
 
 		# param
-		self.n_agents = 10
+		self.n_agents = 2
 		self.r_comm = 15
 
 		# learning hyperparameters
@@ -25,8 +25,8 @@ class SingleIntegratorParam(Param):
 			nn.Linear(n,h), 
 			nn.Linear(h,h)])
 		self.network_architecture_rho = nn.ModuleList([
-			nn.Linear(h+n,h+n), 
-			nn.Linear(h+n,m)])
+			nn.Linear(h+2*n,h+2*n), 
+			nn.Linear(h+2*n,m)])
 		self.network_activation = tanh 
 
 		# RL

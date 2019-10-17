@@ -14,7 +14,7 @@ def sim(param, env, visualize):
 
 	def run_sim(controller, initial_state):
 		states = np.zeros((len(times), env.n))
-		actions = np.zeros((len(times) - 1, env.m))
+		actions = np.zeros((len(times) - 1,env.m))
 		states[0] = env.reset(initial_state)
 		reward = 0 
 		for step, time in enumerate(times[:-1]):
@@ -26,7 +26,7 @@ def sim(param, env, visualize):
 				action = controller.policy(state) 
 			reward += env.reward()
 			states[step + 1], _, done, _ = env.step(action)
-			actions[step] = np.squeeze(action)
+			actions[step] = action.flatten()
 			if done:
 				break
 		print('reward: ',reward)
@@ -50,8 +50,12 @@ def sim(param, env, visualize):
 
 	# initial conditions
 	if True:
+		# consensus
 		# s0 = np.array([5,-1,0,2,0,1,1,0,0,-1,1,0,-2,0,-1.5])
-		s0 = np.array([50,0,0,0,40.4509,29.3893,0,0,15.4509,47.5528,0,0,-15.4509,47.5528,0,0,-40.4509,29.3893,0,0,-50,6.12323e-15,0,0,-40.4509,-29.3893,0,0,-15.4509,-47.5528,0,0,15.4509,-47.5528,0,0,40.4509,-29.3893,0,0])
+		# orca 10 ring
+		# s0 = np.array([50,0,0,0,40.4509,29.3893,0,0,15.4509,47.5528,0,0,-15.4509,47.5528,0,0,-40.4509,29.3893,0,0,-50,6.12323e-15,0,0,-40.4509,-29.3893,0,0,-15.4509,-47.5528,0,0,15.4509,-47.5528,0,0,40.4509,-29.3893,0,0])
+		# orca 2 line 
+		s0 = np.array([-20,0,0,0,20,0,0,0])
 		initial_state = env.reset(s0)
 	else:
 		initial_state = env.reset()
@@ -119,7 +123,8 @@ def sim(param, env, visualize):
 
 	# visualize
 	if visualize:
-		plotter.visualize(param, env, states_deeprl)
+		# plotter.visualize(param, env, states_deeprl)
+		env.visualize(states_deeprl,0.1)
 
 	plotter.save_figs(param.plots_fn)
 	plotter.open_figs(param.plots_fn)

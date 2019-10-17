@@ -45,6 +45,7 @@ def load_orca_dataset(filename,neighborDist):
 	for t in range(data.shape[0]-1):
 		for i in range(num_agents):
 			state_i = data[t,i*4+1:i*4+5]
+			sg_i = data[-1,i*4+1:i*4+5]
 			neighbors = []
 			for j in range(num_agents):
 				if i != j:
@@ -54,7 +55,7 @@ def load_orca_dataset(filename,neighborDist):
 						neighbors.append(state_i - state_j)
 			# desired control is the velocity in the next timestep
 			u = data[t+1, i*4+3:i*4+5]
-			dataset.append([state_i, neighbors, u])
+			dataset.append([state_i, sg_i, neighbors, u])
 	print('Dataset Size: ',len(dataset))
 	return dataset
 
@@ -74,9 +75,11 @@ def make_orca_loaders(dataset=None,
 				if k == 0:
 					x = data[k]
 				elif k == 1:
+					x = np.concatenate((x,data[k]))
+				elif k == 2:
 					for neighbor in data[k]:
 						x = np.concatenate((x,neighbor))
-				elif k == 2:
+				elif k == 3:
 					y = data[k]
 
 			batch_x.append(x)
@@ -94,8 +97,8 @@ def make_orca_loaders(dataset=None,
 	if shuffle:
 		random.shuffle(dataset)
 
-	# if n_data is not None:
-	# 	dataset = dataset[0:n_data]
+	if n_data is not None:
+		dataset = dataset[0:n_data]
 
 	cutoff = int(test_train_ratio*len(dataset))
 	train_dataset = dataset[0:cutoff]
@@ -190,13 +193,13 @@ def train_il(param, env):
 
 	# datasets
 	if param.il_load_dataset_on:
-		dataset = load_orca_dataset("../baseline/orca/build/orca_ring10.npy",param.r_comm)
+		dataset = load_orca_dataset("../baseline/orca/build/orca.npy",param.r_comm)
 		loader_train,loader_test = make_orca_loaders(
 			dataset=dataset,
 			shuffle=True,
 			batch_size=param.il_batch_size,
 			test_train_ratio=param.il_test_train_ratio,
-			n_data=param.il_n_data)
+			n_data=None)
 	else:
 		x_train,y_train = make_dataset(param, env)
 		x_test,y_test = make_dataset(param, env)

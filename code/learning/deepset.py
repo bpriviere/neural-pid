@@ -22,26 +22,28 @@ class DeepSet(nn.Module):
 	def forward(self,x):
 		# x is a list of [[s^i,{s^j}]] for all j neighbors
 
-		X = torch.zeros((len(x),self.hidden_dim+self.state_dim))
+		X = torch.zeros((len(x),self.hidden_dim+2*self.state_dim))
 		for step,x_i in enumerate(x):
-			s_i,s_js = self.make_list(x_i)
+			s_i,s_g,s_js = self.make_list(x_i)
 			summ = torch.zeros((self.hidden_dim))
 			for s_j in s_js:
 				summ += self.phi(s_j)
 
 			s_i = torch.from_numpy(s_i).float()
-			X[step,:] = torch.cat((s_i,summ))
+			s_g = torch.from_numpy(s_g).float()
+			X[step,:] = torch.cat((s_i,s_g,summ))
 		return self.rho(X)
 
 	def make_list(self,x):
 		# x is an array [s^i, {s^j}] for all j neighbors
-		n_n = int(len(x)/self.state_dim)
+		n_n = int(len(x)/self.state_dim)-2
 		s_i = x[0:self.state_dim]
+		s_g = x[self.state_dim:self.state_dim*2]
 		s_js = []
 		for i_n in range(n_n):
-			idxs = np.arange(i_n*self.state_dim,(i_n+1)*self.state_dim)
+			idxs = (i_n+2)*self.state_dim + np.arange(0,self.state_dim)
 			s_js.append(x[idxs])
-		return s_i,s_js
+		return s_i,s_g,s_js
 
 	def policy(self,x):
 
@@ -54,7 +56,7 @@ class DeepSet(nn.Module):
 		for i in range(n_agents):
 			x_i = [x[i]]
 			A.append(self.forward(x_i).detach().numpy())
-		A = np.reshape(np.asarray(A).flatten(),(self.action_dim*n_agents,1))
+		A = np.reshape(np.asarray(A).flatten(),(n_agents,self.action_dim))
 		return A
 
 class Phi(nn.Module):
