@@ -2,6 +2,7 @@ from param import Param
 from run import run
 from systems.cartpole import CartPole
 import numpy as np
+import torch
 
 class CartpoleParam(Param):
 	def __init__(self):
@@ -41,8 +42,27 @@ class CartpoleParam(Param):
 		self.scp_fn = '../models/CartPole/scp.csv'
 		self.scp_pdf_fn = '../models/CartPole/scp.pdf'
 
+class PlainPID:
+	"""
+	Simple PID controller with fixed gains
+	"""
+	def __init__(self, Kp, Kd):
+		self.Kp = Kp
+		self.Kd = Kd
+
+	def policy(self, state):
+		action = (self.Kp[0]*state[0] + self.Kp[1]*state[1] + \
+			self.Kd[0]*state[2] + self.Kd[1]*state[3])
+		return action
+
 
 if __name__ == '__main__':
 	param = CartpoleParam()
 	env = CartPole(param)
-	run(param, env)
+
+	controllers = {
+		'RL':	torch.load(param.sim_il_model_fn),
+		'IL':	torch.load(param.sim_il_model_fn),
+		'PID': PlainPID(param.kp, param.kd)
+	}
+	run(param, env, controllers)

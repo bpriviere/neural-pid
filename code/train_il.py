@@ -12,8 +12,7 @@ from torch.distributions import Categorical
 from learning.pid_net import PID_Net
 from learning.pid_wref_net import PID_wRef_Net
 from learning.ref_net import Ref_Net
-from learning.plain_pid import PlainPID
-from learning.deepset import DeepSet 
+from learning.deepset import DeepSet
 
 # def make_dataset(env):
 # 	# model = PlainPID([2, 40], [4, 20])
@@ -174,9 +173,9 @@ def train_il(param, env):
 
 	# init model
 	if param.controller_class is 'PID':
-		model = PID_Net(env.n)
+		model = PID_Net(env.n, env.m)
 	elif param.controller_class is 'PID_wRef':
-		model = PID_wRef_Net(env.n)
+		model = PID_wRef_Net(env.n, env.m)
 	elif param.controller_class is 'Ref':
 		model = Ref_Net(env.n, env.m, param.kp, param.kd)
 	elif param.controller_class is 'DeepSet':
