@@ -3,6 +3,7 @@ from param import Param
 from run import run
 from systems.singleintegrator import SingleIntegrator
 from torch import nn, tanh
+import torch
 
 class SingleIntegratorParam(Param):
 	def __init__(self):
@@ -52,4 +53,8 @@ class SingleIntegratorParam(Param):
 if __name__ == '__main__':
 	param = SingleIntegratorParam()
 	env = SingleIntegrator(param)
-	run(param, env)
+
+	controllers = {
+		'IL':	torch.load(param.sim_il_model_fn),
+	}
+	run(param, env, controllers)

@@ -17,7 +17,8 @@ class DDPG():
 	def __init__(self,
 		state_dim,
 		action_dim,
-		control_lim,
+		a_min,
+		a_max,
 		lr_mu,
 		lr_q,
 		gamma,
@@ -41,7 +42,8 @@ class DDPG():
 		# some param
 		self.action_dim = action_dim
 		self.action_std = action_std
-		self.control_lim = control_lim
+		self.a_min = a_min
+		self.a_max = a_max
 
 		# hyperparameters
 		self.lr_mu = lr_mu
@@ -61,8 +63,8 @@ class DDPG():
 		self.q = QNet(state_dim,action_dim,self.device)
 		self.q_target = QNet(state_dim,action_dim,self.device)
 		self.q_target.load_state_dict(self.q.state_dict())		
-		self.mu = MuNet(state_dim,action_dim,control_lim,self.device)
-		self.mu_target = MuNet(state_dim,action_dim,control_lim,self.device)
+		self.mu = MuNet(state_dim,action_dim,a_min,a_max,self.device)
+		self.mu_target = MuNet(state_dim,action_dim,a_min,a_max,self.device)
 		self.mu_target.load_state_dict(self.mu.state_dict())
 
 		self.mu_optimizer = optim.Adam(self.mu.parameters(), lr=self.lr_mu)
@@ -186,12 +188,13 @@ class ReplayBuffer():
 
 # mu(s) = a
 class MuNet(nn.Module):
-	def __init__(self,state_dim,action_dim,control_lim,device):
+	def __init__(self,state_dim,action_dim,a_min,a_max,device):
 		super(MuNet, self).__init__()
 
 		self.to(device)
 
-		self.control_lim = control_lim
+		self.a_min = torch.from_numpy(a_min).float().to(device)
+		self.a_max = torch.from_numpy(a_max).float().to(device)
 		self.fc1 = nn.Linear(state_dim, 64)
 		self.fc2 = nn.Linear(64, 64)
 		self.fc_mu = nn.Linear(64, action_dim)
@@ -199,7 +202,7 @@ class MuNet(nn.Module):
 	def forward(self, x):
 		x = F.relu(self.fc1(x))
 		x = F.relu(self.fc2(x))
-		mu = torch.tanh(self.fc_mu(x))*self.control_lim 
+		mu = (torch.tanh(self.fc_mu(x)) + 1) / 2 * (self.a_max - self.a_min) + self.a_min
 		return mu
 
 # q = q(s,a)

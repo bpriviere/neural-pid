@@ -24,6 +24,9 @@ def open_figs(filename):
 	if os.path.exists(pdf_path):
 		subprocess.call(["xdg-open", pdf_path])
 
+def subplots():
+	return plt.subplots()
+
 
 def plot(T,X,title=None,fig=None,ax=None,label=None):
 	

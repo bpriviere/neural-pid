@@ -38,7 +38,8 @@ def train_rl(param, env):
 		model = DDPG(
 			state_dim,
 			action_dim,
-			param.rl_control_lim,
+			env.a_min,
+			env.a_max,
 			param.rl_lr_mu,
 			param.rl_lr_q,
 			param.rl_gamma,

@@ -1,7 +1,8 @@
 from param import Param
 from run import run
 from systems.quadrotor import Quadrotor
-from numpy import array, zeros 
+import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 class QuadrotorParam(Param):
 	def __init__(self):
@@ -9,22 +10,33 @@ class QuadrotorParam(Param):
 		self.env_name = 'Quadrotor'
 		self.env_case = 'SmallAngle'
 
-		self.mass = array([
-			[1,1,1],
-			[1,1,1],
-			[1,1,1]
+		# Crazyflie 2.0 quadrotor
+		self.mass = 0.034 # kg
+		self.J = np.array([
+			[16.56,0.83,0.71],
+			[0.83,16.66,1.8],
+			[0.72,1.8,29.26]
+			]) * 1e-6  # kg m^2
+
+		# Note: we assume here that our control is forces
+		arm_length = 0.046 # m
+		arm = 0.707106781 * arm_length
+		t2t = 0.006 # thrust-to-torque ratio
+		self.B0 = np.array([
+			[1, 1, 1, 1],
+			[-arm, -arm, arm, arm],
+			[-arm, arm, arm, -arm],
+			[-t2t, t2t, -t2t, t2t]
 			])
-		self.J = array([
-			[1,1,1],
-			[1,1,1],
-			[1,1,1]
-			])
-		self.c_T = 1.
-		self.c_Q = 1.
-		self.l_a = 1.
 		self.g = 9.81 # not signed
 
-		self.ref_trajectory = zeros((18,self.sim_nt))
+		# control limits [N]
+		self.a_min = np.array([0, 0, 0, 0])
+		self.a_max = np.array([12, 12, 12, 12]) / 1000 * 9.81 # g->N
+
+		# perfect hover would use: np.array([0.0085, 0.0085, 0.0085, 0.0085]) * 9.81
+		# self.a_min = np.array([0.008, 0.008, 0.008, 0.008]) * 9.81
+		# self.a_max = np.array([0.012, 0.012, 0.012, 0.012]) * 9.81 # g->N
 
 		# RL
 		self.rl_train_model_fn = '../models/quadrotor/rl_current.pt'
@@ -36,26 +48,17 @@ class QuadrotorParam(Param):
 		# Sim
 		self.sim_rl_model_fn = '../models/quadrotor/rl_current.pt'
 		self.sim_il_model_fn = '../models/quadrotor/il_current.pt'
-		self.sim_render_on = True
+		self.sim_render_on = False
 
-		self.states_name = [
-			'Position X [m]',
-			'Position Y [m]',
-			'Position Z [m]',
-			'Velocity X [m/s]',
-			'Velocity Y [m/s]',
-			'Velocity Z [m/s]',
-			'Angle X [rad]',
-			'Angle Y [rad]',
-			'Angle Z [rad]',
-			'Anglular Velocity X [rad/s]',
-			'Anglular Velocity Y [rad/s]',
-			'Anglular Velocity Z [rad/s]']
-		self.actions_name = [
-			'Motor Speed 1',
-			'Motor Speed 2'
-			'Motor Speed 3'
-			'Motor Speed 4']
+		self.sim_t0 = 0
+		self.sim_tf = 5
+		self.sim_dt = 0.01
+		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
+		self.sim_nt = len(self.sim_times)
+
+		s_desired = np.zeros(18)
+		s_desired[6:15] = R.from_euler('zyx', [0,0,0]).as_dcm().flatten()
+		self.ref_trajectory = np.tile(np.array([s_desired.T]).T, (1, self.sim_nt))
 
 
 if __name__ == '__main__':

@@ -4,13 +4,15 @@ import torch
 import gym 
 import numpy as np 
 import os
+import glob
+from collections import namedtuple
 
 # my package
 import plotter 
 import utilities as util
 from other_policy import ZeroPolicy
 
-def sim(param, env, visualize):
+def sim(param, env, controllers, visualize):
 
 	def run_sim(controller, initial_state):
 		states = np.zeros((len(times), env.n))
@@ -24,8 +26,8 @@ def sim(param, env, visualize):
 				action = controller.policy(observation)
 			else:
 				action = controller.policy(state) 
-			reward += env.reward()
-			states[step + 1], _, done, _ = env.step(action)
+			states[step + 1], r, done, _ = env.step(action)
+			reward += r
 			actions[step] = action.flatten()
 			if done:
 				break
@@ -38,15 +40,6 @@ def sim(param, env, visualize):
 	# environment
 	times = param.sim_times
 	device = "cpu"
-
-	# get controllers
-	if False:
-		deeprl_controller = torch.load(param.sim_rl_model_fn)
-		pid_controller = torch.load(param.sim_il_model_fn)
-	else:
-		# set to empty controllers
-		deeprl_controller = torch.load(param.sim_il_model_fn)
-		# pid_controller = ZeroPolicy(env)
 
 	# initial conditions
 	if True:
@@ -64,16 +57,11 @@ def sim(param, env, visualize):
 		initial_state = env.reset()
 
 	# run sim
-	states_deeprl, actions_deeprl, step_deeprl = run_sim(deeprl_controller, initial_state)
-	save_rl_env = env
-	initial_state = s0
-	# states_pid, actions_pid, step_pid = run_sim(pid_controller, initial_state)
-	# save_il_env = env
-
-	if os.path.isfile(param.scp_fn):
-		data_csv = np.loadtxt(param.scp_fn, delimiter=',')
-		states_csv = data_csv[:,0:env.n]
-		actions_csv = data_csv[:,env.n:env.n+env.m]
+	SimResult = namedtuple('SimResult', ['states', 'actions', 'steps', 'name'])
+	sim_results = []
+	for name, controller in controllers.items():
+		result = SimResult._make(run_sim(controller, initial_state) + (name, ))
+		sim_results.append(result)
 
 	if param.sim_render_on:
 		save_rl_env.render()
@@ -82,47 +70,52 @@ def sim(param, env, visualize):
 	# plot time varying states
 	if param.single_agent_sim:
 		for i in range(env.n):
-			fig, ax = plotter.plot(times[0:step_deeprl],states_deeprl[0:step_deeprl,i]) #,title=env.states_name[i])
-			plotter.plot(times[0:step_pid],states_pid[0:step_pid,i], fig = fig, ax = ax)
-			if os.path.isfile(param.scp_fn):
-				plotter.plot(times[0:len(states_csv)],states_csv[:,i], fig = fig, ax = ax)
+			fig, ax = plotter.subplots()
+			ax.set_title(env.states_name[i])
+			for result in sim_results:
+				ax.plot(times[0:result.steps], result.states[0:result.steps,i],label=result.name)
+			ax.legend()
 		for i in range(env.m):
-			fig, ax = plotter.plot(times[1:step_deeprl+1],actions_deeprl[0:step_deeprl,i]) #,title=env.actions_name[i])
-			plotter.plot(times[1:step_pid+1],actions_pid[0:step_pid,i], fig = fig, ax = ax)
-			if os.path.isfile(param.scp_fn):
-				plotter.plot(times[1:len(actions_csv)+1],actions_csv[:,i], fig = fig, ax = ax)
-	
+			fig, ax = plotter.subplots()
+			ax.set_title(env.actions_name[i])
+			for result in sim_results:
+				ax.plot(times[0:result.steps], result.actions[0:result.steps,i],label=result.name)
+			ax.legend()
 	elif param.multi_agent_sim:
 		for i_config in range(env.config_dim):
 			fig,ax = plotter.make_fig()
 			for agent in env.agents:
-				plotter.plot(
-					times[0:step_deeprl],
-					states_deeprl[0:step_deeprl,env.agent_idx_to_state_idx(agent.i)+i_config],
-					fig=fig,ax=ax,title=env.states_name[i_config])
+				ax.set_title(env.states_name[i_config])
+				for result in sim_results:
+					ax.plot(
+						times[0:result.steps],
+						result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+i_config],
+						label=result.name)
 
 	# plot state space
 	if param.multi_agent_sim:
 		fig,ax = plotter.make_fig()
 		for agent in env.agents:
-			plotter.plot(
-				states_deeprl[0:step_deeprl,env.agent_idx_to_state_idx(agent.i)],
-				states_deeprl[0:step_deeprl,env.agent_idx_to_state_idx(agent.i)+1],
-				fig=fig,ax=ax,title='State Space')	
+			ax.set_title('State Space')
+			for result in sim_results:
+				ax.plot(
+					result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)],
+					result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1],
+					label=result.name)
 
-	# extract gains
-	if param.controller_class in ['PID_wRef','PID'] and not isinstance(pid_controller,ZeroPolicy):
-		kp,kd = util.extract_gains(pid_controller,states_pid)
-		fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,0],title='Kp pos')
-		fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,1],title='Kp theta')
-		fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,0],title='Kd pos')
-		fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,1],title='Kd theta')
+	# # extract gains
+	# if param.controller_class in ['PID_wRef','PID'] and not isinstance(pid_controller,ZeroPolicy):
+	# 	kp,kd = util.extract_gains(pid_controller,states_pid)
+	# 	fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,0],title='Kp pos')
+	# 	fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,1],title='Kp theta')
+	# 	fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,0],title='Kd pos')
+	# 	fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,1],title='Kd theta')
 
-	# extract reference trajectory
-	if param.controller_class in ['PID_wRef','Ref'] and not isinstance(pid_controller,ZeroPolicy):
-		ref_state = util.extract_ref_state(pid_controller, states_pid)
-		for i in range(env.n):
-			fig,ax = plotter.plot(times[1:step_pid+1],ref_state[0:step_pid,i],title="ref " + env.states_name[i])
+	# # extract reference trajectory
+	# if param.controller_class in ['PID_wRef','Ref'] and not isinstance(pid_controller,ZeroPolicy):
+	# 	ref_state = util.extract_ref_state(pid_controller, states_pid)
+	# 	for i in range(env.n):
+	# 		fig,ax = plotter.plot(times[1:step_pid+1],ref_state[0:step_pid,i],title="ref " + env.states_name[i])
 
 	# visualize
 	if visualize:
