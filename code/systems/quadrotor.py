@@ -4,7 +4,8 @@
 from gym import Env
 import autograd.numpy as np  # Thinly-wrapped numpy
 import autograd.numpy as agnp  # Thinly-wrapped numpy
-from scipy.spatial.transform import Rotation as R
+import rowan
+
 
 class Quadrotor(Env):
 
@@ -18,7 +19,7 @@ class Quadrotor(Env):
 		self.param = param
 
 		# dim 
-		self.n = 18
+		self.n = 13
 		self.m = 4
 
 		# control bounds
@@ -27,8 +28,8 @@ class Quadrotor(Env):
 
 		# initial conditions
 		if param.env_case is 'SmallAngle':
-			s = np.zeros(18)
-			s[6:15] = R.from_euler('xyz', [5,2.5,0], degrees=True).as_dcm().flatten()
+			s = np.zeros(13)
+			s[6:10] = rowan.from_euler(np.radians(5), np.radians(2.5), np.radians(0), 'xyz')
 			self.init_state_start = s
 			self.init_state_disturbance = np.zeros(18)
 			self.env_state_bounds = np.ones(self.n)
@@ -36,7 +37,7 @@ class Quadrotor(Env):
 			self.s_min = np.array( \
 						[-2, -2, -2, \
 						  -4, -4, -4, \
-						  -1.001, -1.001, -1.001, -1.001, -1.001, -1.001, -1.001, -1.001, -1.001,
+						  -1.001, -1.001, -1.001, -1.001,
 						  -50, -50, -50])
 			self.s_max = -self.s_min
 		else:
@@ -68,15 +69,10 @@ class Quadrotor(Env):
 			'Velocity X [m/s]',
 			'Velocity Y [m/s]',
 			'Velocity Z [m/s]',
-			'R11',
-			'R11',
-			'R12',
-			'R21',
-			'R21',
-			'R22',
-			'R31',
-			'R31',
-			'R32',
+			'qw',
+			'qx',
+			'qy',
+			'qz',
 			'Angular Velocity X [rad/s]',
 			'Angular Velocity Y [rad/s]',
 			'Angular Velocity Z [rad/s]']
@@ -115,8 +111,9 @@ class Quadrotor(Env):
 		ep = np.linalg.norm(self.s[0:3] - state_ref[0:3])
 		ev = np.linalg.norm(self.s[3:6] - state_ref[3:6])
 		ew = np.linalg.norm(self.s[15:18] - state_ref[15:18])
-		R = self.s[6:15].reshape((3,3))
-		eR = np.arccos((np.trace(R)-1) / 2)
+		# R = self.s[6:15].reshape((3,3))
+		# eR = np.arccos((np.trace(R)-1) / 2)
+		eR = rowan.geometry.sym_distance(self.s[6:10], np.array([1,0,0,0]))
 
 		cost = (ep \
 			 + self.alpha_v * ev \
@@ -138,11 +135,11 @@ class Quadrotor(Env):
 			roll = 30 #np.random.uniform(-10, 10)
 			pitch = 30# np.random.uniform(-10, 10)
 			yaw = 30 #np.random.uniform(-10, 10)
-			rotation = R.from_euler('xyz', [roll, pitch, yaw], degrees=True)
-			self.s = np.zeros(18)
+			q = rowan.from_euler(np.radians(roll), np.radians(pitch), np.radians(yaw), 'xyz')
+			self.s = np.zeros(13)
 			# self.s[0:3] = np.random.uniform(-1, 1, 3)
 			self.s[0:3] = np.array([-0.1,0.1,0.2])
-			self.s[6:15] = rotation.as_dcm().flatten()
+			self.s[6:10] = q
 		else:
 			self.s = initial_state
 		self.time_step = 0
@@ -158,8 +155,8 @@ class Quadrotor(Env):
 		# 	dsdt, nd array, (n,1)
 
 		dsdt = np.zeros(self.n)
-		omega = s[15:]
-		R = s[6:15].reshape((3,3))
+		q = s[6:10]
+		omega = s[10:]
 
 		# get input 
 		a = np.reshape(a,(self.m,))
@@ -171,34 +168,19 @@ class Quadrotor(Env):
 		# dot{p} = v 
 		dsdt[0:3] = s[3:6] 
 		# mv = mg + R f_u 
-		dsdt[3:6] = self.g + np.dot(R,f_u) / self.mass
+		dsdt[3:6] = self.g + rowan.rotate(q,f_u) / self.mass
 
 		# dot{R} = R S(w)
-		# to integrate the dynamics, we essentially need to apply
-		# Rodriguez formula, see
-		# https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-696.pdf, 6.1.2
-		# and https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
-		# a) rotate w from body to world frame
-		omega_world = R @ omega
-		# b) apply Rodriguez formula
-		omega_norm = np.linalg.norm(omega_world)
-		if omega_norm > 0:
-			wx, wy, wz = omega_world.flatten()
-			K = np.array([[0, -wz, wy], [wz, 0, -wx], [-wy, wx, 0]]) / omega_norm
-			rot_angle = omega_norm * self.ave_dt
-			dRdt = np.eye(3) + np.sin(rot_angle) * K + (1. - np.cos(rot_angle)) * (K @ K)
-			Rnew = dRdt @ R
-			# c) re-orthogonolize Rnew using SVD, see sim-to-real paper
-			if self.time_step % 100 == 0:
-				u, s, v = np.linalg.svd(Rnew)
-				Rnew = u @ v
-			# print("Rnew", Rnew)
-
-			# d) transform Rnew to a "delta R" that works with the usual euler integration
-			dsdt[6:15] = ((Rnew - R) / self.ave_dt).flatten()
+		# to integrate the dynamics, see
+		# https://www.ashwinnarayan.com/post/how-to-integrate-quaternions/, and
+		# https://arxiv.org/pdf/1604.08139.pdf
+		qnew = rowan.calculus.integrate(q, omega, self.ave_dt)
+		qnew = rowan.normalize(qnew)
+		# transform qnew to a "delta q" that works with the usual euler integration
+		dsdt[6:10] = (qnew - q) / self.ave_dt
 
 		# mJ = Jw x w + tau_u 
-		dsdt[15:] = self.inv_J * (np.cross(self.J * omega,omega) + tau_u)
+		dsdt[10:] = self.inv_J * (np.cross(self.J * omega,omega) + tau_u)
 		return dsdt.reshape((len(dsdt),1))
 
 
@@ -262,8 +244,7 @@ class Quadrotor(Env):
 		return sp1
 
 	def deduce_state(self, s):
-		rotation = s[6:15].reshape((3,3))
-		rpy = R.from_dcm(rotation).as_euler('xyz', degrees=True)
+		rpy = np.degrees(rowan.to_euler(s[6:10], 'xyz'))
 		return rpy
 
 	def sample_state_around(self, s):
@@ -298,11 +279,9 @@ class Quadrotor(Env):
 
 		while True:
 			for state in states:
-				rotation = state[6:15].reshape((3,3))
-				q = R.from_dcm(rotation).as_quat()
 				vis["Quadrotor"].set_transform(
 					tf.translation_matrix([state[0], state[1], state[2]]).dot(
-					  tf.quaternion_matrix(q)))
+					  tf.quaternion_matrix(state[6:10])))
 				time.sleep(dt)
 
 	def env_barrier(self,action):

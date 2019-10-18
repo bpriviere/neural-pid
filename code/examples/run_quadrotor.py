@@ -2,8 +2,8 @@ from param import Param
 from run import run
 from systems.quadrotor import Quadrotor
 import numpy as np
-from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
+import rowan
 
 # TODO make this optional
 import os, sys
@@ -64,7 +64,7 @@ class QuadrotorParam(Param):
 		self.sim_nt = len(self.sim_times)
 
 		s_desired = np.zeros(18)
-		s_desired[6:15] = R.from_euler('zyx', [0,0,0]).as_dcm().flatten()
+		s_desired[6:10] = rowan.from_euler(np.radians(0), np.radians(0), np.radians(0), 'xyz')
 		self.ref_trajectory = np.tile(np.array([s_desired.T]).T, (1, self.sim_nt))
 
 		self.pomdp_on = False
@@ -124,16 +124,15 @@ class FirmwareController:
 		self.state.velocity.y = state[4]
 		self.state.velocity.z = state[5]
 
-		rot = R.from_dcm(state[6:15].reshape((3,3)))
-		rpy = rot.as_euler('xyz', degrees=True)
+		rpy = np.degrees(rowan.to_euler(state[6:10], 'xyz'))
 		print("rpy", rpy)
 		self.state.attitude.roll = rpy[0]
 		self.state.attitude.pitch = -rpy[1] # inverted coordinate system!
 		self.state.attitude.yaw = rpy[2]
 
-		self.sensors.gyro.x = np.degrees(state[15])
-		self.sensors.gyro.y = np.degrees(state[16])
-		self.sensors.gyro.z = np.degrees(state[17])
+		self.sensors.gyro.x = np.degrees(state[10])
+		self.sensors.gyro.y = np.degrees(state[11])
+		self.sensors.gyro.z = np.degrees(state[12])
 
 		firm.controllerSJC(self.control, self.setpoint, self.sensors, self.state, self.tick)
 		self.tick += 10
