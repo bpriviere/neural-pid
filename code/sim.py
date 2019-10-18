@@ -42,7 +42,7 @@ def sim(param, env, controllers, visualize):
 	device = "cpu"
 
 	# initial conditions
-	if True:
+	if False:
 		# consensus
 		# s0 = np.array([5,-1,0,2,0,1,1,0,0,-1,1,0,-2,0,-1.5])
 		# orca 10 ring
@@ -72,6 +72,18 @@ def sim(param, env, controllers, visualize):
 			for result in sim_results:
 				ax.plot(times[0:result.steps], result.states[0:result.steps,i],label=result.name)
 			ax.legend()
+
+		for i, name in enumerate(env.deduced_state_names):
+			fig, ax = plotter.subplots()
+			ax.set_title(name)
+			for result in sim_results:
+				deduce_states = np.empty((result.steps, len(env.deduced_state_names)))
+				for j in range(result.steps):
+					deduce_states[j] = env.deduce_state(result.states[j])
+
+				ax.plot(times[0:result.steps], deduce_states[:,i],label=result.name)
+			ax.legend()
+
 		for i in range(env.m):
 			fig, ax = plotter.subplots()
 			ax.set_title(env.actions_name[i])
@@ -117,7 +129,7 @@ def sim(param, env, controllers, visualize):
 	# visualize
 	if visualize:
 		# plotter.visualize(param, env, states_deeprl)
-		env.visualize(states_deeprl,0.1)
+		env.visualize(sim_results[0].states[0:result.steps],0.01)
 
 	plotter.save_figs(param.plots_fn)
 	plotter.open_figs(param.plots_fn)

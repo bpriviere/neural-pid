@@ -28,7 +28,7 @@ class Quadrotor(Env):
 		# initial conditions
 		if param.env_case is 'SmallAngle':
 			s = np.zeros(18)
-			s[6:15] = R.from_euler('zyx', [5,2.5,0], degrees=True).as_dcm().flatten()
+			s[6:15] = R.from_euler('xyz', [5,2.5,0], degrees=True).as_dcm().flatten()
 			self.init_state_start = s
 			self.init_state_disturbance = np.zeros(18)
 			self.env_state_bounds = np.ones(self.n)
@@ -36,7 +36,7 @@ class Quadrotor(Env):
 			self.s_min = np.array( \
 						[-2, -2, -2, \
 						  -4, -4, -4, \
-						  -1, -1, -1, -1, -1, -1, -1, -1, -1,
+						  -1.001, -1.001, -1.001, -1.001, -1.001, -1.001, -1.001, -1.001, -1.001,
 						  -50, -50, -50])
 			self.s_max = -self.s_min
 		else:
@@ -45,9 +45,12 @@ class Quadrotor(Env):
 		# parameters
 		self.mass = param.mass
 		self.J = self.param.J
-		self.g = np.array([0,0,-param.g],ndmin=2).T
+		self.g = np.array([0,0,-param.g])
 		self.inv_mass = 1 / self.mass
-		self.inv_J = np.linalg.pinv(self.J)
+		if self.J.shape == (3,3):
+			self.inv_J = np.linalg.pinv(self.J) # full matrix -> pseudo inverse
+		else:
+			self.inv_J = 1 / self.J # diagonal matrix -> division
 		self.B0 = param.B0
 
 		# reward function stuff
@@ -74,9 +77,17 @@ class Quadrotor(Env):
 			'R31',
 			'R31',
 			'R32',
-			'Anglular Velocity X [rad/s]',
-			'Anglular Velocity Y [rad/s]',
-			'Anglular Velocity Z [rad/s]']
+			'Angular Velocity X [rad/s]',
+			'Angular Velocity Y [rad/s]',
+			'Angular Velocity Z [rad/s]']
+
+		self.deduced_state_names = [
+			'Roll [deg]',
+			'Pitch [deg]',
+			'Yaw [deg]',
+		]
+
+
 		self.actions_name = [
 			'Motor Force 1 [N]',
 			'Motor Force 2 [N]',
@@ -120,17 +131,17 @@ class Quadrotor(Env):
 		if initial_state is None:
 			# while True:
 			# 	rotation = R.random()
-			# 	rpy = rotation.as_euler('zyx', degrees=True)
+			# 	rpy = rotation.as_euler('xyz', degrees=True)
 			# 	print(rpy)
 			# 	if abs(rpy[0]) < 5 and abs(rpy[1]) < 5:
 			# 		break
-			roll = 0 #np.random.uniform(-10, 10)
-			pitch = 0# np.random.uniform(-10, 10)
-			yaw = 0 #np.random.uniform(-10, 10)
-			rotation = R.from_euler('zyx', [roll, pitch, yaw], degrees=True)
+			roll = 30 #np.random.uniform(-10, 10)
+			pitch = 30# np.random.uniform(-10, 10)
+			yaw = 30 #np.random.uniform(-10, 10)
+			rotation = R.from_euler('xyz', [roll, pitch, yaw], degrees=True)
 			self.s = np.zeros(18)
-			self.s[0:3] = np.random.uniform(-1, 1, 3)
-			self.s[0:3] = np.array([-0.5,0,0])
+			# self.s[0:3] = np.random.uniform(-1, 1, 3)
+			self.s[0:3] = np.array([-0.1,0.1,0.2])
 			self.s[6:15] = rotation.as_dcm().flatten()
 		else:
 			self.s = initial_state
@@ -147,20 +158,20 @@ class Quadrotor(Env):
 		# 	dsdt, nd array, (n,1)
 
 		dsdt = np.zeros(self.n)
-		omega = s[15:].reshape((3,1))
+		omega = s[15:]
 		R = s[6:15].reshape((3,3))
 
 		# get input 
-		a = np.reshape(a,(self.m,1))
+		a = np.reshape(a,(self.m,))
 		eta = np.dot(self.B0,a)
-		f_u = np.array([[0],[0],[eta[0]]])
+		f_u = np.array([0,0,eta[0]])
 		tau_u = np.array([eta[1],eta[2],eta[3]])
 
 		# dynamics 
 		# dot{p} = v 
 		dsdt[0:3] = s[3:6] 
 		# mv = mg + R f_u 
-		dsdt[3:6] = np.squeeze( self.g + np.dot(R,f_u) / self.mass )
+		dsdt[3:6] = self.g + np.dot(R,f_u) / self.mass
 
 		# dot{R} = R S(w)
 		# to integrate the dynamics, we essentially need to apply
@@ -181,13 +192,13 @@ class Quadrotor(Env):
 			if self.time_step % 100 == 0:
 				u, s, v = np.linalg.svd(Rnew)
 				Rnew = u @ v
+			# print("Rnew", Rnew)
 
 			# d) transform Rnew to a "delta R" that works with the usual euler integration
 			dsdt[6:15] = ((Rnew - R) / self.ave_dt).flatten()
 
 		# mJ = Jw x w + tau_u 
-		dsdt[15:] = np.squeeze( np.dot(self.inv_J, 
-			np.reshape(np.cross(np.squeeze(np.dot(self.J,omega)),np.squeeze(omega)),(3,1)) + tau_u) )
+		dsdt[15:] = self.inv_J * (np.cross(self.J * omega,omega) + tau_u)
 		return dsdt.reshape((len(dsdt),1))
 
 
@@ -230,10 +241,10 @@ class Quadrotor(Env):
 			rot_angle = omega_norm * self.ave_dt
 			dRdt = agnp.eye(3) + agnp.sin(rot_angle) * K + (1. - agnp.cos(rot_angle)) * agnp.dot(K,K)
 			Rnew = agnp.dot(dRdt, R)
-			# # c) re-orthogonolize Rnew using SVD, see sim-to-real paper
-			# if self.time_step % 100 == 0:
-			# 	u, s, v = agnp.linalg.svd(Rnew)
-			# 	Rnew = u @ v
+			# c) re-orthogonolize Rnew using SVD, see sim-to-real paper
+			if self.time_step % 2 == 0:
+				u, s, v = agnp.linalg.svd(Rnew)
+				Rnew = u @ v
 
 			# d) transform Rnew to a "delta R" that works with the usual euler integration
 			dRdt = ((Rnew - R) / self.ave_dt).flatten()
@@ -250,16 +261,49 @@ class Quadrotor(Env):
 		sp1 = np.squeeze(np.reshape(s,(len(s),1)) + dsdt*dt)
 		return sp1
 
+	def deduce_state(self, s):
+		rotation = s[6:15].reshape((3,3))
+		rpy = R.from_dcm(rotation).as_euler('xyz', degrees=True)
+		return rpy
 
 	def sample_state_around(self, s):
 		dp = np.random.normal(0, 0.05, 3)
 		dv = np.random.normal(0, 0.1, 3)
 		rpy = np.random.normal(0, 5, 3)
-		dR = R.from_euler('zyx', rpy, degrees=True).as_dcm()
+		dR = R.from_euler('xyz', rpy, degrees=True).as_dcm()
 		dw = np.random.normal(0, 0.5, 3)
 
 		result = np.concatenate((s[0:3] + dp, s[3:6] + dv, (s[6:15].reshape((3,3)) @ dR).flatten(), s[15:18] + dw))
 		return np.clip(result, self.s_min, self.s_max)
+
+	def visualize(self,states,dt):
+
+		import meshcat
+		import meshcat.geometry as g
+		import meshcat.transformations as tf
+		import time 
+
+		# Create a new visualizer
+		vis = meshcat.Visualizer()
+		vis.open()
+
+		vis["/Cameras/default"].set_transform(
+			tf.translation_matrix([0,0,0]).dot(
+			tf.euler_matrix(0,np.radians(-30),-np.pi/2)))
+
+		vis["/Cameras/default/rotated/<object>"].set_transform(
+			tf.translation_matrix([1, 0, 0]))
+
+		vis["Quadrotor"].set_object(g.StlMeshGeometry.from_file('systems/crazyflie2.stl'))
+
+		while True:
+			for state in states:
+				rotation = state[6:15].reshape((3,3))
+				q = R.from_dcm(rotation).as_quat()
+				vis["Quadrotor"].set_transform(
+					tf.translation_matrix([state[0], state[1], state[2]]).dot(
+					  tf.quaternion_matrix(q)))
+				time.sleep(dt)
 
 	def env_barrier(self,action):
 		pass
