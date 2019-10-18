@@ -11,14 +11,15 @@ if __name__ == '__main__':
 	parser.add_argument("--animate", action='store_true')
 	args = parser.parse_args()
 
+	# data = np.load("orca5.npy")
 
 	data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
 
-	print(data.dtype)
+	# print(data.dtype)
 
-	# store in binary format
-	with open("orca.npy", "wb") as f:
-		np.save(f, data, allow_pickle=False)
+	# # store in binary format
+	# with open("orca.npy", "wb") as f:
+	# 	np.save(f, data, allow_pickle=False)
 
 	num_agents = int((data.shape[1] - 1) / 4)
 	print(num_agents)
@@ -36,9 +37,10 @@ if __name__ == '__main__':
 		for i in range(num_agents):
 			vis["agent"+str(i)].set_object(g.Sphere(1.5))
 
-		for row in data:
-			t = row[0]
-			for i in range(num_agents):
-				state = row[i*4+1:i*4+5]
-				vis["agent" + str(i)].set_transform(tf.translation_matrix([state[0], state[1], 0]))
-			time.sleep(0.01)
+		while True:
+			for row in data:
+				t = row[0]
+				for i in range(num_agents):
+					state = row[i*4+1:i*4+5]
+					vis["agent" + str(i)].set_transform(tf.translation_matrix([state[0], state[1], 0]))
+				time.sleep(0.1)

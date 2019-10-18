@@ -83,6 +83,19 @@ class SingleIntegrator(Env):
 
 
 	def reward(self):
+		minDist = np.Inf
+		for agent_i in self.agents:
+			idx = self.agent_idx_to_state_idx(agent_i.i)
+			pos_i = self.s[idx:idx+2]
+			for agent_j in self.agents:
+				if agent_i != agent_j:
+					idx = self.agent_idx_to_state_idx(agent_j.i)
+					pos_j = self.s[idx:idx+2]
+					dist = np.linalg.norm(pos_i - pos_j)
+					if dist < minDist:
+						minDist = dist
+		if minDist < 1.5:
+			return -1
 		return 0
 
 
