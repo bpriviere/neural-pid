@@ -6,6 +6,35 @@ import autograd.numpy as np  # Thinly-wrapped numpy
 import autograd.numpy as agnp  # Thinly-wrapped numpy
 import rowan
 
+# Quaternion routines adapted from rowan to use autograd
+def qmultiply(q1, q2):
+	return agnp.concatenate((
+		agnp.array([q1[0] * q2[0]]), # w1w2
+		q1[0] * q2[1:4] + q2[0] * q1[1:4] + agnp.cross(q1[1:4], q2[1:4])))
+
+def qconjugate(q):
+	return agnp.concatenate((q[0:1],-q[1:4]))
+
+def qrotate(q, v):
+	quat_v = agnp.concatenate((agnp.array([0]), v))
+	return qmultiply(q, qmultiply(quat_v, qconjugate(q)))[1:]
+
+def qexp(q):
+	norm = agnp.linalg.norm(q[1:4])
+	e = agnp.exp(q[0])
+	result_w = e * agnp.cos(norm)
+	if agnp.isclose(norm, 0):
+		result_v = agnp.zeros(3)
+	else:
+		result_v = e * q[1:4] / norm * agnp.sin(norm)
+	return agnp.concatenate((agnp.array([result_w]), result_v))
+
+def qintegrate(q, v, dt):
+	quat_v = agnp.concatenate((agnp.array([0]), v*dt/2))
+	return qmultiply(qexp(quat_v), q)
+
+def qnormalize(q):
+	return q / agnp.linalg.norm(q)
 
 class Quadrotor(Env):
 
@@ -28,18 +57,13 @@ class Quadrotor(Env):
 
 		# initial conditions
 		if param.env_case is 'SmallAngle':
-			s = np.zeros(13)
-			s[6:10] = rowan.from_euler(np.radians(5), np.radians(2.5), np.radians(0), 'xyz')
-			self.init_state_start = s
-			self.init_state_disturbance = np.zeros(18)
-			self.env_state_bounds = np.ones(self.n)
-
 			self.s_min = np.array( \
 						[-2, -2, -2, \
 						  -4, -4, -4, \
 						  -1.001, -1.001, -1.001, -1.001,
 						  -50, -50, -50])
 			self.s_max = -self.s_min
+			self.rpy_limit = np.array([10, 10, 10])
 		else:
 			raise Exception('param.env_case invalid ' + param.env_case)
 
@@ -56,11 +80,11 @@ class Quadrotor(Env):
 
 		# reward function stuff
 		# see row 8, Table 3, sim-to-real paper
-		self.alpha_w = 0.10
-		self.alpha_a = 0.05
-		self.alpha_R = 0.50
-		self.alpha_v = 0.0
-		self.max_reward = 0.5
+		self.alpha_w = 0 #0.10
+		self.alpha_a = 0 #0.05
+		self.alpha_R = 0.1 #0.50
+		self.alpha_v = 0 #0.0
+		self.max_reward = np.sqrt(2) * self.alpha_R
 
 		self.states_name = [
 			'Position X [m]',
@@ -110,7 +134,7 @@ class Quadrotor(Env):
 		state_ref = self.param.ref_trajectory[:,self.time_step]
 		ep = np.linalg.norm(self.s[0:3] - state_ref[0:3])
 		ev = np.linalg.norm(self.s[3:6] - state_ref[3:6])
-		ew = np.linalg.norm(self.s[15:18] - state_ref[15:18])
+		ew = np.linalg.norm(self.s[10:13] - state_ref[10:13])
 		# R = self.s[6:15].reshape((3,3))
 		# eR = np.arccos((np.trace(R)-1) / 2)
 		eR = rowan.geometry.sym_distance(self.s[6:10], np.array([1,0,0,0]))
@@ -126,20 +150,16 @@ class Quadrotor(Env):
 
 	def reset(self, initial_state = None):
 		if initial_state is None:
-			# while True:
-			# 	rotation = R.random()
-			# 	rpy = rotation.as_euler('xyz', degrees=True)
-			# 	print(rpy)
-			# 	if abs(rpy[0]) < 5 and abs(rpy[1]) < 5:
-			# 		break
-			roll = 30 #np.random.uniform(-10, 10)
-			pitch = 30# np.random.uniform(-10, 10)
-			yaw = 30 #np.random.uniform(-10, 10)
-			q = rowan.from_euler(np.radians(roll), np.radians(pitch), np.radians(yaw), 'xyz')
-			self.s = np.zeros(13)
-			# self.s[0:3] = np.random.uniform(-1, 1, 3)
-			self.s[0:3] = np.array([-0.1,0.1,0.2])
+			self.s = np.empty(self.n)
+			# position and velocity
+			limits = np.array([0.1,0.1,0.1,0.5,0.5,0.5, 0, 0, 0, 0, 2, 2, 2])
+			self.s[0:6] = np.random.uniform(-limits[0:6], limits[0:6], 6)
+			# rotation
+			rpy = np.radians(np.random.uniform(-self.rpy_limit, self.rpy_limit, 3))
+			q = rowan.from_euler(rpy[0], rpy[1], rpy[2], 'xyz')
 			self.s[6:10] = q
+			# angular velocity
+			self.s[10:13] = np.random.uniform(-limits[10:13], limits[10:13], 3)
 		else:
 			self.s = initial_state
 		self.time_step = 0
@@ -192,49 +212,33 @@ class Quadrotor(Env):
 		# 	dsdt, nd array, (n,1)
 
 		dsdt = agnp.zeros(self.n)
-		omega = s[15:].reshape((3,1))
-		R = s[6:15].reshape((3,3))
+		q = s[6:10]
+		omega = s[10:]
 
 		# get input 
-		a = agnp.reshape(a,(self.m,1))
+		a = agnp.reshape(a,(self.m,))
 		eta = agnp.dot(self.B0,a)
-		f_u = agnp.array([[0],[0],[eta[0]]])
+		f_u = agnp.array([0,0,eta[0]])
 		tau_u = agnp.array([eta[1],eta[2],eta[3]])
 
 		# dynamics 
 		# dot{p} = v 
 		dpdt = s[3:6] 
 		# mv = mg + R f_u 
-		dvdt = agnp.squeeze( self.g + agnp.dot(R,f_u) / self.mass )
+		dvdt = self.g + qrotate(q,f_u) / self.mass
 
 		# dot{R} = R S(w)
-		# to integrate the dynamics, we essentially need to apply
-		# Rodriguez formula, see
-		# https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-696.pdf, 6.1.2
-		# and https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
-		# a) rotate w from body to world frame
-		omega_world = agnp.dot(R, omega)
-		# b) apply Rodriguez formula
-		omega_norm = agnp.linalg.norm(omega_world)
-		dRdt = agnp.zeros(9)
-		if omega_norm > 0:
-			wx, wy, wz = omega_world.flatten()
-			K = agnp.array([[0, -wz, wy], [wz, 0, -wx], [-wy, wx, 0]]) / omega_norm
-			rot_angle = omega_norm * self.ave_dt
-			dRdt = agnp.eye(3) + agnp.sin(rot_angle) * K + (1. - agnp.cos(rot_angle)) * agnp.dot(K,K)
-			Rnew = agnp.dot(dRdt, R)
-			# c) re-orthogonolize Rnew using SVD, see sim-to-real paper
-			if self.time_step % 2 == 0:
-				u, s, v = agnp.linalg.svd(Rnew)
-				Rnew = u @ v
-
-			# d) transform Rnew to a "delta R" that works with the usual euler integration
-			dRdt = ((Rnew - R) / self.ave_dt).flatten()
+		# to integrate the dynamics, see
+		# https://www.ashwinnarayan.com/post/how-to-integrate-quaternions/, and
+		# https://arxiv.org/pdf/1604.08139.pdf
+		qnew = qintegrate(q, omega, self.ave_dt)
+		qnew = qnormalize(qnew)
+		# transform qnew to a "delta q" that works with the usual euler integration
+		dqdt = (qnew - q) / self.ave_dt
 
 		# mJ = Jw x w + tau_u 
-		dwdt = agnp.squeeze( agnp.dot(self.inv_J, 
-			agnp.reshape(np.cross(agnp.squeeze(agnp.dot(self.J,omega)),agnp.squeeze(omega)),(3,1)) + tau_u) )
-		return agnp.concatenate((dpdt, dvdt, dRdt, dwdt))
+		dwdt = self.inv_J * (agnp.cross(self.J * omega,omega) + tau_u)
+		return agnp.concatenate((dpdt, dvdt, dqdt, dwdt))
 
 
 	def next_state(self,s,a):
@@ -244,7 +248,7 @@ class Quadrotor(Env):
 		return sp1
 
 	def deduce_state(self, s):
-		rpy = np.degrees(rowan.to_euler(s[6:10], 'xyz'))
+		rpy = np.degrees(rowan.to_euler(rowan.normalize(s[6:10]), 'xyz'))
 		return rpy
 
 	def sample_state_around(self, s):

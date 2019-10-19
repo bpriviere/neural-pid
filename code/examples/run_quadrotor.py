@@ -4,8 +4,9 @@ from systems.quadrotor import Quadrotor
 import numpy as np
 import matplotlib.pyplot as plt
 import rowan
+import torch
 
-# TODO make this optional
+# load module that contains the CF firmware as baseline
 import os, sys
 sys.path.insert(1, os.path.join(os.getcwd(),'../baseline'))
 import cfsim.cffirmware as firm
@@ -63,7 +64,7 @@ class QuadrotorParam(Param):
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 
-		s_desired = np.zeros(18)
+		s_desired = np.zeros(13)
 		s_desired[6:10] = rowan.from_euler(np.radians(0), np.radians(0), np.radians(0), 'xyz')
 		self.ref_trajectory = np.tile(np.array([s_desired.T]).T, (1, self.sim_nt))
 
@@ -125,7 +126,6 @@ class FirmwareController:
 		self.state.velocity.z = state[5]
 
 		rpy = np.degrees(rowan.to_euler(state[6:10], 'xyz'))
-		print("rpy", rpy)
 		self.state.attitude.roll = rpy[0]
 		self.state.attitude.pitch = -rpy[1] # inverted coordinate system!
 		self.state.attitude.yaw = rpy[2]
@@ -142,8 +142,6 @@ class FirmwareController:
 		torqueArr = firm.floatArray_frompointer(self.control.torque)
 		torque = np.array([torqueArr[0], torqueArr[1], torqueArr[2]])
 
-		print("want",thrust, torque)
-
 		thrust_to_torque = 0.006
 		arm_length = 0.046
 		thrustpart = 0.25 * thrust
@@ -159,7 +157,6 @@ class FirmwareController:
 			thrustpart + rollpart + pitchpart + yawpart,
 			thrustpart + rollpart - pitchpart - yawpart
 		])
-		print(motorForce)
 		motorForce = np.clip(motorForce, self.a_min, self.a_max)
 
 		v = firm.controllerSJCGetq()
@@ -176,30 +173,41 @@ class FirmwareController:
 		return motorForce
 		# return np.array([0.0085, 0.0085, 0.0085, 0.0085]) * 9.80
 
+class FilePolicy:
+	def __init__(self, filename):
+		data = np.loadtxt(filename, delimiter=',', ndmin=2)
+		self.states = data[:,0:13]
+		self.actions = data[:,13:17]
+		self.steps = data.shape[0]
+		print(self.actions.shape)
+
 
 if __name__ == '__main__':
 	param = QuadrotorParam()
 	env = Quadrotor(param)
 
 	controllers = {
+		'RL':	torch.load(param.sim_rl_model_fn),
 		'FW':	FirmwareController(param.a_min, param.a_max),
+		# 'RRT':	FilePolicy(param.rrt_fn),
+		# 'SCP':	FilePolicy(param.scp_fn),
 	}
 
 	run(param, env, controllers)
 
-	q = np.array(controllers['FW'].q)
-	qr = np.array(controllers['FW'].qr)
-	omega = np.array(controllers['FW'].omega)
-	omegar = np.array(controllers['FW'].omegar)
+	# q = np.array(controllers['FW'].q)
+	# qr = np.array(controllers['FW'].qr)
+	# omega = np.array(controllers['FW'].omega)
+	# omegar = np.array(controllers['FW'].omegar)
 
 
-	fig, ax = plt.subplots(2, 3)
-	for i in range(3):
-		ax[0][i].plot(omega[:,i],label='omega' + str(i))
-		ax[0][i].plot(omegar[:,i], label='omegar' + str(i))
-		ax[0][i].legend()
-		ax[1][i].plot(q[:,i],label='q' + str(i))
-		ax[1][i].plot(qr[:,i], label='qr' + str(i))
-		ax[1][i].legend()
+	# fig, ax = plt.subplots(2, 3)
+	# for i in range(3):
+	# 	ax[0][i].plot(omega[:,i],label='omega' + str(i))
+	# 	ax[0][i].plot(omegar[:,i], label='omegar' + str(i))
+	# 	ax[0][i].legend()
+	# 	ax[1][i].plot(q[:,i],label='q' + str(i))
+	# 	ax[1][i].plot(qr[:,i], label='qr' + str(i))
+	# 	ax[1][i].legend()
 
-	plt.show()
+	# plt.show()

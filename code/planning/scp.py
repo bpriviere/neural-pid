@@ -2,6 +2,7 @@ import cvxpy as cp
 # import numpy as np
 import autograd.numpy as np  # Thinly-wrapped numpy
 import scipy
+import traceback
 from autograd import grad, elementwise_grad, jacobian
 
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.backends.backend_pdf
 
 
-def scp(param, env):
+def scp(param, env, xf = None):
 
   partialFx = jacobian(env.f_scp, 0)
   partialFu = jacobian(env.f_scp, 1)
@@ -27,7 +28,10 @@ def scp(param, env):
   T = data.shape[0]
   dt = param.sim_dt
 
-  goalState = param.ref_trajectory[:,-1]
+  if xf is None:
+    goalState = param.ref_trajectory[:,-1]
+  else:
+    goalState = xf
 
   x0 = xprev[0]
 
@@ -38,9 +42,9 @@ def scp(param, env):
   xChanges = []
   uChanges = []
   try:
-    obj = 'minimizeX' # 'minimizeError'
+    obj = 'minimizeError' # 'minimizeError', 'minimizeX'
 
-    for iteration in range(0, 20):
+    for iteration in range(10):
 
       x = cp.Variable((T, env.n))
       u = cp.Variable((T, env.m))
@@ -106,10 +110,10 @@ def scp(param, env):
       # bounds (x and u)
       for t in range(0, T):
         constraints.extend([
-          -env.env_state_bounds <= x[t],
-          x[t] <= env.env_state_bounds,
-          -param.rl_control_lim <= u[t],
-          u[t] <= param.rl_control_lim
+          env.s_min <= x[t],
+          x[t] <= env.s_max,
+          env.a_min <= u[t],
+          u[t] <= env.a_max
           ])
 
       prob = cp.Problem(objective, constraints)
@@ -153,7 +157,10 @@ def scp(param, env):
         plt.close(fig)
 
         fig, ax = plt.subplots()
-        ax.plot(u.value[:,0], label="u")
+        ax.plot(u.value[:,0], label="u0")
+        ax.plot(u.value[:,1], label="u1")
+        ax.plot(u.value[:,2], label="u2")
+        ax.plot(u.value[:,3], label="u3")
 
         plt.legend()
         # plt.show()
@@ -161,8 +168,9 @@ def scp(param, env):
         plt.close(fig)
 
         fig, ax = plt.subplots()
-        ax.plot(x.value[:,0], label="pos")
-        ax.plot(x.value[:,1], label="angle")
+        ax.plot(x.value[:,0], label="x")
+        ax.plot(x.value[:,1], label="y")
+        ax.plot(x.value[:,2], label="z")
 
         plt.legend()
         # plt.show()
@@ -172,13 +180,14 @@ def scp(param, env):
       xprev = np.array(x.value)
       uprev = np.array(u.value)
 
-    if obj == 'minimizeU':
+    if True: #obj == 'minimizeU' or obj == 'minimizeX':
       result = np.hstack([xprev, uprev])
       np.savetxt(param.scp_fn, result, delimiter=',')
       return xprev, uprev
 
   except Exception as e:
     print(e)
+    traceback.print_tb(e.__traceback__)
   finally:
     # print(xprev)
     # print(uprev)
