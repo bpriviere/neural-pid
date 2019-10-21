@@ -36,9 +36,10 @@ if __name__ == '__main__':
 		for i in range(num_agents):
 			vis["agent"+str(i)].set_object(g.Sphere(1.5))
 
-		for row in data:
-			t = row[0]
-			for i in range(num_agents):
-				state = row[i*4+1:i*4+5]
-				vis["agent" + str(i)].set_transform(tf.translation_matrix([state[0], state[1], 0]))
-			time.sleep(0.01)
+		while True:
+			for row in data:
+				t = row[0]
+				for i in range(num_agents):
+					state = row[i*4+1:i*4+5]
+					vis["agent" + str(i)].set_transform(tf.translation_matrix([state[0], state[1], 0]))
+				time.sleep(0.01)

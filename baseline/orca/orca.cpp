@@ -9,8 +9,8 @@
 /* Store the goals of the agents. */
 std::vector<RVO::Vector2> goals;
 
-static const int numAgents = 10;
-static const float radius = 50;
+static const int numAgents = 20;
+static const float radius = 30;
 
 void setupScenario(RVO::RVOSimulator *sim)
 {
