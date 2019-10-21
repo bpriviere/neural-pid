@@ -128,6 +128,9 @@ class Quadrotor(Env):
 		self.s = self.next_state(self.s,a)
 		d = self.done() 
 		r = self.reward(a)
+		# penalty if finishing early
+		if d:
+			r -= self.max_reward * (len(self.times) - self.time_step)
 		self.time_step += 1
 		return self.s, r, d, {}
 
@@ -155,7 +158,7 @@ class Quadrotor(Env):
 			 + self.alpha_R * eR) * self.ave_dt
 		if cost > self.max_reward:
 			print("warning: max reward too small", cost)
-		return self.max_reward - cost
+		return -cost
 
 	def reset(self, initial_state = None):
 		if initial_state is None:
