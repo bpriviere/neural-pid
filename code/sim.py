@@ -60,7 +60,11 @@ def sim(param, env, controllers, visualize):
 	SimResult = namedtuple('SimResult', ['states', 'actions', 'steps', 'name'])
 	sim_results = []
 	for name, controller in controllers.items():
-		result = SimResult._make(run_sim(controller, initial_state) + (name, ))
+		print("Running simulation with " + name)
+		if hasattr(controller, 'policy'):
+			result = SimResult._make(run_sim(controller, initial_state) + (name, ))
+		else:
+			result = SimResult._make((controller.states, controller.actions, controller.steps, name))
 		sim_results.append(result)
 
 	if param.sim_render_on:
@@ -132,7 +136,7 @@ def sim(param, env, controllers, visualize):
 	# visualize
 	if visualize:
 		# plotter.visualize(param, env, states_deeprl)
-		env.visualize(sim_results[0].states[0:result.steps],0.01)
+		env.visualize(sim_results[0].states[0:result.steps],0.1)
 
 	plotter.save_figs(param.plots_fn)
 	plotter.open_figs(param.plots_fn)

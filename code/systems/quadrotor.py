@@ -58,12 +58,12 @@ class Quadrotor(Env):
 		# initial conditions
 		if param.env_case is 'SmallAngle':
 			self.s_min = np.array( \
-						[-2, -2, -2, \
+						[-10, -10, -10, \
 						  -4, -4, -4, \
 						  -1.001, -1.001, -1.001, -1.001,
 						  -50, -50, -50])
 			self.s_max = -self.s_min
-			self.rpy_limit = np.array([10, 10, 10])
+			self.rpy_limit = np.array([60, 60, 60])
 		else:
 			raise Exception('param.env_case invalid ' + param.env_case)
 
@@ -80,11 +80,20 @@ class Quadrotor(Env):
 
 		# reward function stuff
 		# see row 8, Table 3, sim-to-real paper
-		self.alpha_w = 0 #0.10
+		self.alpha_p = 0.01 #1.0
+		self.alpha_w = 0.0 #0.10
 		self.alpha_a = 0 #0.05
 		self.alpha_R = 0.1 #0.50
-		self.alpha_v = 0 #0.0
-		self.max_reward = np.sqrt(2) * self.alpha_R
+		self.alpha_v = 0.0 #0.0
+
+		max_p_error = np.linalg.norm(self.s_max[0:3] - self.s_min[0:3])
+		max_w_error = np.linalg.norm(self.s_max[10:13] - self.s_min[10:13])
+		max_v_error = np.linalg.norm(self.s_max[3:6] - self.s_min[3:6])
+		max_R_error = np.sqrt(2)
+		self.max_reward = self.alpha_R * max_R_error \
+						+ self.alpha_p * max_p_error \
+						+ self.alpha_w * max_w_error \
+						+ self.alpha_v * max_v_error
 
 		self.states_name = [
 			'Position X [m]',
@@ -139,7 +148,7 @@ class Quadrotor(Env):
 		# eR = np.arccos((np.trace(R)-1) / 2)
 		eR = rowan.geometry.sym_distance(self.s[6:10], np.array([1,0,0,0]))
 
-		cost = (ep \
+		cost = (self.alpha_p * ep \
 			 + self.alpha_v * ev \
 			 + self.alpha_w * ew \
 			 + self.alpha_a * np.linalg.norm(a) \
@@ -152,7 +161,7 @@ class Quadrotor(Env):
 		if initial_state is None:
 			self.s = np.empty(self.n)
 			# position and velocity
-			limits = np.array([0.1,0.1,0.1,0.5,0.5,0.5, 0, 0, 0, 0, 2, 2, 2])
+			limits = np.array([0.5,0.5,0.5,1,1,1, 0, 0, 0, 0, 12, 12, 12])
 			self.s[0:6] = np.random.uniform(-limits[0:6], limits[0:6], 6)
 			# rotation
 			rpy = np.radians(np.random.uniform(-self.rpy_limit, self.rpy_limit, 3))
@@ -196,6 +205,8 @@ class Quadrotor(Env):
 		# https://arxiv.org/pdf/1604.08139.pdf
 		qnew = rowan.calculus.integrate(q, omega, self.ave_dt)
 		qnew = rowan.normalize(qnew)
+		if qnew[0] < 0:
+			qnew = -qnew
 		# transform qnew to a "delta q" that works with the usual euler integration
 		dsdt[6:10] = (qnew - q) / self.ave_dt
 

@@ -49,6 +49,27 @@ class QuadrotorParam(Param):
 		# RL
 		self.rl_train_model_fn = '../models/quadrotor/rl_current.pt'
 
+		self.rl_continuous_on = False
+		self.rl_discrete_action_space = [
+			np.array([0, 0, 0, 0]) * 12 / 1000 * 9.81,
+			np.array([0, 0, 0, 1]) * 12 / 1000 * 9.81,
+			np.array([0, 0, 1, 0]) * 12 / 1000 * 9.81,
+			np.array([0, 0, 1, 1]) * 12 / 1000 * 9.81,
+			np.array([0, 1, 0, 0]) * 12 / 1000 * 9.81,
+			np.array([0, 1, 0, 1]) * 12 / 1000 * 9.81,
+			np.array([0, 1, 1, 0]) * 12 / 1000 * 9.81,
+			np.array([0, 1, 1, 1]) * 12 / 1000 * 9.81,
+			np.array([1, 0, 0, 0]) * 12 / 1000 * 9.81,
+			np.array([1, 0, 0, 1]) * 12 / 1000 * 9.81,
+			np.array([1, 0, 1, 0]) * 12 / 1000 * 9.81,
+			np.array([1, 0, 1, 1]) * 12 / 1000 * 9.81,
+			np.array([1, 1, 0, 0]) * 12 / 1000 * 9.81,
+			np.array([1, 1, 0, 1]) * 12 / 1000 * 9.81,
+			np.array([1, 1, 1, 0]) * 12 / 1000 * 9.81,
+			np.array([1, 1, 1, 1]) * 12 / 1000 * 9.81,
+		]
+		self.rl_lr = 1e-3 #5e-3
+
 		# IL
 		self.il_train_model_fn = '../models/quadrotor/il_current.pt'
 		self.il_imitate_model_fn = '../models/quadrotor/rl_current.pt'
@@ -59,7 +80,7 @@ class QuadrotorParam(Param):
 		self.sim_render_on = False
 
 		self.sim_t0 = 0
-		self.sim_tf = 2
+		self.sim_tf = 5
 		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -187,7 +208,7 @@ if __name__ == '__main__':
 	env = Quadrotor(param)
 
 	controllers = {
-		'RL':	torch.load(param.sim_rl_model_fn),
+		'RL':	torch.load(param.rl_train_model_fn),
 		'FW':	FirmwareController(param.a_min, param.a_max),
 		# 'RRT':	FilePolicy(param.rrt_fn),
 		# 'SCP':	FilePolicy(param.scp_fn),
