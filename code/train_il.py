@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.utils.data as Data
 import numpy as np 
 import random 
+import glob
 
 from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
@@ -192,7 +193,11 @@ def train_il(param, env):
 
 	# datasets
 	if param.il_load_dataset_on:
-		dataset = load_orca_dataset("../baseline/orca/build/orca.npy",param.r_comm)
+		dataset = []
+		for file in glob.glob("../baseline/orca/build/*.npy"):
+			print(file)
+			dataset.extend(load_orca_dataset(file,param.r_comm))
+		print('Total Dataset Size: ',len(dataset))
 		loader_train,loader_test = make_orca_loaders(
 			dataset=dataset,
 			shuffle=True,

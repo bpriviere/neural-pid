@@ -11,14 +11,15 @@ if __name__ == '__main__':
 	parser.add_argument("--animate", action='store_true')
 	args = parser.parse_args()
 
+	# data = np.load("orca5.npy")
 
 	data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
 
-	print(data.dtype)
+	# print(data.dtype)
 
-	# store in binary format
-	with open("orca.npy", "wb") as f:
-		np.save(f, data, allow_pickle=False)
+	# # store in binary format
+	# with open("orca.npy", "wb") as f:
+	# 	np.save(f, data, allow_pickle=False)
 
 	num_agents = int((data.shape[1] - 1) / 4)
 	print(num_agents)

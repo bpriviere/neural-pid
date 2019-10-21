@@ -3,14 +3,16 @@
 #include <vector>
 
 #include <fstream>
+#include <random>
 
 #include "RVO.h"
 
 /* Store the goals of the agents. */
 std::vector<RVO::Vector2> goals;
 
-static const int numAgents = 20;
-static const float radius = 30;
+
+static const int numAgents = 10;
+static const float radius = 15;
 
 void setupScenario(RVO::RVOSimulator *sim)
 {
@@ -26,15 +28,53 @@ void setupScenario(RVO::RVOSimulator *sim)
     /* radius*/ 1.5f,
     /* maxSpeed*/ 2.0f);
 
-  /*
-   * Add agents, specifying their start position, and store their goals on the
-   * opposite side of the environment.
-   */
-  for (size_t i = 0; i < numAgents; ++i) {
-    sim->addAgent(radius *
-                  RVO::Vector2(std::cos(i * 2.0f * M_PI / numAgents),
-                               std::sin(i * 2.0f * M_PI / numAgents)));
-    goals.push_back(-sim->getAgentPosition(i));
+  // /*
+  //  * Add agents, specifying their start position, and store their goals on the
+  //  * opposite side of the environment.
+  //  */
+  // for (size_t i = 0; i < numAgents; ++i) {
+  //   sim->addAgent(radius *
+  //                 RVO::Vector2(std::cos(i * 2.0f * M_PI / numAgents),
+  //                              std::sin(i * 2.0f * M_PI / numAgents)));
+  //   goals.push_back(-sim->getAgentPosition(i));
+  // }
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(-radius, radius);
+  for (size_t i = 0; i < numAgents;) {
+    float x = dis(gen);
+    float y = dis(gen);
+    RVO::Vector2 pos(x, y);
+    bool collision = false;
+    for (size_t j = 0; j < i; ++j) {
+      float dist = RVO::abs(pos - sim->getAgentPosition(j));
+      if (dist <= 2) {
+        collision = true;
+        break;
+      }
+    }
+    if (!collision) {
+      sim->addAgent(pos);
+      // find a collision-free goal
+      do {
+        RVO::Vector2 goal(dis(gen), dis(gen));
+        collision = false;
+        for (size_t j = 0; j < i; ++j) {
+          float dist = RVO::abs(goal - goals[j]);
+          if (dist <= 2) {
+            collision = true;
+            break;
+          }
+        }
+        if (!collision) {
+          goals.push_back(goal);
+          break;
+        }
+      } while(true);
+      // next agent
+      ++i;
+    }
   }
 }
 
@@ -108,7 +148,7 @@ int main()
   while (!reachedGoal(&sim));
 
   // keep simulation running a bit longer
-  for (size_t i = 0; i < 500; ++i) {
+  for (size_t i = 0; i < 10; ++i) {
     // output current simulation result
     output << sim.getGlobalTime();
     for (size_t i = 0; i < sim.getNumAgents(); ++i) {
