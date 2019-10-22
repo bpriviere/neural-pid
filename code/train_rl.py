@@ -36,19 +36,20 @@ def train_rl(param, env):
 	# init model 
 	if continuous:
 		model = DDPG(
-			state_dim,
-			action_dim,
-			env.a_min,
-			env.a_max,
+			param.rl_mu_network_architecture,
+			param.rl_q_network_architecture,
+			param.rl_network_activation,
+			param.a_min,
+			param.a_max,
+			param.rl_action_std,
+			param.rl_max_action_perturb,
 			param.rl_lr_mu,
 			param.rl_lr_q,
+			param.rl_tau,
 			param.rl_gamma,
 			param.rl_batch_size,
-			param.rl_buffer_limit,
-			param.rl_action_std,
-			param.rl_tau,
 			param.rl_K_epoch,
-			param.rl_max_action_perturb,
+			param.rl_buffer_limit,
 			param.rl_gpu_on)
 	else:
 		model = PPO(

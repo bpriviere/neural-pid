@@ -51,6 +51,8 @@ class Quadrotor(Env):
 		self.n = 13
 		self.m = 4
 
+		# learning stuff 
+
 		# control bounds
 		self.a_min = param.a_min
 		self.a_max = param.a_max
@@ -95,6 +97,7 @@ class Quadrotor(Env):
 						+ self.alpha_w * max_w_error \
 						+ self.alpha_v * max_v_error
 
+		# plotting stuff
 		self.states_name = [
 			'Position X [m]',
 			'Position Y [m]',
@@ -109,14 +112,11 @@ class Quadrotor(Env):
 			'Angular Velocity X [rad/s]',
 			'Angular Velocity Y [rad/s]',
 			'Angular Velocity Z [rad/s]']
-
 		self.deduced_state_names = [
 			'Roll [deg]',
 			'Pitch [deg]',
 			'Yaw [deg]',
 		]
-
-
 		self.actions_name = [
 			'Motor Force 1 [N]',
 			'Motor Force 2 [N]',

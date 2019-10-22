@@ -1,10 +1,15 @@
+
+# my package
 from param import Param
 from run import run
 from systems.quadrotor import Quadrotor
+
+# standard package
 import numpy as np
 import matplotlib.pyplot as plt
 import rowan
 import torch
+from torch import nn,tanh
 
 # load module that contains the CF firmware as baseline
 import os, sys
@@ -16,6 +21,13 @@ class QuadrotorParam(Param):
 		super().__init__()
 		self.env_name = 'Quadrotor'
 		self.env_case = 'SmallAngle'
+
+		# flags
+		self.rl_continuous_on = True
+		self.sim_render_on = False
+		self.pomdp_on = False
+		self.single_agent_sim = True
+		self.multi_agent_sim = False
 
 		# Crazyflie 2.0 quadrotor
 		self.mass = 0.034 # kg
@@ -49,26 +61,55 @@ class QuadrotorParam(Param):
 		# RL
 		self.rl_train_model_fn = '../models/quadrotor/rl_current.pt'
 
-		self.rl_continuous_on = False
-		self.rl_discrete_action_space = [
-			np.array([0, 0, 0, 0]) * 12 / 1000 * 9.81,
-			np.array([0, 0, 0, 1]) * 12 / 1000 * 9.81,
-			np.array([0, 0, 1, 0]) * 12 / 1000 * 9.81,
-			np.array([0, 0, 1, 1]) * 12 / 1000 * 9.81,
-			np.array([0, 1, 0, 0]) * 12 / 1000 * 9.81,
-			np.array([0, 1, 0, 1]) * 12 / 1000 * 9.81,
-			np.array([0, 1, 1, 0]) * 12 / 1000 * 9.81,
-			np.array([0, 1, 1, 1]) * 12 / 1000 * 9.81,
-			np.array([1, 0, 0, 0]) * 12 / 1000 * 9.81,
-			np.array([1, 0, 0, 1]) * 12 / 1000 * 9.81,
-			np.array([1, 0, 1, 0]) * 12 / 1000 * 9.81,
-			np.array([1, 0, 1, 1]) * 12 / 1000 * 9.81,
-			np.array([1, 1, 0, 0]) * 12 / 1000 * 9.81,
-			np.array([1, 1, 0, 1]) * 12 / 1000 * 9.81,
-			np.array([1, 1, 1, 0]) * 12 / 1000 * 9.81,
-			np.array([1, 1, 1, 1]) * 12 / 1000 * 9.81,
-		]
-		self.rl_lr = 1e-3 #5e-3
+		# common param
+		self.rl_gamma = 0.999
+		self.rl_K = 10
+		self.rl_max_episodes = 50000
+		self.rl_batch_size = 2000
+		if self.rl_continuous_on:
+			# ddpg param
+			self.rl_lr_mu = 1e-4
+			self.rl_lr_q = 1e-3
+			self.rl_buffer_limit = 5e6
+			self.rl_action_std = 0.1
+			self.rl_max_action_perturb = 1
+			self.rl_tau = 0.995
+			# network architecture
+			n,m,h_mu,h_q = 13,4,64,64 # state dim, action dim, hidden layers
+			self.rl_mu_network_architecture = nn.ModuleList([
+				nn.Linear(n,h_mu), 
+				nn.Linear(h_mu,h_mu),
+				nn.Linear(h_mu,m)])
+			self.rl_q_network_architecture = nn.ModuleList([
+				nn.Linear(n+m,h_q),
+				nn.Linear(h_q,h_q),
+				nn.Linear(h_q,1)])
+			self.rl_network_activation = tanh 
+
+		else:
+			# ppo param s
+			self.rl_lr = 5e-3
+			self.rl_lmbda = 0.95
+			self.rl_eps_clip = 0.2
+			self.rl_discrete_action_space = [
+				np.array([0, 0, 0, 0]) * 12 / 1000 * 9.81,
+				np.array([0, 0, 0, 1]) * 12 / 1000 * 9.81,
+				np.array([0, 0, 1, 0]) * 12 / 1000 * 9.81,
+				np.array([0, 0, 1, 1]) * 12 / 1000 * 9.81,
+				np.array([0, 1, 0, 0]) * 12 / 1000 * 9.81,
+				np.array([0, 1, 0, 1]) * 12 / 1000 * 9.81,
+				np.array([0, 1, 1, 0]) * 12 / 1000 * 9.81,
+				np.array([0, 1, 1, 1]) * 12 / 1000 * 9.81,
+				np.array([1, 0, 0, 0]) * 12 / 1000 * 9.81,
+				np.array([1, 0, 0, 1]) * 12 / 1000 * 9.81,
+				np.array([1, 0, 1, 0]) * 12 / 1000 * 9.81,
+				np.array([1, 0, 1, 1]) * 12 / 1000 * 9.81,
+				np.array([1, 1, 0, 0]) * 12 / 1000 * 9.81,
+				np.array([1, 1, 0, 1]) * 12 / 1000 * 9.81,
+				np.array([1, 1, 1, 0]) * 12 / 1000 * 9.81,
+				np.array([1, 1, 1, 1]) * 12 / 1000 * 9.81,
+			]
+			self.rl_lr = 1e-3 #5e-3
 
 		# IL
 		self.il_train_model_fn = '../models/quadrotor/il_current.pt'
@@ -77,10 +118,9 @@ class QuadrotorParam(Param):
 		# Sim
 		self.sim_rl_model_fn = '../models/quadrotor/rl_current.pt'
 		self.sim_il_model_fn = '../models/quadrotor/il_current.pt'
-		self.sim_render_on = False
 
 		self.sim_t0 = 0
-		self.sim_tf = 5
+		self.sim_tf = 2
 		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -89,9 +129,6 @@ class QuadrotorParam(Param):
 		s_desired[6:10] = rowan.from_euler(np.radians(0), np.radians(0), np.radians(0), 'xyz')
 		self.ref_trajectory = np.tile(np.array([s_desired.T]).T, (1, self.sim_nt))
 
-		self.pomdp_on = False
-		self.single_agent_sim = True
-		self.multi_agent_sim = False
 
 
 class FirmwareController:

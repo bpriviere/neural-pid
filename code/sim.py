@@ -16,7 +16,7 @@ def sim(param, env, controllers, visualize):
 
 	def run_sim(controller, initial_state):
 		states = np.zeros((len(times), env.n))
-		actions = np.zeros((len(times) - 1,env.m))
+		actions = np.zeros((len(times)-1,env.m))
 		states[0] = env.reset(initial_state)
 		reward = 0 
 		for step, time in enumerate(times[:-1]):
@@ -42,7 +42,7 @@ def sim(param, env, controllers, visualize):
 	device = "cpu"
 
 	# initial conditions
-	if False:
+	if True:
 		# consensus
 		# s0 = np.array([5,-1,0,2,0,1,1,0,0,-1,1,0,-2,0,-1.5])
 		# orca 10 ring
@@ -98,7 +98,7 @@ def sim(param, env, controllers, visualize):
 				ax.plot(times[0:result.steps], result.actions[0:result.steps,i],label=result.name)
 			ax.legend()
 	elif param.multi_agent_sim:
-		for i_config in range(env.config_dim):
+		for i_config in range(env.state_dim_per_agent):
 			fig,ax = plotter.make_fig()
 			for agent in env.agents:
 				ax.set_title(env.states_name[i_config])
@@ -133,10 +133,10 @@ def sim(param, env, controllers, visualize):
 	# 	for i in range(env.n):
 	# 		fig,ax = plotter.plot(times[1:step_pid+1],ref_state[0:step_pid,i],title="ref " + env.states_name[i])
 
+	plotter.save_figs(param.plots_fn)
+	plotter.open_figs(param.plots_fn)
+
 	# visualize
 	if visualize:
 		# plotter.visualize(param, env, states_deeprl)
 		env.visualize(sim_results[0].states[0:result.steps],0.1)
-
-	plotter.save_figs(param.plots_fn)
-	plotter.open_figs(param.plots_fn)

@@ -13,7 +13,8 @@ from torch.distributions import Categorical
 from learning.pid_net import PID_Net
 from learning.pid_wref_net import PID_wRef_Net
 from learning.ref_net import Ref_Net
-from learning.deepset import DeepSet
+from learning.empty_net import Empty_Net
+from learning.barrier_net import Barrier_Net
 
 # def make_dataset(env):
 # 	# model = PlainPID([2, 40], [4, 20])
@@ -34,7 +35,7 @@ from learning.deepset import DeepSet
 # 	return torch.tensor(states).float(), torch.tensor(actions).float()
 
 
-def load_orca_dataset(filename,neighborDist):
+def load_orca_dataset_action_loss(filename,neighborDist):
 	data = np.load(filename)
 	num_agents = int((data.shape[1] - 1) / 4)
 	# loop over each agent and each timestep to find
@@ -56,6 +57,31 @@ def load_orca_dataset(filename,neighborDist):
 			# desired control is the velocity in the next timestep
 			u = data[t+1, i*4+3:i*4+5]
 			dataset.append([state_i, sg_i, neighbors, u])
+	print('Dataset Size: ',len(dataset))
+	return dataset
+
+def load_orca_dataset_state_loss(filename,neighborDist):
+	data = np.load(filename)
+	num_agents = int((data.shape[1] - 1) / 4)
+	# loop over each agent and each timestep to find
+	#  * current state
+	#  * set of neighboring agents (storing their relative states)
+	#  * label (i.e., desired control)
+	dataset = []
+	for t in range(data.shape[0]-1):
+		for i in range(num_agents):
+			state_i = data[t,i*4+1:i*4+5]
+			sg_i = data[-1,i*4+1:i*4+5]
+			neighbors = []
+			for j in range(num_agents):
+				if i != j:
+					state_j = data[t,j*4+1:j*4+5]
+					dist = np.linalg.norm(state_i[0:2] - state_j[0:2])
+					if dist <= neighborDist:
+						neighbors.append(state_i - state_j)
+			# desired control is the velocity in the next timestep
+			state_i_tp1 = data[t+1,i*4+1:i*4+5]
+			dataset.append([state_i, sg_i, neighbors, state_i_tp1])
 	print('Dataset Size: ',len(dataset))
 	return dataset
 
@@ -132,7 +158,7 @@ def make_dataset(param, env):
 	return torch.tensor(states).float(),torch.tensor(actions).float()
 
 
-def train(param, model, loader):
+def train(param,env,model,loader):
 
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
@@ -144,6 +170,13 @@ def train(param, model, loader):
 			b_y = torch.from_numpy(np.array(b_y)).float()
 
 		prediction = model(b_x)     # input x and predict based on x
+
+		if param.il_state_loss_on:
+			prediction_a = prediction
+			prediction = torch.zeros((b_y.shape))
+			for k,a in enumerate(prediction_a): 
+				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
+
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
 		optimizer.zero_grad()   # clear gradients for next train
 		loss.backward()         # backpropagation, compute gradients
@@ -152,7 +185,7 @@ def train(param, model, loader):
 	return epoch_loss/step
 
 
-def test(model, loader):
+def test(param,env,model,loader):
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
@@ -161,7 +194,14 @@ def test(model, loader):
 		if not isinstance(b_y, torch.Tensor):
 			b_y = torch.from_numpy(np.array(b_y)).float()
 
-		prediction = model(b_x)     # input x and predict based on x
+		prediction = model(b_x)     # input batch state and predict batch action
+
+		if param.il_state_loss_on:
+			prediction_a = prediction
+			prediction = torch.zeros((b_y.shape))
+			for k,a in enumerate(prediction_a): 
+				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
+
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
 		epoch_loss += loss 
 	return epoch_loss/step
@@ -179,11 +219,10 @@ def train_il(param, env):
 		model = PID_wRef_Net(env.n, env.m)
 	elif param.controller_class is 'Ref':
 		model = Ref_Net(env.n, env.m, param.kp, param.kd)
-	elif param.controller_class is 'DeepSet':
-		model = DeepSet(
-			param.network_architecture_phi,
-			param.network_architecture_rho,
-			param.network_activation)
+	elif param.controller_class is 'Barrier':
+		model = Barrier_Net(param,param.controller_learning_module)
+	elif param.controller_class is 'Empty':
+		model = Empty_Net(param,param.controller_learning_module) 
 	else:
 		print('Error in Train Gains, programmatic controller not recognized')
 		exit()
@@ -196,14 +235,18 @@ def train_il(param, env):
 		dataset = []
 		for file in glob.glob("../baseline/orca/build/*.npy"):
 			print(file)
-			dataset.extend(load_orca_dataset(file,param.r_comm))
+			if param.il_state_loss_on:
+				dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+			else:
+				dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
+
 		print('Total Dataset Size: ',len(dataset))
 		loader_train,loader_test = make_orca_loaders(
 			dataset=dataset,
 			shuffle=True,
 			batch_size=param.il_batch_size,
 			test_train_ratio=param.il_test_train_ratio,
-			n_data=None)
+			n_data=param.il_n_data)
 	else:
 		x_train,y_train = make_dataset(param, env)
 		x_test,y_test = make_dataset(param, env)
@@ -220,8 +263,8 @@ def train_il(param, env):
 
 	best_test_loss = Inf
 	for epoch in range(1,param.il_n_epoch+1):
-		train_epoch_loss = train(param, model, loader_train)
-		test_epoch_loss = test(model, loader_test)
+		train_epoch_loss = train(param,env,model,loader_train)
+		test_epoch_loss = test(param,env,model,loader_test)
 		if epoch%param.il_log_interval==0:
 			print('epoch: ', epoch)
 			print('   Train Epoch Loss: ', train_epoch_loss)

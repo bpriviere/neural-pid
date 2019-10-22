@@ -15,19 +15,20 @@ import torch.optim as optim
 class DDPG():
 
 	def __init__(self,
-		state_dim,
-		action_dim,
+		mu_network_architecture,
+		q_network_architecture,
+		activation,
 		a_min,
 		a_max,
+		action_std,
+		max_action_perturb,
 		lr_mu,
 		lr_q,
+		tau,
 		gamma,
 		batch_size,
-		buffer_limit,
-		action_std,
-		tau,
 		K_epoch,
-		max_action_perturb,
+		buffer_limit,
 		gpu_on):
 
 		if gpu_on:
@@ -39,11 +40,15 @@ class DDPG():
 			self.gpu_on = False
 			self.device = "cpu"
 
-		# some param
-		self.action_dim = action_dim
+		# dim
+		self.state_dim = mu_network_architecture[0].in_features
+		self.action_dim = q_network_architecture[0].in_features - self.state_dim
+
+		# control authority 
 		self.action_std = action_std
 		self.a_min = a_min
 		self.a_max = a_max
+		self.eps = max_action_perturb
 
 		# hyperparameters
 		self.lr_mu = lr_mu
@@ -53,18 +58,17 @@ class DDPG():
 		self.buffer_limit = buffer_limit
 		self.tau = tau
 		self.K_epoch = K_epoch
-		self.eps = max_action_perturb
 
 		# memory
 		self.data = ReplayBuffer(int(self.buffer_limit))
 		# self.data = []
 
 		# network
-		self.q = QNet(state_dim,action_dim,self.device)
-		self.q_target = QNet(state_dim,action_dim,self.device)
+		self.q = QNet(q_network_architecture,activation,self.device)
+		self.q_target = QNet(q_network_architecture,activation,self.device)
 		self.q_target.load_state_dict(self.q.state_dict())		
-		self.mu = MuNet(state_dim,action_dim,a_min,a_max,self.device)
-		self.mu_target = MuNet(state_dim,action_dim,a_min,a_max,self.device)
+		self.mu = MuNet(mu_network_architecture,activation,a_min,a_max,self.device)
+		self.mu_target = MuNet(mu_network_architecture,activation,a_min,a_max,self.device)
 		self.mu_target.load_state_dict(self.mu.state_dict())
 
 		self.mu_optimizer = optim.Adam(self.mu.parameters(), lr=self.lr_mu)
@@ -186,41 +190,70 @@ class ReplayBuffer():
 	def __len__(self):
 		return self.count
 
-# mu(s) = a
+# a = mu(s) 
 class MuNet(nn.Module):
-	def __init__(self,state_dim,action_dim,a_min,a_max,device):
+	def __init__(self,layers,activation,a_min,a_max,device):
 		super(MuNet, self).__init__()
-
 		self.to(device)
-
 		self.a_min = torch.from_numpy(a_min).float().to(device)
 		self.a_max = torch.from_numpy(a_max).float().to(device)
-		self.fc1 = nn.Linear(state_dim, 64)
-		self.fc2 = nn.Linear(64, 64)
-		self.fc_mu = nn.Linear(64, action_dim)
+		self.layers = layers
+		self.activation = activation
 
 	def forward(self, x):
-		x = F.relu(self.fc1(x))
-		x = F.relu(self.fc2(x))
-		mu = (torch.tanh(self.fc_mu(x)) + 1) / 2 * (self.a_max - self.a_min) + self.a_min
-		return mu
+		for layer in self.layers[:-1]:
+			x = self.activation(layer(x))
+		# x \in [-1,1]
+		x = torch.tanh(self.layers[-1](x))
+		# x \in [amin,amax]
+		x = (x+1)/2*(self.a_max-self.a_min)+self.a_min
+		return x
 
-# q = q(s,a)
 class QNet(nn.Module):
-	def __init__(self,state_dim,action_dim,device):
+	def __init__(self,layers,activation,device):
 		super(QNet, self).__init__()
-		
 		self.to(device)
-
-		self.fc_s = nn.Linear(state_dim, 32)
-		self.fc_a = nn.Linear(action_dim,32)
-		self.fc_q = nn.Linear(64, 32)
-		self.fc_3 = nn.Linear(32,1)
+		self.layers = layers
+		self.activation = activation
 
 	def forward(self, x, a):
-		h1 = F.relu(self.fc_s(x))
-		h2 = F.relu(self.fc_a(a))
-		cat = torch.cat([h1,h2], dim=1)
-		q = F.relu(self.fc_q(cat))
-		q = self.fc_3(q)
-		return q
+		x = torch.cat([x,a],dim=1)
+		for layer in self.layers[:-1]:
+			x = self.activation(layer(x))
+		x = self.layers[-1](x)
+		return x
+
+
+# class MuNet(nn.Module):
+# 	def __init__(self,state_dim,action_dim,a_min,a_max,device):
+# 		super(MuNet, self).__init__()
+# 		self.to(device)
+# 		self.a_min = torch.from_numpy(a_min).float().to(device)
+# 		self.a_max = torch.from_numpy(a_max).float().to(device)
+# 		self.fc1 = nn.Linear(state_dim, 64)
+# 		self.fc2 = nn.Linear(64, 64)
+# 		self.fc_mu = nn.Linear(64, action_dim)
+
+# 	def forward(self, x):
+# 		x = F.relu(self.fc1(x))
+# 		x = F.relu(self.fc2(x))
+# 		mu = (torch.tanh(self.fc_mu(x)) + 1) / 2 * (self.a_max - self.a_min) + self.a_min
+# 		return mu		
+
+# q = q(s,a)
+# class QNet(nn.Module):
+# 	def __init__(self,state_dim,action_dim,device):
+# 		super(QNet, self).__init__()
+# 		self.to(device)
+# 		self.fc_s = nn.Linear(state_dim, 32)
+# 		self.fc_a = nn.Linear(action_dim,32)
+# 		self.fc_q = nn.Linear(64, 32)
+# 		self.fc_3 = nn.Linear(32,1)
+
+# 	def forward(self, x, a):
+# 		h1 = F.relu(self.fc_s(x))
+# 		h2 = F.relu(self.fc_a(a))
+# 		cat = torch.cat([h1,h2], dim=1)
+# 		q = F.relu(self.fc_q(cat))
+# 		q = self.fc_3(q)
+# 		return q

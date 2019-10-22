@@ -45,20 +45,6 @@ class DeepSet(nn.Module):
 			s_js.append(x[idxs])
 		return s_i,s_g,s_js
 
-	def policy(self,x):
-
-		# inputs observation from all agents...
-		# outputs policy for all agents
-
-		n_agents = np.array(x).shape[0]
-		x = np.squeeze(x)
-		A = []
-		for i in range(n_agents):
-			x_i = [x[i]]
-			A.append(self.forward(x_i).detach().numpy())
-		A = np.reshape(np.asarray(A).flatten(),(n_agents,self.action_dim))
-		return A
-
 class Phi(nn.Module):
 
 	def __init__(self,layers,activation):

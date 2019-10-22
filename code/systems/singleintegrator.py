@@ -4,6 +4,7 @@
 # standard package
 from gym import Env
 import numpy as np 
+import torch 
 
 # my package
 import plotter 
@@ -23,12 +24,13 @@ class SingleIntegrator(Env):
 		self.time_step = None
 
 		self.n_agents = param.n_agents
-		self.config_dim = 4
+		self.state_dim_per_agent = 4
+		self.action_dim_per_agent = 2
 		self.agent_radius = 0.75
 
 		# default parameters [SI units]
-		self.n = self.config_dim*self.n_agents
-		self.m = 2*self.n_agents
+		self.n = self.state_dim_per_agent*self.n_agents
+		self.m = self.action_dim_per_agent*self.n_agents
 
 		self.agents = []
 		for i in range(self.n_agents):
@@ -110,7 +112,7 @@ class SingleIntegrator(Env):
 		# assign goal state 
 		for agent in self.agents:
 			idx = self.agent_idx_to_state_idx(agent.i) + \
-				np.arange(0,self.config_dim)
+				np.arange(0,self.state_dim_per_agent)
 			agent.sg = -initial_state[idx]
 
 		self.update_agents(self.s)			
@@ -131,6 +133,26 @@ class SingleIntegrator(Env):
 			sp1[v_idx] = a[agent_i.i,:]
 		self.update_agents(sp1)
 		return sp1
+		
+	def next_state_training_state_loss(self,s,a):
+		# input: ONE agent state, and ONE agent action
+		# output: increment of state
+		# used in train_il for state-loss function 
+		
+		if isinstance(s, (np.ndarray, np.generic) ):
+			s = torch.from_numpy(s[0:self.state_dim_per_agent]).float()
+		if isinstance(a, (np.ndarray, np.generic) ):
+			a = torch.from_numpy(a).float()
+
+		sp1 = torch.zeros((self.state_dim_per_agent))
+		dt = self.times[1]-self.times[0]
+		I = torch.eye((self.state_dim_per_agent))
+		A = torch.from_numpy(np.array((
+			[[0,1,0,0],[0,0,1,0],[0,0,0,0],[0,0,0,0]]))).float()
+		B = torch.from_numpy(np.array((
+			[[0,0],[0,0],[1,0],[0,1]]))).float()
+		sp1 = (I + A*dt)@s + B@a
+		return sp1		
 
 	def update_agents(self,s):
 		for agent_i in self.agents:
@@ -139,7 +161,7 @@ class SingleIntegrator(Env):
 			agent_i.v = s[idx+2:idx+4]
 
 	def agent_idx_to_state_idx(self,i):
-		return self.config_dim*i 		
+		return self.state_dim_per_agent*i 		
 
 	def visualize(self,states,dt):
 
