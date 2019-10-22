@@ -82,7 +82,7 @@ class Quadrotor(Env):
 
 		# reward function stuff
 		# see row 8, Table 3, sim-to-real paper
-		self.alpha_p = 0.01 #1.0
+		self.alpha_p = 0.1 #1.0
 		self.alpha_w = 0.0 #0.10
 		self.alpha_a = 0 #0.05
 		self.alpha_R = 0.1 #0.50
@@ -130,7 +130,8 @@ class Quadrotor(Env):
 		r = self.reward(a)
 		# penalty if finishing early
 		if d:
-			r -= self.max_reward * (len(self.times) - self.time_step)
+			# r -= self.max_reward * (len(self.times) - self.time_step)
+			r = - self.max_reward * len(self.times)
 		self.time_step += 1
 		return self.s, r, d, {}
 

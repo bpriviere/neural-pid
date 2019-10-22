@@ -16,6 +16,7 @@ class SingleIntegratorParam(Param):
 		self.single_agent_sim = False
 		self.multi_agent_sim = True
 		self.il_state_loss_on = True
+		self.sim_render_on = False		
 
 		# param
 		self.n_agents = 10
@@ -41,7 +42,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 200 
-		self.il_n_data = 10000
+		self.il_n_data = 100000
 
 		# Controller
 		self.controller_class = 'Barrier' # 'Empty','Barrier','PID',
@@ -50,7 +51,7 @@ class SingleIntegratorParam(Param):
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
-		self.sim_render_on = False
+		self.sim_tf = 1000
 
 
 if __name__ == '__main__':
@@ -58,6 +59,7 @@ if __name__ == '__main__':
 	env = SingleIntegrator(param)
 
 	controllers = {
-		'IL':	torch.load(param.sim_il_model_fn),
+		# 'IL':	torch.load(param.sim_il_model_fn),
+		'RL': torch.load(param.sim_rl_model_fn)
 	}
 	run(param, env, controllers)

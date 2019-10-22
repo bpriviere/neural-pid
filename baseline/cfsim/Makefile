@@ -7,12 +7,13 @@ swig:
 	gcc -std=c99 -shared -fPIC \
 		-I$(modinc) \
 		-I$(firmdir)/src/hal/interface \
-		-I/usr/include/python3.6 \
+		-I/home/ben/anaconda3/include/python3.7m \
 		$(modsrc)/planner.c \
 		$(modsrc)/pptraj.c \
 		$(modsrc)/controller_sjc.c \
 		cffirmware_wrap.c \
-		-lm -lpython3.6m \
+		-L /home/ben/anaconda3/lib \
+		-lm -lpython3.7m \
 		-o _cffirmware.so
 
 clean:

@@ -120,7 +120,7 @@ class QuadrotorParam(Param):
 		self.sim_il_model_fn = '../models/quadrotor/il_current.pt'
 
 		self.sim_t0 = 0
-		self.sim_tf = 2
+		self.sim_tf = 3
 		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)

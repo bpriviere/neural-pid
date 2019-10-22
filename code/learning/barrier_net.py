@@ -53,7 +53,7 @@ class Barrier_Net(nn.Module):
 				idxs = idxs.astype(int)
 				barrier += torch.tensor(
 					-x_i[idxs]/np.power(np.linalg.norm(x_i[idxs]) - self.R,3))
-			a_wbarrier[k,:] += barrier
+			a_wbarrier[k,:] += 0*barrier
 		return a_wbarrier
 
 

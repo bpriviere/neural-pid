@@ -178,9 +178,11 @@ def train(param,env,model,loader):
 				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
 
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
+
 		optimizer.zero_grad()   # clear gradients for next train
 		loss.backward()         # backpropagation, compute gradients
 		optimizer.step()        # apply gradients
+		
 		epoch_loss += loss 
 	return epoch_loss/step
 

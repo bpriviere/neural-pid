@@ -42,7 +42,7 @@ def sim(param, env, controllers, visualize):
 	device = "cpu"
 
 	# initial conditions
-	if True:
+	if False:
 		# consensus
 		# s0 = np.array([5,-1,0,2,0,1,1,0,0,-1,1,0,-2,0,-1.5])
 		# orca 10 ring
