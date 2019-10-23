@@ -9,41 +9,28 @@ import numpy as np
 
 class DeepSet(nn.Module):
 
-	def __init__(self, network_architecture_phi, network_architecture_rho, activation):
+	def __init__(self, network_architecture_phi, network_architecture_rho, activation,a_max,a_min):
 		super(DeepSet, self).__init__()
 		
 		self.phi = Phi(network_architecture_phi,activation)
-		self.rho = Rho(network_architecture_rho,activation)
+		self.rho = Rho(network_architecture_rho,activation,a_max,a_min)
 
 		self.state_dim = network_architecture_phi[0].in_features
 		self.hidden_dim = network_architecture_phi[-1].out_features
 		self.action_dim = network_architecture_rho[-1].out_features
 
 	def forward(self,x):
-		# x is a list of [[s^i,{s^j}]] for all j neighbors
-
-		X = torch.zeros((len(x),self.hidden_dim+2*self.state_dim))
+		# x is a list of namedtuple with <relative_goal, relative_neighbors> where relative_neighbors is a list
+		X = torch.zeros((len(x),self.hidden_dim+self.state_dim))
 		for step,x_i in enumerate(x):
-			s_i,s_g,s_js = self.make_list(x_i)
+			relative_goal = torch.from_numpy(x_i.relative_goal).float() 
+			relative_neighbors = x_i.relative_neighbors
 			summ = torch.zeros((self.hidden_dim))
-			for s_j in s_js:
-				summ += self.phi(s_j)
-
-			s_i = torch.from_numpy(s_i).float()
-			s_g = torch.from_numpy(s_g).float()
-			X[step,:] = torch.cat((s_i,s_g,summ))
+			for relative_neighbor in relative_neighbors:
+				relative_neighbor = torch.from_numpy(relative_neighbor).float()
+				summ += self.phi(relative_neighbor)
+			X[step,:] = torch.cat((relative_goal,summ))
 		return self.rho(X)
-
-	def make_list(self,x):
-		# x is an array [s^i, {s^j}] for all j neighbors
-		n_n = int(len(x)/self.state_dim)-2
-		s_i = x[0:self.state_dim]
-		s_g = x[self.state_dim:self.state_dim*2]
-		s_js = []
-		for i_n in range(n_n):
-			idxs = (i_n+2)*self.state_dim + np.arange(0,self.state_dim)
-			s_js.append(x[idxs])
-		return s_i,s_g,s_js
 
 class Phi(nn.Module):
 
@@ -53,10 +40,6 @@ class Phi(nn.Module):
 		self.activation = activation
 
 	def forward(self, x):
-
-		if isinstance(x, (np.ndarray, np.generic) ):
-			x = torch.from_numpy(x).float()
-
 		for layer in self.layers[:-1]:
 			x = self.activation(layer(x))
 		x = self.layers[-1](x)
@@ -65,17 +48,17 @@ class Phi(nn.Module):
 
 class Rho(nn.Module):
 
-	def __init__(self,layers,activation):
+	def __init__(self,layers,activation,a_max,a_min):
 		super(Rho, self).__init__()
 		self.layers = layers
 		self.activation = activation
+		self.a_max = a_max
+		self.a_min = a_min 
 
 	def forward(self, x):
-
-		if isinstance(x, (np.ndarray, np.generic) ):
-			x = torch.from_numpy(x).float()
-
 		for layer in self.layers[:-1]:
 			x = self.activation(layer(x))
-		x = self.layers[-1](x)
+		x = torch.tanh(self.layers[-1](x)) #, x \in [-1,1]
+		x = (x+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() #, x \in [amin,amax]
 		return x
+

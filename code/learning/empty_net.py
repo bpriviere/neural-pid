@@ -20,7 +20,9 @@ class Empty_Net(nn.Module):
 			self.model = DeepSet(
 				param.rl_phi_network_architecture,
 				param.rl_rho_network_architecture,
-				param.rl_network_activation
+				param.rl_network_activation,
+				param.a_max,
+				param.a_min
 				)
 
 			self.action_dim = param.rl_rho_network_architecture[-1].out_features
@@ -30,13 +32,10 @@ class Empty_Net(nn.Module):
 		# inputs observation from all agents...
 		# outputs policy for all agents
 
-		n_agents = np.array(x).shape[0]
-		x = np.squeeze(x)
-		A = []
-		for i in range(n_agents):
-			x_i = [x[i]]
-			A.append(self.model.forward(x_i).detach().numpy())
-		A = np.reshape(np.asarray(A).flatten(),(n_agents,self.action_dim))
+		A = np.empty((len(x),self.action_dim))
+		for i,x_i in enumerate(x):
+			a_i = self([x_i])
+			A[i,:] = a_i.detach().numpy()
 		return A
 
 	def __call__(self,x):			

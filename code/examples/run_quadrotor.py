@@ -116,7 +116,7 @@ class QuadrotorParam(Param):
 		self.il_imitate_model_fn = '../models/quadrotor/rl_current.pt'
 
 		# Sim
-		self.sim_rl_model_fn = '../models/quadrotor/rl_current.pt'
+		self.sim_rl_model_fn = '../models/quadrotor/rl_continuous.pt' # rl_current
 		self.sim_il_model_fn = '../models/quadrotor/il_current.pt'
 
 		self.sim_t0 = 0
@@ -245,7 +245,7 @@ if __name__ == '__main__':
 	env = Quadrotor(param)
 
 	controllers = {
-		'RL':	torch.load(param.rl_train_model_fn),
+		'RL':	torch.load(param.sim_rl_model_fn),
 		'FW':	FirmwareController(param.a_min, param.a_max),
 		# 'RRT':	FilePolicy(param.rrt_fn),
 		# 'SCP':	FilePolicy(param.scp_fn),

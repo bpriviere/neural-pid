@@ -11,8 +11,8 @@
 std::vector<RVO::Vector2> goals;
 
 
-static const int numAgents = 10;
-static const float radius = 15;
+static const int numAgents = 100;
+static const float radius = 50;
 
 void setupScenario(RVO::RVOSimulator *sim)
 {
@@ -28,17 +28,22 @@ void setupScenario(RVO::RVOSimulator *sim)
     /* radius*/ 1.5f,
     /* maxSpeed*/ 2.0f);
 
-  // /*
-  //  * Add agents, specifying their start position, and store their goals on the
-  //  * opposite side of the environment.
-  //  */
-  // for (size_t i = 0; i < numAgents; ++i) {
-  //   sim->addAgent(radius *
-  //                 RVO::Vector2(std::cos(i * 2.0f * M_PI / numAgents),
-  //                              std::sin(i * 2.0f * M_PI / numAgents)));
-  //   goals.push_back(-sim->getAgentPosition(i));
-  // }
 
+// Ring Example 
+  /*
+   * Add agents, specifying their start position, and store their goals on the
+   * opposite side of the environment.
+   */
+//   for (size_t i = 0; i < numAgents; ++i) {
+//     sim->addAgent(radius *
+//                   RVO::Vector2(std::cos(i * 2.0f * M_PI / numAgents),
+//                                std::sin(i * 2.0f * M_PI / numAgents)));
+//     goals.push_back(-sim->getAgentPosition(i));
+//   }
+// }
+
+
+// Random Examples 
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<> dis(-radius, radius);
@@ -49,7 +54,7 @@ void setupScenario(RVO::RVOSimulator *sim)
     bool collision = false;
     for (size_t j = 0; j < i; ++j) {
       float dist = RVO::abs(pos - sim->getAgentPosition(j));
-      if (dist <= 2) {
+      if (dist <= 3.5) {
         collision = true;
         break;
       }
@@ -62,7 +67,7 @@ void setupScenario(RVO::RVOSimulator *sim)
         collision = false;
         for (size_t j = 0; j < i; ++j) {
           float dist = RVO::abs(goal - goals[j]);
-          if (dist <= 2) {
+          if (dist <= 3.5) {
             collision = true;
             break;
           }
@@ -159,7 +164,7 @@ int main()
     output << std::endl;
 
     setPreferredVelocities(&sim);
-    sim.doStep();    
+    // sim.doStep();    
   }
 
   return 0;

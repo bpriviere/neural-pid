@@ -8,12 +8,13 @@ import argparse
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
+	parser.add_argument("file")
 	parser.add_argument("--animate", action='store_true')
 	args = parser.parse_args()
 
-	# data = np.load("orca5.npy")
+	data = np.load(args.file)
 
-	data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
+	# data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
 
 	# print(data.dtype)
 

@@ -9,6 +9,7 @@ import glob
 from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
 from torch.distributions import Categorical
+from collections import namedtuple
 
 from learning.pid_net import PID_Net
 from learning.pid_wref_net import PID_wRef_Net
@@ -34,54 +35,89 @@ from learning.barrier_net import Barrier_Net
 # 		actions.append(action)
 # 	return torch.tensor(states).float(), torch.tensor(actions).float()
 
+# def load_orca_dataset_state_loss(filename,neighborDist):
+# 	data = np.load(filename)
+# 	num_agents = int((data.shape[1] - 1) / 4)
+# 	# loop over each agent and each timestep to find
+# 	#  * current state
+# 	#  * set of neighboring agents (storing their relative states)
+# 	#  * label (i.e., desired control)
+# 	dataset = []
+# 	for t in range(data.shape[0]-1):
+# 		for i in range(num_agents):
+# 			state_i = data[t,i*4+1:i*4+5]
+# 			sg_i = data[-1,i*4+1:i*4+5]
+# 			neighbors = []
+# 			for j in range(num_agents):
+# 				if i != j:
+# 					state_j = data[t,j*4+1:j*4+5]
+# 					dist = np.linalg.norm(state_i[0:2] - state_j[0:2])
+# 					if dist <= neighborDist:
+# 						neighbors.append(state_i - state_j)
+# 			# desired control is the velocity in the next timestep
+# 			state_i_tp1 = data[t+1,i*4+1:i*4+5]
+# 			dataset.append([state_i, sg_i, neighbors, state_i_tp1])
+# 	print('Dataset Size: ',len(dataset))
+# 	return dataset
+
+# def load_orca_dataset_action_loss_old(filename,neighborDist):
+# 	data = np.load(filename)
+# 	num_agents = int((data.shape[1] - 1) / 4)
+# 	# loop over each agent and each timestep to find
+# 	#  * current state
+# 	#  * set of neighboring agents (storing their relative states)
+# 	#  * label (i.e., desired control)
+# 	dataset = []
+
+# 	# this new 
+# 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
+# 	Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
+
+# 	for t in range(data.shape[0]-1):
+# 		for i in range(num_agents):
+# 			s_i = data[t,i*4+1:i*4+5]   # state i 
+# 			s_g = data[-1,i*4+1:i*4+5]  # goal state i 
+# 			relative_goal = s_g - s_i # relative goal 
+# 			relative_neighbors = []
+# 			for j in range(num_agents):
+# 				if i != j:
+# 					s_j = data[t,j*4+1:j*4+5] # state j
+# 					dist = np.linalg.norm(state_i[0:2] - state_j[0:2])
+# 					if dist <= neighborDist:
+# 						relative_neighbors.append(s_j - s_i)
+# 			# desired control is the velocity in the next timestep
+# 			a = data[t+1, i*4+3:i*4+5]
+# 			# this new
+# 			o = Observation._make((relative_goal,relative_neighbors))			
+# 			oa_pair = Observation_Action_Pair._make((o,a))
+# 			dataset.append(oa_pair)
+# 			# this old
+# 			# dataset.append([sg_i-state_i, neighbors, u]) 
+# 	print('Dataset Size: ',len(dataset))
+# 	return dataset
 
 def load_orca_dataset_action_loss(filename,neighborDist):
 	data = np.load(filename)
 	num_agents = int((data.shape[1] - 1) / 4)
-	# loop over each agent and each timestep to find
-	#  * current state
-	#  * set of neighboring agents (storing their relative states)
-	#  * label (i.e., desired control)
 	dataset = []
+	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
+	Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
 	for t in range(data.shape[0]-1):
 		for i in range(num_agents):
-			state_i = data[t,i*4+1:i*4+5]
-			sg_i = data[-1,i*4+1:i*4+5]
-			neighbors = []
+			s_i = data[t,i*4+1:i*4+5]   # state i 
+			s_g = data[-1,i*4+1:i*4+5]  # goal state i 
+			relative_goal = s_g - s_i   # relative goal 
+			relative_neighbors = []
 			for j in range(num_agents):
 				if i != j:
-					state_j = data[t,j*4+1:j*4+5]
-					dist = np.linalg.norm(state_i[0:2] - state_j[0:2])
+					s_j = data[t,j*4+1:j*4+5] # state j
+					dist = np.linalg.norm(s_i[0:2] - s_j[0:2])
 					if dist <= neighborDist:
-						neighbors.append(state_i - state_j)
-			# desired control is the velocity in the next timestep
-			u = data[t+1, i*4+3:i*4+5]
-			dataset.append([state_i, sg_i, neighbors, u])
-	print('Dataset Size: ',len(dataset))
-	return dataset
-
-def load_orca_dataset_state_loss(filename,neighborDist):
-	data = np.load(filename)
-	num_agents = int((data.shape[1] - 1) / 4)
-	# loop over each agent and each timestep to find
-	#  * current state
-	#  * set of neighboring agents (storing their relative states)
-	#  * label (i.e., desired control)
-	dataset = []
-	for t in range(data.shape[0]-1):
-		for i in range(num_agents):
-			state_i = data[t,i*4+1:i*4+5]
-			sg_i = data[-1,i*4+1:i*4+5]
-			neighbors = []
-			for j in range(num_agents):
-				if i != j:
-					state_j = data[t,j*4+1:j*4+5]
-					dist = np.linalg.norm(state_i[0:2] - state_j[0:2])
-					if dist <= neighborDist:
-						neighbors.append(state_i - state_j)
-			# desired control is the velocity in the next timestep
-			state_i_tp1 = data[t+1,i*4+1:i*4+5]
-			dataset.append([state_i, sg_i, neighbors, state_i_tp1])
+						relative_neighbors.append(s_j - s_i)
+			o = Observation._make((relative_goal,relative_neighbors))
+			a = data[t+1, i*4+3:i*4+5] # desired control is the velocity in the next timestep
+			oa_pair = Observation_Action_Pair._make((o,a))
+			dataset.append(oa_pair)
 	print('Dataset Size: ',len(dataset))
 	return dataset
 
@@ -97,22 +133,12 @@ def make_orca_loaders(dataset=None,
 		batch_y = []
 		loader = [] 
 		for step,data in enumerate(dataset):
-			for k,elem in enumerate(data):
-				if k == 0:
-					x = data[k]
-				elif k == 1:
-					x = np.concatenate((x,data[k]))
-				elif k == 2:
-					for neighbor in data[k]:
-						x = np.concatenate((x,neighbor))
-				elif k == 3:
-					y = data[k]
 
-			batch_x.append(x)
-			batch_y.append(y)
+			batch_x.append(data.observation)
+			batch_y.append(data.action)
 
-			if step%batch_size == 0 and step is not 0:
-				loader.append([batch_x[0:batch_size],batch_y[0:batch_size]])
+			if (step+1)%batch_size == 0 and step is not 0:
+				loader.append([batch_x,batch_y])
 				batch_x = []
 				batch_y = []
 		return loader
@@ -123,7 +149,7 @@ def make_orca_loaders(dataset=None,
 	if shuffle:
 		random.shuffle(dataset)
 
-	if n_data is not None:
+	if n_data is not None and n_data < len(dataset):
 		dataset = dataset[0:n_data]
 
 	cutoff = int(test_train_ratio*len(dataset))
@@ -241,6 +267,9 @@ def train_il(param, env):
 				dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 			else:
 				dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
+			print(len(dataset))
+			if len(dataset) > param.il_n_data:
+				break
 
 		print('Total Dataset Size: ',len(dataset))
 		loader_train,loader_test = make_orca_loaders(

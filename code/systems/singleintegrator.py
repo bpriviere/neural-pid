@@ -3,6 +3,7 @@
 
 # standard package
 from gym import Env
+from collections import namedtuple
 import numpy as np 
 import torch 
 
@@ -13,6 +14,8 @@ class Agent:
 	def __init__(self,s=None,i=None):
 		self.s = s
 		self.i = i # index 
+		self.p = None
+		self.v = None
 
 class SingleIntegrator(Env):
 
@@ -26,7 +29,11 @@ class SingleIntegrator(Env):
 		self.n_agents = param.n_agents
 		self.state_dim_per_agent = 4
 		self.action_dim_per_agent = 2
-		self.agent_radius = 0.75
+		self.r_agent = param.r_agent
+
+		# control lim
+		self.a_min = param.a_min
+		self.a_max = param.a_max
 
 		# default parameters [SI units]
 		self.n = self.state_dim_per_agent*self.n_agents
@@ -70,19 +77,23 @@ class SingleIntegrator(Env):
 
 
 	def observe(self):
-		observation = []
+		Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
+
+		observations = []
 		for agent_i in self.agents:
 			p_i = agent_i.p
-			observation_i = [] 
-			o = np.concatenate((agent_i.p, agent_i.v, agent_i.sg))
+			s_i = agent_i.s
+			relative_goal = agent_i.s_g - s_i
+			relative_neighbors = []
 			for agent_j in self.agents:
-				p_j = agent_j.p
-				if np.linalg.norm(p_i-p_j) < self.param.r_comm:
-					o = np.concatenate((o,agent_j.p-agent_i.p, agent_j.v-agent_i.v))
-			observation_i.append(o)
-			observation.append(observation_i)
-		return observation
-
+				if agent_j.i != agent_i.i:
+					p_j = agent_j.p
+					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
+						s_j = agent_j.s
+						relative_neighbors.append(s_j-s_i)
+			observation_i = Observation._make((relative_goal,relative_neighbors))
+			observations.append(observation_i)
+		return observations
 
 	def reward(self):
 		minDist = np.Inf
@@ -96,7 +107,7 @@ class SingleIntegrator(Env):
 					dist = np.linalg.norm(pos_i - pos_j)
 					if dist < minDist:
 						minDist = dist
-		if minDist < 1.5:
+		if minDist < 2*self.r_agent:
 			return -1
 		return 0
 
@@ -113,7 +124,7 @@ class SingleIntegrator(Env):
 		for agent in self.agents:
 			idx = self.agent_idx_to_state_idx(agent.i) + \
 				np.arange(0,self.state_dim_per_agent)
-			agent.sg = -initial_state[idx]
+			agent.s_g = -initial_state[idx]
 
 		self.update_agents(self.s)			
 		return np.array(self.s) 
@@ -138,17 +149,13 @@ class SingleIntegrator(Env):
 		# input: ONE agent state, and ONE agent action
 		# output: increment of state
 		# used in train_il for state-loss function 
-		
-		if isinstance(s, (np.ndarray, np.generic) ):
-			s = torch.from_numpy(s[0:self.state_dim_per_agent]).float()
-		if isinstance(a, (np.ndarray, np.generic) ):
-			a = torch.from_numpy(a).float()
 
-		sp1 = torch.zeros((self.state_dim_per_agent))
+		s = torch.from_numpy(s[0:self.state_dim_per_agent]).float()
+
 		dt = self.times[1]-self.times[0]
 		I = torch.eye((self.state_dim_per_agent))
 		A = torch.from_numpy(np.array((
-			[[0,1,0,0],[0,0,1,0],[0,0,0,0],[0,0,0,0]]))).float()
+			[[0,0,1,0],[0,0,0,1],[0,0,0,0],[0,0,0,0]]))).float()
 		B = torch.from_numpy(np.array((
 			[[0,0],[0,0],[1,0],[0,1]]))).float()
 		sp1 = (I + A*dt)@s + B@a
@@ -159,6 +166,7 @@ class SingleIntegrator(Env):
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			agent_i.p = s[idx:idx+2]
 			agent_i.v = s[idx+2:idx+4]
+			agent_i.s = np.concatenate((agent_i.p,agent_i.v))
 
 	def agent_idx_to_state_idx(self,i):
 		return self.state_dim_per_agent*i 		
@@ -175,7 +183,7 @@ class SingleIntegrator(Env):
 		vis.open()
 
 		for i in range(self.n_agents):
-			vis["agent"+str(i)].set_object(g.Sphere(self.agent_radius))
+			vis["agent"+str(i)].set_object(g.Sphere(self.r_agent))
 
 		while True:
 			for state in states:
