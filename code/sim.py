@@ -12,7 +12,7 @@ import plotter
 import utilities as util
 from other_policy import ZeroPolicy
 
-def sim(param, env, controllers, visualize):
+def sim(param, env, controllers, initial_state, visualize):
 
 	def run_sim(controller, initial_state):
 		states = np.zeros((len(times), env.n))
@@ -41,29 +41,10 @@ def sim(param, env, controllers, visualize):
 	times = param.sim_times
 	device = "cpu"
 
-	# initial conditions
-	if True:
-		# consensus
-		# s0 = np.array([5,-1,0,2,0,1,1,0,0,-1,1,0,-2,0,-1.5])
-		if env.n_agents == 10:
-			# orca 10 ring
-			s0 = 0.8*np.array([50,0,0,0,40.4509,29.3893,0,0,15.4509,47.5528,0,0,-15.4509,47.5528,0,0,-40.4509,29.3893,0,0,-50,\
-				6.12323e-15,0,0,-40.4509,-29.3893,0,0,-15.4509,-47.5528,0,0,15.4509,-47.5528,0,0,40.4509,-29.3893,0,0])
-		elif env.n_agents == 20:
-			# orca 20 ring
-			s0 = 0.8*np.array([50,0,0,0,47.5528,15.4509,0,0,40.4509,29.3893,0,0,29.3893,40.4509,0,0,15.4509,47.5528,0,0,3.06162e-15,\
-				50,0,0,-15.4509,47.5528,0,0,-29.3893,40.4509,0,0,-40.4509,29.3893,0,0,-47.5528,15.4509,0,0,-50,6.12323e-15,\
-				0,0,-47.5528,-15.4509,0,0,-40.4509,-29.3893,0,0,-29.3893,-40.4509,0,0,-15.4509,-47.5528,0,0,-9.18485e-15,-50,\
-				0,0,15.4509,-47.5528,0,0,29.3893,-40.4509,0,0,40.4509,-29.3893,0,0,47.5528,-15.4509,0,0])
-		elif env.n_agents == 2:
-			# orca 2 line 
-			s0 = np.array([-4,0,0,0,4,0,0,0])
-		elif env.n_agents == 1:
-			# orca 1 
-			s0 = np.array([2,0,0,0])
-		initial_state = env.reset(s0)
-	else:
+	if initial_state is None:
 		initial_state = env.reset()
+
+	print("Initial State ", initial_state)
 
 	# run sim
 	SimResult = namedtuple('SimResult', ['states', 'actions', 'steps', 'name'])
