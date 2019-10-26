@@ -192,14 +192,23 @@ class CartPole(Env):
 		vis["pole"].set_object(g.Cylinder(self.length_pole, 0.01))
 
 		while True:
-			for state in states:
-				vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
+			vis["cart"].set_transform(tf.translation_matrix([0, 0, 0]))
 
-				vis["pole"].set_transform(
-					tf.translation_matrix([0, state[0] + self.length_pole/2, 0]).dot(
-					tf.rotation_matrix(np.pi/2 + state[1], [1,0,0], [0,-self.length_pole/2,0])))
+			vis["pole"].set_transform(
+				tf.translation_matrix([0, 0 + self.length_pole/2, 0]).dot(
+				tf.rotation_matrix(np.pi/2 + 0, [1,0,0], [0,-self.length_pole/2,0])))
 
-				time.sleep(dt)
+			time.sleep(dt)
+
+
+			# for state in states:
+			# 	vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
+
+			# 	vis["pole"].set_transform(
+			# 		tf.translation_matrix([0, state[0] + self.length_pole/2, 0]).dot(
+			# 		tf.rotation_matrix(np.pi/2 + state[1], [1,0,0], [0,-self.length_pole/2,0])))
+
+			# 	time.sleep(dt)
 
 	def env_barrier(self,action):
 		pass
