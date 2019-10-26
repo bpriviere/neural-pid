@@ -74,6 +74,8 @@ class DDPG():
 		self.mu_optimizer = optim.Adam(self.mu.parameters(), lr=self.lr_mu)
 		self.q_optimizer  = optim.Adam(self.q.parameters(), lr=self.lr_q)
 
+	def make_replay_buffer(self,buffer_limit):
+		self.data = ReplayBuffer(int(self.buffer_limit))
 
 	# def make_batch(self):
 	# 	s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, done_lst = [], [], [], [], [], []
@@ -117,6 +119,10 @@ class DDPG():
 			# update target networks
 			self.soft_update(self.mu,self.mu_target)
 			self.soft_update(self.q,self.q_target)
+
+
+	def get_optimizers(self):
+		return [self.mu_optimizer,self.q_optimizer]
 
 
 	def soft_update(self,net,net_target):

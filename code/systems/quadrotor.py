@@ -152,7 +152,8 @@ class Quadrotor(Env):
 		# eR = np.arccos((np.trace(R)-1) / 2)
 		eR = rowan.geometry.sym_distance(self.s[6:10], np.array([1,0,0,0]))
 
-		cost = (self.alpha_p * ep \
+		cost = (
+			   self.alpha_p * ep \
 			 + self.alpha_v * ev \
 			 + self.alpha_w * ew \
 			 + self.alpha_a * np.linalg.norm(a) \

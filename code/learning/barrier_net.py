@@ -37,7 +37,7 @@ class Barrier_Net(nn.Module):
 
 		A = np.empty((len(x),self.action_dim))
 		for i,x_i in enumerate(x):
-			a_i = self(x_i)
+			a_i = self([x_i])
 			A[i,:] = a_i.detach().numpy()
 		return A
 
@@ -46,20 +46,19 @@ class Barrier_Net(nn.Module):
 
 		barrier = torch.zeros((len(x),self.action_dim))
 		for k,x_i in enumerate(x): 
-			n_n = int(len(x_i)/self.state_dim)-2 
-			
-			for i_n in range(n_n):
-				idxs = (i_n+2)*self.state_dim + np.arange(0,self.state_dim/2)
-				idxs = idxs.astype(int)
-				barrier[k,:] = barrier[k,:].clone() + torch.tensor(
-					-x_i[idxs]/np.power(np.linalg.norm(x_i[idxs]) - self.r_agent,2))
+			n_n = len(x_i.relative_neighbors)
+			for relative_neighbor in x_i.relative_neighbors:
+				p_ji = relative_neighbor[0:2]
+				barrier[k,:] += -1/n_n*torch.tensor(
+					p_ji/np.power(np.linalg.norm(p_ji)-self.r_agent,1))
 
-		a_wbarrier = a_wbarrier.clone() + barrier
+		a_wbarrier += 0.1*barrier
 
 		# control lim
-		scaling_factor = torch.max(torch.tensor(self.a_max)) / torch.max(a_wbarrier)
-		if scaling_factor < 1:
-			a_wbarrier = a_wbarrier*scaling_factor
+		# scaling_factor = torch.max(
+		# 	torch.tensor(self.a_max) / torch.max(torch.abs(a_wbarrier)))
+		# if scaling_factor < 1:
+		# 	a_wbarrier = scaling_factor
 		return a_wbarrier
 
 

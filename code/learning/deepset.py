@@ -58,7 +58,8 @@ class Rho(nn.Module):
 	def forward(self, x):
 		for layer in self.layers[:-1]:
 			x = self.activation(layer(x))
-		x = torch.tanh(self.layers[-1](x)) #, x \in [-1,1]
-		x = (x+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() #, x \in [amin,amax]
+		x = self.layers[-1](x)
+		# x = torch.tanh(self.layers[-1](x)) #, x \in [-1,1]
+		# x = (x+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() #, x \in [amin,amax]
 		return x
 

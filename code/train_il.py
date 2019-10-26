@@ -96,6 +96,35 @@ from learning.barrier_net import Barrier_Net
 # 	print('Dataset Size: ',len(dataset))
 # 	return dataset
 
+# def make_orca_loaders(dataset=None,
+# 	shuffle=True,
+# 	batch_size=200,
+# 	test_train_ratio=0.8,
+# 	n_data=None):
+
+# 	def make_loader(dataset):
+# 		batch_x = []
+# 		batch_y = []
+# 		loader = [] 
+# 		for step,data in enumerate(dataset):
+
+# 			batch_x.append(data.observation)
+# 			batch_y.append(data.action)
+
+# 			if (step+1)%batch_size == 0 and step is not 0:
+# 				loader.append([batch_x,batch_y])
+# 				batch_x = []
+# 				batch_y = []
+# 		return loader
+
+# 	if dataset is None:
+# 		raise Exception('dataset not specified')
+	
+# 	loader_train = make_loader(train_dataset)
+# 	loader_test = make_loader(test_dataset)
+# 	return loader_train,loader_test
+
+
 def load_orca_dataset_action_loss(filename,neighborDist):
 	data = np.load(filename)
 	num_agents = int((data.shape[1] - 1) / 4)
@@ -122,11 +151,7 @@ def load_orca_dataset_action_loss(filename,neighborDist):
 	return dataset
 
 
-def make_orca_loaders(dataset=None,
-	shuffle=True,
-	batch_size=200,
-	test_train_ratio=0.8,
-	n_data=None):
+def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=True,batch_size=None):
 
 	def make_loader(dataset):
 		batch_x = []
@@ -152,14 +177,16 @@ def make_orca_loaders(dataset=None,
 	if n_data is not None and n_data < len(dataset):
 		dataset = dataset[0:n_data]
 
-	cutoff = int(test_train_ratio*len(dataset))
-	train_dataset = dataset[0:cutoff]
-	test_dataset = dataset[cutoff:]
+	if test_train_ratio is not None:
+		cutoff = int(test_train_ratio*len(dataset))
+		train_dataset = dataset[0:cutoff]
+		test_dataset = dataset[cutoff:]
+	else:
+		raise Exception('test train ratio not specified')
 
 	loader_train = make_loader(train_dataset)
 	loader_test = make_loader(test_dataset)
-	return loader_train,loader_test
-
+	return loader_train,loader_test	
 
 
 def make_dataset(param, env):
@@ -189,6 +216,7 @@ def train(param,env,model,loader):
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
+
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 
 		# convert b_y if necessary
@@ -261,14 +289,14 @@ def train_il(param, env):
 	# datasets
 	if param.il_load_dataset_on:
 		dataset = []
-		for file in glob.glob("../baseline/orca/build/*.npy"):
+		for k,file in enumerate(glob.glob("../baseline/orca/build/*.npy")):
 			print(file)
 			if param.il_state_loss_on:
 				dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 			else:
 				dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
 			print(len(dataset))
-			if len(dataset) > param.il_n_data:
+			if k == 0:
 				break
 
 		print('Total Dataset Size: ',len(dataset))
@@ -278,6 +306,7 @@ def train_il(param, env):
 			batch_size=param.il_batch_size,
 			test_train_ratio=param.il_test_train_ratio,
 			n_data=param.il_n_data)
+
 	else:
 		x_train,y_train = make_dataset(param, env)
 		x_test,y_test = make_dataset(param, env)

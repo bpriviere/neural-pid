@@ -6,7 +6,25 @@ from learning.ddpg import DDPG
 # standard packages
 import torch 
 from torch.distributions import MultivariateNormal,Categorical
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import numpy as np 
+
+class ReduceLROnRewardSchedule:
+	def __init__(self,optimizer):
+		self.optimizer = optimizer
+		self.initial_lr = optimizer.param_groups[0]['lr']
+		self.gamma = 0.5
+		self.reward_schedule = np.append(np.array(-np.Inf),np.arange(-1200,0,200))
+		# print('reward schedule: ', self.reward_schedule)
+
+	def step(self,reward):
+		k = np.where(reward > self.reward_schedule)[0][-1]
+		for param_group in self.optimizer.param_groups:
+			lr = self.initial_lr*(self.gamma**k)
+			if param_group['lr'] >= lr:
+				print("Changing Learning Rate From: %5f to %5f"%((param_group['lr'],lr)))
+				param_group['lr'] = lr
+
 
 def train_rl(param, env):
 
@@ -34,42 +52,55 @@ def train_rl(param, env):
 	print('Solved Reward: ',solved_reward)
 
 	# init model 
-	if continuous:
-		model = DDPG(
-			param.rl_mu_network_architecture,
-			param.rl_q_network_architecture,
-			param.rl_network_activation,
-			param.a_min,
-			param.a_max,
-			param.rl_action_std,
-			param.rl_max_action_perturb,
-			param.rl_lr_mu,
-			param.rl_lr_q,
-			param.rl_tau,
-			param.rl_gamma,
-			param.rl_batch_size,
-			param.rl_K_epoch,
-			param.rl_buffer_limit,
-			param.rl_gpu_on)
+	if param.rl_warm_start_on:
+		print('Loading Previous Model: ', param.rl_warm_start_fn)
+		model = torch.load(param.rl_warm_start_fn)
+		model.make_replay_buffer(int(param.rl_buffer_limit))
+		print(model)
 	else:
-		model = PPO(
-			param.rl_discrete_action_space, 
-			state_dim,
-			action_dim,
-			param.rl_action_std,
-			param.rl_gpu_on,
-			param.rl_lr, 
-			param.rl_gamma, 
-			param.rl_K_epoch, 
-			param.rl_lmbda, 
-			param.rl_eps_clip)
+		print('Creating New Model...')
+		if continuous:
+			model = DDPG(
+				param.rl_mu_network_architecture,
+				param.rl_q_network_architecture,
+				param.rl_network_activation,
+				param.a_min,
+				param.a_max,
+				param.rl_action_std,
+				param.rl_max_action_perturb,
+				param.rl_lr_mu,
+				param.rl_lr_q,
+				param.rl_tau,
+				param.rl_gamma,
+				param.rl_batch_size,
+				param.rl_K_epoch,
+				param.rl_buffer_limit,
+				param.rl_gpu_on)
+		else:
+			model = PPO(
+				param.rl_discrete_action_space, 
+				state_dim,
+				action_dim,
+				param.rl_action_std,
+				param.rl_gpu_on,
+				param.rl_lr, 
+				param.rl_gamma, 
+				param.rl_K_epoch, 
+				param.rl_lmbda, 
+				param.rl_eps_clip)
+
+	if param.rl_lr_schedule_on:
+		schedulers = []
+		for optimizer in model.get_optimizers():
+			# schedulers.append(ReduceLROnPlateau(optimizer, mode='max'))
+			schedulers.append(ReduceLROnRewardSchedule(optimizer))
 
 	# logging variables
 	running_reward = 0
 	trial_count = 0
 	best_reward = -np.Inf
 	data_count = 0
-	
+
 	# training loop
 	for i_episode in range(1, param.rl_max_episodes+1):
 		while data_count <= param.rl_batch_size:
@@ -121,6 +152,11 @@ def train_rl(param, env):
 				model.data = []
 				torch.save(model, param.rl_train_model_fn)
 				model.data = temp_buffer
+
+			# update learning rate
+			if param.rl_lr_schedule_on:
+				for scheduler in schedulers:
+					scheduler.step(running_reward/trial_count)
 
 			running_reward = 0
 			trial_count = 0 

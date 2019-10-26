@@ -22,7 +22,7 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 10
+		self.n_agents = 5
 		self.r_comm = 15
 		self.r_agent = 1.5
 		self.sim_dt = 0.25
@@ -51,10 +51,10 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 500
-		self.il_n_data = 20000
+		self.il_n_data = 10000
 
 		# Controller
-		self.controller_class = 'Empty' # 'Empty','Barrier','PID',
+		self.controller_class = 'Barrier' # 'Empty','Barrier','PID',
 		self.controller_learning_module = 'DeepSet' # 
 
 		# Sim

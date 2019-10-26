@@ -60,6 +60,9 @@ class QuadrotorParam(Param):
 
 		# RL
 		self.rl_train_model_fn = '../models/quadrotor/rl_current.pt'
+		self.rl_lr_schedule_on = True
+		self.rl_warm_start_on = True
+		self.rl_warm_start_fn = '../models/quadrotor/rl_continuous_v3.pt'
 
 		# common param
 		self.rl_gamma = 0.999
@@ -71,8 +74,8 @@ class QuadrotorParam(Param):
 			self.rl_lr_mu = 1e-4
 			self.rl_lr_q = 1e-3
 			self.rl_buffer_limit = 5e6
-			self.rl_action_std = 0.1
-			self.rl_max_action_perturb = 1
+			self.rl_action_std = 0.05
+			self.rl_max_action_perturb = 0.05
 			self.rl_tau = 0.995
 			# network architecture
 			n,m,h_mu,h_q = 13,4,64,64 # state dim, action dim, hidden layers
@@ -116,7 +119,7 @@ class QuadrotorParam(Param):
 		self.il_imitate_model_fn = '../models/quadrotor/rl_current.pt'
 
 		# Sim
-		self.sim_rl_model_fn = '../models/quadrotor/rl_continuous.pt' # rl_current
+		self.sim_rl_model_fn = '../models/quadrotor/rl_current.pt' # rl_current
 		self.sim_il_model_fn = '../models/quadrotor/il_current.pt'
 
 		self.sim_t0 = 0
