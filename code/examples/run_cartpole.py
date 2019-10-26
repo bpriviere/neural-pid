@@ -8,7 +8,10 @@ class CartpoleParam(Param):
 	def __init__(self):
 		super().__init__()
 		self.env_name = 'CartPole'
-		self.env_case = 'SmallAngle' #'SmallAngle','Swing90','Swing180', 'Any90'
+		self.env_case = 'Any90' #'SmallAngle','Swing90','Swing180', 'Any90'
+
+		self.a_min = np.array([-10])
+		self.a_max = np.array([10])
 
 		# flags
 		self.pomdp_on = False
@@ -17,6 +20,15 @@ class CartpoleParam(Param):
 
 		# RL
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
+
+		self.rl_continuous_on = False
+		self.rl_gamma = 0.98
+		self.rl_K_epoch = 5
+		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, 5)
+		# ppo param
+		self.rl_lr = 2e-3
+		self.rl_lmbda = 0.95
+		self.rl_eps_clip = 0.2
 
 		# IL
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
@@ -61,8 +73,11 @@ if __name__ == '__main__':
 	env = CartPole(param)
 
 	controllers = {
-		'RL':	torch.load(param.sim_il_model_fn),
-		'IL':	torch.load(param.sim_il_model_fn),
-		'PID': PlainPID(param.kp, param.kd)
+		'RL':	torch.load(param.rl_train_model_fn),
+		# 'IL':	torch.load(param.sim_il_model_fn),
+		# 'PID': PlainPID(param.kp, param.kd)
 	}
-	run(param, env, controllers)
+
+	x0 = np.array([0, np.pi, 0, 0])
+
+	run(param, env, controllers, x0)

@@ -43,6 +43,9 @@ class CartPole(Env):
 		else:
 			raise Exception('param.env_case invalid ' + param.env_case)
 
+		self.s_min = -self.env_state_bounds
+		self.s_max = -self.s_min
+
 		self.W = np.diag([0.01,1,0,0])
 		self.max_error = 2*self.env_state_bounds
 		self.max_penalty = np.dot(self.max_error.T,np.dot(self.W,self.max_error))
@@ -53,6 +56,7 @@ class CartPole(Env):
 			'Pole Angle [rad]',
 			'Cart Velocity [m/s]',
 			'Pole Velocity [rad/s]']
+		self.deduced_state_names = []
 		self.actions_name = [
 			'Cart Acceleration [m/s^2]']
 		self.param = param
@@ -172,6 +176,30 @@ class CartPole(Env):
 		# 	sp1[1] += 2*pi
 
 		return sp1
+
+	def visualize(self,states,dt):
+
+		import meshcat
+		import meshcat.geometry as g
+		import meshcat.transformations as tf
+		import time
+
+		# Create a new visualizer
+		vis = meshcat.Visualizer()
+		vis.open()
+
+		vis["cart"].set_object(g.Box([0.2,0.5,0.2]))
+		vis["pole"].set_object(g.Cylinder(self.length_pole, 0.01))
+
+		while True:
+			for state in states:
+				vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
+
+				vis["pole"].set_transform(
+					tf.translation_matrix([0, state[0] + self.length_pole/2, 0]).dot(
+					tf.rotation_matrix(np.pi/2 + state[1], [1,0,0], [0,-self.length_pole/2,0])))
+
+				time.sleep(dt)
 
 	def env_barrier(self,action):
 		pass

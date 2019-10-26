@@ -82,37 +82,3 @@ def plot_ss(env,states):
 	fig,ax = env.render()
 	ax.plot(states[:,0],states[:,1],linestyle='dashed')
 
-
-
-def visualize(param, env, states):
-	if param.env_name is 'CartPole':
-		visualize_cartpole(param, env, states)
-
-
-def visualize_cartpole(param, env, states):
-
-	import meshcat
-	import meshcat.geometry as g
-	import meshcat.transformations as tf
-	import time
-
-	times = param.sim_times
-
-	# visualize 3D
-	if visualize:
-		# Create a new visualizer
-		vis = meshcat.Visualizer()
-		vis.open()
-
-		vis["cart"].set_object(g.Box([0.2,0.5,0.2]))
-		vis["pole"].set_object(g.Cylinder(env.length_pole, 0.01))
-
-		while True:
-			for t, state in zip(times, states):
-				vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
-
-				vis["pole"].set_transform(
-					tf.translation_matrix([0, state[0] + env.length_pole/2, 0]).dot(
-					tf.rotation_matrix(np.pi/2 + state[1], [1,0,0], [0,-env.length_pole/2,0])))
-
-				time.sleep(0.1)
