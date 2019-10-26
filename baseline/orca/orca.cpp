@@ -4,6 +4,9 @@
 
 #include <fstream>
 #include <random>
+#include <iostream>
+
+#include <boost/program_options.hpp>
 
 #include "RVO.h"
 
@@ -11,10 +14,7 @@
 std::vector<RVO::Vector2> goals;
 
 
-static const int numAgents = 100;
-static const float radius = 50;
-
-void setupScenario(RVO::RVOSimulator *sim)
+void setupScenario(RVO::RVOSimulator *sim, int numAgents, float size)
 {
   /* Specify the global time step of the simulation. */
   sim->setTimeStep(0.25f);
@@ -46,7 +46,7 @@ void setupScenario(RVO::RVOSimulator *sim)
 // Random Examples 
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<> dis(-radius, radius);
+  std::uniform_real_distribution<> dis(-size, size);
   for (size_t i = 0; i < numAgents;) {
     float x = dis(gen);
     float y = dis(gen);
@@ -121,13 +121,43 @@ bool reachedGoal(RVO::RVOSimulator *sim)
   return true;
 }
 
-int main()
+int main(int argc, char** argv)
 {
+  int numAgents;
+  float size;
+
+  namespace po = boost::program_options;
+
+  po::options_description desc("Allowed options");
+  desc.add_options()
+    ("help", "produce help message")
+    ("numAgents", po::value<int>(&numAgents)->default_value(10), "Number of agents")
+    ("size", po::value<float>(&size)->default_value(10), "half-size of square to operate in")
+  ;
+
+  try
+  {
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
+    if (vm.count("help")) {
+      std::cout << desc << "\n";
+      return 0;
+    }
+  }
+  catch(po::error& e)
+  {
+    std::cerr << e.what() << std::endl << std::endl;
+    std::cerr << desc << std::endl;
+    return 1;
+  }
+
   /* Create a new simulator instance. */
   RVO::RVOSimulator sim;
 
   /* Set up the scenario. */
-  setupScenario(&sim);
+  setupScenario(&sim, numAgents, size);
 
   std::ofstream output("orca.csv");
   output << "t";

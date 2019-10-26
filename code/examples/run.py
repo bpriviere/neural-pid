@@ -10,7 +10,7 @@ from sim import sim
 from planning.rrt import rrt
 from planning.scp import scp
 
-def run(param, env, controllers):
+def run(param, env, controllers, initial_state = None):
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--rl", action='store_true')
 	parser.add_argument("--il", action='store_true')
@@ -28,4 +28,4 @@ def run(param, env, controllers):
 	elif args.scp:
 		scp(param, env)
 	else:
-		sim(param, env, controllers, args.animate)
+		sim(param, env, controllers, initial_state, args.animate)
