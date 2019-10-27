@@ -200,15 +200,29 @@ def make_dataset(param, env):
 			action = model.policy(states[-1])
 			s_prime, _, done, _ = env.step(action)
 			states.append(s_prime)
-			actions.append(action.reshape(-1))
+			if param.il_state_loss_on:
+				actions.append(s_prime)
+			else:
+				actions.append(action.reshape(-1))
 			if done:
 				break
-		actions.append(zeros(env.m))
+		if param.il_state_loss_on:
+			actions.append(zeros(env.n))
+		else:
+			actions.append(zeros(env.m))
 
 	states = states[0:param.il_n_data]
 	actions = actions[0:param.il_n_data]
 
 	return torch.tensor(states).float(),torch.tensor(actions).float()
+
+
+def load_dataset(env, filename):
+	data = np.loadtxt(filename, delimiter=',', dtype=np.float32)
+	return data[0:-2] # do not include last row (invalid action)
+
+	# return 	torch.tensor(data[0:-2,1:1+env.n]).float(),
+	# 		torch.tensor(data[0:-2,1+env.n:1+env.n+env.m]).float()
 
 
 def train(param,env,model,loader):
@@ -274,7 +288,7 @@ def train_il(param, env):
 	elif param.controller_class is 'PID_wRef':
 		model = PID_wRef_Net(env.n, env.m)
 	elif param.controller_class is 'Ref':
-		model = Ref_Net(env.n, env.m, param.kp, param.kd)
+		model = Ref_Net(env.n, env.m, env.a_min, env.a_max, param.kp, param.kd)
 	elif param.controller_class is 'Barrier':
 		model = Barrier_Net(param,param.controller_learning_module)
 	elif param.controller_class is 'Empty':
@@ -287,26 +301,64 @@ def train_il(param, env):
 	print("Controller: ",param.controller_class)
 
 	# datasets
-	if param.il_load_dataset_on:
-		dataset = []
-		for k,file in enumerate(glob.glob("../baseline/orca/build/*.npy")):
-			print(file)
+	if param.il_load_dataset is not None:
+		if "orca" in param.il_load_dataset:
+			dataset = []
+			for k,file in enumerate(glob.glob("../baseline/orca/build/*.npy")):
+				print(file)
+				if param.il_state_loss_on:
+					dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+				else:
+					dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
+				print(len(dataset))
+				if k == 0:
+					break
+
+			print('Total Dataset Size: ',len(dataset))
+			loader_train,loader_test = make_orca_loaders(
+				dataset=dataset,
+				shuffle=True,
+				batch_size=param.il_batch_size,
+				test_train_ratio=param.il_test_train_ratio,
+				n_data=param.il_n_data)
+		else:
 			if param.il_state_loss_on:
-				dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+				states = np.empty((0,env.n), dtype=np.float32)
+				actions = np.empty((0,env.n), dtype=np.float32)
+				for k,file in enumerate(glob.glob(param.il_load_dataset)):
+					print(file)
+					data = load_dataset(env, file)
+					states = np.vstack([states, data[0:-2,0:env.n]])
+					actions = np.vstack([actions, data[1:-1,0:env.n]])
 			else:
-				dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
-			print(len(dataset))
-			if k == 0:
-				break
+				states = np.empty((0,env.n), dtype=np.float32)
+				actions = np.empty((0,env.m), dtype=np.float32)
+				for k,file in enumerate(glob.glob(param.il_load_dataset)):
+					print(file)
+					data = load_dataset(env, file)
+					states = np.vstack([states, data[:,0:env.n]])
+					actions = np.vstack([actions, data[:,env.n:env.n+env.m]])
 
-		print('Total Dataset Size: ',len(dataset))
-		loader_train,loader_test = make_orca_loaders(
-			dataset=dataset,
-			shuffle=True,
-			batch_size=param.il_batch_size,
-			test_train_ratio=param.il_test_train_ratio,
-			n_data=param.il_n_data)
+			print('Total Dataset Size: ', states.shape[0])
 
+			idx = int(param.il_test_train_ratio * states.shape[0])
+			print("Train idx ", idx)
+
+			x_train = torch.from_numpy(states[0:idx])
+			y_train = torch.from_numpy(actions[0:idx])
+			x_test = torch.from_numpy(states[idx:-1])
+			y_test = torch.from_numpy(actions[idx:-1])
+
+			dataset_train = Data.TensorDataset(x_train, y_train)
+			loader_train = Data.DataLoader(
+				dataset=dataset_train, 
+				batch_size=param.il_batch_size, 
+				shuffle=True)
+			dataset_test = Data.TensorDataset(x_test, y_test)
+			loader_test = Data.DataLoader(
+				dataset=dataset_test, 
+				batch_size=param.il_batch_size, 
+				shuffle=True)
 	else:
 		x_train,y_train = make_dataset(param, env)
 		x_test,y_test = make_dataset(param, env)
