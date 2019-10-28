@@ -33,14 +33,14 @@ class CartpoleParam(Param):
 		if self.rl_continuous_on:
 			# ddpg param
 			# ddpg param
-			self.rl_lr_mu = 1e-4
-			self.rl_lr_q = 1e-3
+			self.rl_lr_mu = 5e-5
+			self.rl_lr_q = 5e-4
 			self.rl_buffer_limit = 5e6
-			self.rl_action_std = 0.05
-			self.rl_max_action_perturb = 0.05
+			self.rl_action_std = 1
+			self.rl_max_action_perturb = 0.5
 			self.rl_tau = 0.995
 			# network architecture
-			n,m,h_mu,h_q = 4,1,32,32 # state dim, action dim, hidden layers
+			n,m,h_mu,h_q = 4,1,16,16 # state dim, action dim, hidden layers
 			self.rl_mu_network_architecture = nn.ModuleList([
 				nn.Linear(n,h_mu), 
 				nn.Linear(h_mu,h_mu),
