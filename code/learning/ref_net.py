@@ -15,8 +15,10 @@ class Ref_Net(nn.Module):
 	where last layer:
 	a = kp (s - s_ref) + kd (sd - sd_ref)
 	"""
-	def __init__(self, state_dim, action_dim, Kp, Kd):
+	def __init__(self, state_dim, action_dim, a_min, a_max, Kp, Kd):
 		super(Ref_Net, self).__init__()
+		self.a_min = torch.from_numpy(a_min).float()
+		self.a_max = torch.from_numpy(a_max).float()
 		self.Kp = Kp
 		self.Kd = Kd
 		self.fc1 = nn.Linear(state_dim, 16)
@@ -57,7 +59,11 @@ class Ref_Net(nn.Module):
 		# PD control 
 		a = (torch.mm(Kp,ep.T) + torch.mm(Kd,ed.T)).T
 
+		# clamp
+		a = torch.tanh(a)
+		a = (a+1)/2*(self.a_max-self.a_min)+self.a_min
 		return a
+
 
 	def policy(self,state):
 		action = self(torch.from_numpy(state).float())

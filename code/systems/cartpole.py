@@ -4,6 +4,7 @@
 from gym import Env
 import numpy as np
 import autograd.numpy as agnp  # Thinly-wrapped numpy
+import torch
 
 class CartPole(Env):
 
@@ -177,12 +178,50 @@ class CartPole(Env):
 
 		return sp1
 
+	def next_state_training_state_loss(self,x,u):
+		# input: ONE agent state, and ONE agent action
+		# output: increment of state
+		# used in train_il for state-loss function 
+
+		m_p = self.mass_pole
+		m_c = self.mass_cart
+		l = self.length_pole
+		g = self.g
+
+		# s = [q,qdot], q = [x,th]
+		u = torch.reshape(u,(self.m,1))
+		q = torch.reshape(x[0:2],(2,1))
+		qdot = torch.reshape(x[2:],(2,1))
+		th = x[1]
+		thdot = x[3]
+
+		# EOM from learning+control@caltech
+		# D = np.array([[m_c+m_p,m_p*l*np.cos(th)],[m_p*l*np.cos(th),m_p*(l**2)]])
+		a = m_c+m_p
+		b = m_p*l*torch.cos(th)
+		c = m_p*l*torch.cos(th)
+		d = m_p*(l**2)
+		Dinv = 1/(a*d-b*c) * torch.tensor([[d, -b], [-c, a]])
+
+		C = torch.tensor([[0,-m_p*l*thdot*torch.sin(th)],[0,0]])
+		G = torch.tensor([[0],[-m_p*g*l*torch.sin(th)]])
+		B = torch.tensor([[1],[0]],dtype=torch.float)
+		qdotdot = torch.matmul(Dinv, torch.matmul(B,u) - torch.matmul(C,qdot) - G)
+
+		xdot = torch.cat([qdot, qdotdot], 0)
+
+		dt = self.ave_dt
+		sp1 = torch.squeeze(torch.reshape(x,(len(x),1)) + xdot * dt)
+
+		return sp1
+
 	def visualize(self,states,dt):
 
 		import meshcat
 		import meshcat.geometry as g
 		import meshcat.transformations as tf
 		import time
+		# import meshcat.animation as anim
 
 		# Create a new visualizer
 		vis = meshcat.Visualizer()
@@ -191,24 +230,38 @@ class CartPole(Env):
 		vis["cart"].set_object(g.Box([0.2,0.5,0.2]))
 		vis["pole"].set_object(g.Cylinder(self.length_pole, 0.01))
 
+		# animation = anim.Animation()
+		# for i, state in enumerate(states):
+		# 	with animation.at_frame(vis, i*10) as frame:
+		# 		print(frame)
+		# 		frame["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
+		# 		frame["pole"].set_transform(
+		# 			tf.translation_matrix([0, state[0] + self.length_pole/2, 0]).dot(
+		# 			tf.rotation_matrix(np.pi/2 + state[1], [1,0,0], [0,-self.length_pole/2,0])))
+		# vis.set_animation(animation, play=True, repeat=10)
+		# time.sleep(10)
+		# # anim.convert_frame_to_video()
+
+
+
 		while True:
-			vis["cart"].set_transform(tf.translation_matrix([0, 0, 0]))
+			# vis["cart"].set_transform(tf.translation_matrix([0, 0, 0]))
 
-			vis["pole"].set_transform(
-				tf.translation_matrix([0, 0 + self.length_pole/2, 0]).dot(
-				tf.rotation_matrix(np.pi/2 + 0, [1,0,0], [0,-self.length_pole/2,0])))
+			# vis["pole"].set_transform(
+			# 	tf.translation_matrix([0, 0 + self.length_pole/2, 0]).dot(
+			# 	tf.rotation_matrix(np.pi/2 + 0, [1,0,0], [0,-self.length_pole/2,0])))
 
-			time.sleep(dt)
+			# time.sleep(dt)
 
 
-			# for state in states:
-			# 	vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
+			for state in states:
+				vis["cart"].set_transform(tf.translation_matrix([0, state[0], 0]))
 
-			# 	vis["pole"].set_transform(
-			# 		tf.translation_matrix([0, state[0] + self.length_pole/2, 0]).dot(
-			# 		tf.rotation_matrix(np.pi/2 + state[1], [1,0,0], [0,-self.length_pole/2,0])))
+				vis["pole"].set_transform(
+					tf.translation_matrix([0, state[0] + self.length_pole/2, 0]).dot(
+					tf.rotation_matrix(np.pi/2 + state[1], [1,0,0], [0,-self.length_pole/2,0])))
 
-			# 	time.sleep(dt)
+				time.sleep(dt)
 
 	def env_barrier(self,action):
 		pass

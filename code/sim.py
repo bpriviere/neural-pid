@@ -109,19 +109,27 @@ def sim(param, env, controllers, initial_state, visualize):
 					result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1],
 					label=result.name)
 
-	# # extract gains
-	# if param.controller_class in ['PID_wRef','PID'] and not isinstance(pid_controller,ZeroPolicy):
-	# 	kp,kd = util.extract_gains(pid_controller,states_pid)
-	# 	fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,0],title='Kp pos')
-	# 	fig,ax = plotter.plot(times[1:step_pid+1],kp[0:step_pid,1],title='Kp theta')
-	# 	fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,0],title='Kd pos')
-	# 	fig,ax = plotter.plot(times[1:step_pid+1],kd[0:step_pid,1],title='Kd theta')
+	# extract gains
+	if param.controller_class in ['PID_wRef','PID']:
+		controller = controllers['IL']
+		for result in sim_results:
+			if result.name == 'IL':
+				break
+		kp,kd = util.extract_gains(controller,result.states[0:result.steps])
+		fig,ax = plotter.plot(times[1:result.steps],kp[0:result.steps,0],title='Kp pos')
+		fig,ax = plotter.plot(times[1:result.steps],kp[0:result.steps,1],title='Kp theta')
+		fig,ax = plotter.plot(times[1:result.steps],kd[0:result.steps,0],title='Kd pos')
+		fig,ax = plotter.plot(times[1:result.steps],kd[0:result.steps,1],title='Kd theta')
 
-	# # extract reference trajectory
-	# if param.controller_class in ['PID_wRef','Ref'] and not isinstance(pid_controller,ZeroPolicy):
-	# 	ref_state = util.extract_ref_state(pid_controller, states_pid)
-	# 	for i in range(env.n):
-	# 		fig,ax = plotter.plot(times[1:step_pid+1],ref_state[0:step_pid,i],title="ref " + env.states_name[i])
+	# extract reference trajectory
+	if param.controller_class in ['PID_wRef','Ref']:
+		controller = controllers['IL']
+		for result in sim_results:
+			if result.name == 'IL':
+				break
+		ref_state = util.extract_ref_state(controller, result.states)
+		for i in range(env.n):
+			fig,ax = plotter.plot(times[1:result.steps+1],ref_state[0:result.steps,i],title="ref " + env.states_name[i])
 
 	plotter.save_figs(param.plots_fn)
 	plotter.open_figs(param.plots_fn)

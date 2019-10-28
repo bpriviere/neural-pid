@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn 
 from torch import tanh
+import glob
 
 class CartpoleParam(Param):
 	def __init__(self):
@@ -57,10 +58,15 @@ class CartpoleParam(Param):
 			self.rl_eps_clip = 0.2
 
 		# IL
+		self.il_lr = 1e-4
+		self.il_load_dataset = "../models/CartPole/dataset_rl/*.csv"
+		self.il_test_train_ratio = 0.8
+		self.il_state_loss_on = False
+
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
-		self.il_imitate_model_fn = '../models/CartPole/rl_current.pt'
-		self.kp = [2,40]
-		self.kd = [4, 20]
+		self.il_imitate_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
+		self.kp = [2,4]
+		self.kd = [0.3, 3.5]
 
 		# Sim
 		self.sim_t0 = 0
@@ -73,7 +79,7 @@ class CartpoleParam(Param):
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
 
-		self.controller_class = 'Ref' # PID, PID_wRef, Ref
+		self.controller_class = 'PID_wRef' # PID, PID_wRef, Ref
 
 		# planning
 		# self.rrt_fn = '../models/CartPole/rrt.csv'
@@ -94,16 +100,41 @@ class PlainPID:
 		return action
 
 
+class FilePolicy:
+	def __init__(self, filename):
+		data = np.loadtxt(filename, delimiter=',', ndmin=2)
+		self.states = data[:,0:4]
+		self.actions = data[:,4:5]
+		self.steps = data.shape[0]
+
+
+def find_best_file(path, x0):
+	best_dist = None
+	best_file = None
+	for file in glob.glob(path):
+		data = np.loadtxt(file, delimiter=',', ndmin=2,max_rows=1)
+		dist = np.linalg.norm(x0 - data[0,0:x0.shape[0]])
+		if best_dist is None or dist < best_dist:
+			best_dist = dist
+			best_file = file
+	return best_file
+
+
 if __name__ == '__main__':
 	param = CartpoleParam()
 	env = CartPole(param)
+	
+	x0 = np.array([0.4, np.pi/2, 0.5, 0])
+
+	scp_file = find_best_file(param.il_load_dataset, x0)
+	print(scp_file)
 
 	controllers = {
-		'RL':	torch.load(param.rl_train_model_fn),
-		# 'IL':	torch.load(param.sim_il_model_fn),
-		# 'PID': PlainPID(param.kp, param.kd)
+		'RL':	torch.load('../models/CartPole/rl_Any90_discrete.pt'),
+		'IL':	torch.load(param.sim_il_model_fn),
+		# 'PD': PlainPID(param.kp, param.kd),
+		'SCP':	FilePolicy(scp_file),
 	}
 
-	x0 = np.array([0, np.pi, 0, 0])
 
 	run(param, env, controllers, x0)
