@@ -67,8 +67,9 @@ class CartpoleParam(Param):
 
 		# IL
 		self.il_lr = 1e-4
-		# self.il_load_dataset = "../models/CartPole/dataset_rl/*.csv"
-		self.il_load_dataset = None
+		self.il_lr = 2e-4
+		self.il_log_interval = 100
+		self.il_load_dataset = "../models/CartPole/dataset_rl/*.csv"
 		self.il_test_train_ratio = 0.8
 		self.il_state_loss_on = False
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
@@ -82,6 +83,8 @@ class CartpoleParam(Param):
 		self.il_activation = tanh
 		self.il_kp = [2,4]
 		self.il_kd = [0.3, 3.5]
+		self.kp = [4.5,3]
+		self.kd = [0.1, 0.5]
 
 		# Sim
 		self.sim_t0 = 0
@@ -93,6 +96,10 @@ class CartpoleParam(Param):
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
 
+		self.sim_rl_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
+		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
+		self.sim_render_on = False
+		self.controller_class = 'Ref' # PID, PID_wRef, Ref
 		# planning
 		# self.rrt_fn = '../models/CartPole/rrt.csv'
 		self.scp_fn = '../models/CartPole/scp.csv'
@@ -123,13 +130,15 @@ class FilePolicy:
 def find_best_file(path, x0):
 	best_dist = None
 	best_file = None
+	best_x0 = None
 	for file in glob.glob(path):
 		data = np.loadtxt(file, delimiter=',', ndmin=2,max_rows=1)
 		dist = np.linalg.norm(x0 - data[0,0:x0.shape[0]])
 		if best_dist is None or dist < best_dist:
 			best_dist = dist
 			best_file = file
-	return best_file
+			best_x0 = data[0,0:x0.shape[0]]
+	return best_file, best_x0
 
 
 if __name__ == '__main__':
@@ -137,9 +146,13 @@ if __name__ == '__main__':
 	env = CartPole(param)
 	
 	x0 = np.array([0.4, np.pi/2, 0.5, 0])
+	x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
 
 	# scp_file = find_best_file(param.il_load_dataset, x0)
 	# print(scp_file)
+
+	scp_file, scp_x0 = find_best_file(param.il_load_dataset, x0)
+	print(scp_file, scp_x0)
 
 	controllers = {
 		# 'RL':	torch.load('../models/CartPole/rl_Any90_discrete.pt'),

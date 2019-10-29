@@ -231,8 +231,12 @@ def train_il(param, env):
 				for k,file in enumerate(glob.glob(param.il_load_dataset)):
 					print(file)
 					data = load_dataset(env, file)
-					states = np.vstack([states, data[:,0:env.n]])
-					actions = np.vstack([actions, data[:,env.n:env.n+env.m]])
+					dist = np.linalg.norm(data[-1,0:env.n] - np.array([0,0,0,0]))
+					if dist < 0.1:
+						states = np.vstack([states, data[:,0:env.n]])
+						actions = np.vstack([actions, data[:,env.n:env.n+env.m]])
+					else:
+						print("Skipping ", file)
 
 			print('Total Dataset Size: ', states.shape[0])
 
