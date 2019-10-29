@@ -8,7 +8,7 @@ from torch.distributions import MultivariateNormal, Categorical
 import numpy as np 
 
 
-class NL_EL_Tracking_Controller_Net(nn.Module):
+class NL_EL_Net(nn.Module):
 	"""
 	Nonlinear Euler Lagrangian Tracking Controller
 
@@ -22,7 +22,7 @@ class NL_EL_Tracking_Controller_Net(nn.Module):
 
 	def __init__(self, robot_env, K, Lbda, layers, activation):
 		
-		super(Nl_Tracking_Controller_Net, self).__init__()
+		super(NL_EL_Net, self).__init__()
 
 		self.K = torch.tensor(K) # drives dot{q} to dot{q}_r 
 		self.Lbda = torch.tensor(Lbda) # drives q to q_r 
@@ -50,25 +50,39 @@ class NL_EL_Tracking_Controller_Net(nn.Module):
 		# save input state
 		s = x 
 
-		# get 'reference' trajectory by propagating thru network 
-		for layer in layers[:-1]:
-			x = self.activation(layer(x))
-		qd = layers[-1](x)[0:state_dim/2]
-		dot_qd = layers[-1](x)[state_dim/2:state_dim]
-		dotdot_qd = layers[-1](x)[state_dim:]
+		# other 
+		q_dim = int(self.state_dim/2)
+		s_dim = self.state_dim
 
-		# extract current state 
-		q = s[0:state_dim/2]
-		dot_q = s[state_dim/2:]
+		# get 'reference' trajectory by propagating thru network 
+		for layer in self.layers[:-1]:
+			x = self.activation(layer(x))
+
+		batch_on = True
+		if batch_on:
+			# extract reference state
+			qd = self.layers[-1](x)[:,0:q_dim]
+			dot_qd = self.layers[-1](x)[:,q_dim:s_dim]
+			dotdot_qd = self.layers[-1](x)[:,s_dim:]
+			# extract current state 
+			q = s[:,0:q_dim]
+			dot_q = s[:,q_dim:]
 
 		# composite variable
+		print('s.shape:', s.shape)
+		print('q.shape:', q.shape)
+		print('dot_q.shape:',dot_q.shape)
+		print('qd.shape:', qd.shape)
+		print('dot_qd.shape:',dot_qd.shape)
+		exit()
+		# stopped here 
 		dot_qr = dot_qd - self.Lbda@(qd - q)
 		dotdot_qr = dotdot_qd - self.Lbda@(dot_qd - dot_q)
 
 		# system
-		M = self.M(q,q_dot) 
-		C = self.C(q)
-		G = self.G(q)
+		M = self.M(q) 
+		C = self.C(q,dot_q)
+		G = self.G(q,dot_q)
 
 		# control law
 		a = M @ dotdot_qr + C @ dot_qr + G - self.K @ (dot_q - dot_qr)
@@ -78,3 +92,6 @@ class NL_EL_Tracking_Controller_Net(nn.Module):
 		action = self(torch.from_numpy(state).float())
 		action = np.squeeze(action.detach().numpy())
 		return action
+
+
+

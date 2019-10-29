@@ -55,7 +55,8 @@ def train_rl(param, env):
 	if param.rl_warm_start_on:
 		print('Loading Previous Model: ', param.rl_warm_start_fn)
 		model = torch.load(param.rl_warm_start_fn)
-		model.make_replay_buffer(int(param.rl_buffer_limit))
+		if continuous:
+			model.make_replay_buffer(int(param.rl_buffer_limit))
 		print(model)
 	else:
 		print('Creating New Model...')

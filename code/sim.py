@@ -110,7 +110,7 @@ def sim(param, env, controllers, initial_state, visualize):
 					label=result.name)
 
 	# extract gains
-	if param.controller_class in ['PID_wRef','PID']:
+	if param.il_controller_class in ['PID_wRef','PID']:
 		controller = controllers['IL']
 		for result in sim_results:
 			if result.name == 'IL':
@@ -122,7 +122,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		fig,ax = plotter.plot(times[1:result.steps],kd[0:result.steps,1],title='Kd theta')
 
 	# extract reference trajectory
-	if param.controller_class in ['PID_wRef','Ref']:
+	if param.il_controller_class in ['PID_wRef','Ref']:
 		controller = controllers['IL']
 		for result in sim_results:
 			if result.name == 'IL':

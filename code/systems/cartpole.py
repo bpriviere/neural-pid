@@ -128,6 +128,40 @@ class CartPole(Env):
 		res = np.vstack([qdot, qdotdot])
 		return res
 
+	def M(self,q):
+		# generalized mass matrix
+		m_p = self.mass_pole
+		m_c = self.mass_cart
+		l = self.length_pole
+		g = self.g
+		th = q[1]
+		M = np.array([
+			[m_c + m_p, m_p*l*np.cos(th)],
+			[m_p*l*np.cos(th),m_p*(l**2)]])
+		return M
+
+	def C(self,q,qdot):
+		# coriolis matrix
+		th = q[1]
+		thdot = qdot[1]
+		m_p = self.mass_pole
+		l - self.length_pole
+		C = np.array([
+			[0,-m_p*l*thdot*np.sin(th)],
+			[0,0]])
+		return C
+
+	def G(self,q,qdot):
+		# gravity terms
+		m_p = self.mass_pole
+		l = self.length_pole
+		g = self.g 
+		th = q[1]
+		G = np.array([
+			[0],
+			[-m_p*g*l*np.sin(th)]])
+		return G
+
 	# xdot = f(x, u)
 	# use autograd here so we can support SCP
 	def f_scp(self, x, u):
