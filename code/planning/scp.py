@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.backends.backend_pdf
 
-
-def scp(param, env, xf = None):
+# obj is one of "minimizeError", "minimizeX", "minimizeU"
+def scp(param, env, x, u, obj, xf = None):
 
   partialFx = jacobian(env.f_scp, 0)
   partialFu = jacobian(env.f_scp, 1)
@@ -21,11 +21,14 @@ def scp(param, env, xf = None):
   def constructB(xbar, ubar):
     return partialFu(xbar, ubar)
 
-  data = np.loadtxt(param.rrt_fn, delimiter=',', ndmin=2)
+  # data = np.loadtxt(param.rrt_fn, delimiter=',', ndmin=2)
+  # xprev = data[:,0:env.n]
+  # uprev = data[:,env.n:env.n + env.m]
 
-  xprev = data[:,0:env.n]
-  uprev = data[:,env.n:env.n + env.m]
-  T = data.shape[0]
+  xprev = x
+  uprev = u
+
+  T = x.shape[0]
   dt = param.sim_dt
 
   if xf is None:
@@ -35,6 +38,8 @@ def scp(param, env, xf = None):
 
   x0 = xprev[0]
 
+  print(np.tile(goalState, (T,1)).shape)
+
   if param.scp_pdf_fn is not None:
     pdf = matplotlib.backends.backend_pdf.PdfPages(param.scp_pdf_fn)
 
@@ -42,9 +47,10 @@ def scp(param, env, xf = None):
   xChanges = []
   uChanges = []
   try:
-    obj = 'minimizeError' # 'minimizeError', 'minimizeX'
+    # obj = 'minimizeError' # 'minimizeError', 'minimizeX'
 
     for iteration in range(10):
+      print("SCP iteration ", iteration)
 
       x = cp.Variable((T, env.n))
       u = cp.Variable((T, env.m))
@@ -53,7 +59,7 @@ def scp(param, env, xf = None):
         delta = cp.Variable()
         objective = cp.Minimize(delta)
       elif obj == 'minimizeX':
-        objective = cp.Minimize(cp.sum_squares(x[:,0:2]))
+        objective = cp.Minimize(cp.sum_squares(x - np.tile(goalState, (T,1))))
       else:
         # objective = cp.Minimize(cp.sum_squares(u) + 10 * cp.sum_squares(x[:,3:5]))
         objective = cp.Minimize(cp.sum_squares(u))
@@ -127,12 +133,11 @@ def scp(param, env, xf = None):
       if result is None:
         return
 
+      print("Success. Objective: ", result)
+
       objectiveValues.append(result)
       xChanges.append(np.linalg.norm(x.value - xprev))
       uChanges.append(np.linalg.norm(u.value - uprev))
-
-      if obj == 'minimizeError' and result < 1e-6:
-        obj = 'minimizeU'
 
       # The optimal value for x is stored in `x.value`.
       # print(x.value)
@@ -140,50 +145,46 @@ def scp(param, env, xf = None):
 
       # compute forward propagated value
       xprop = np.empty(x.value.shape)
+      # xprevprop = np.empty(x.value.shape)
       xprop[0] = x0
+      # xprevprop[0] = x0
       for t in range(0, T-1):
         xprop[t+1] = xprop[t] + dt * env.f_scp(xprop[t], u.value[t])
+        # xprop[t+1] = x.value[t] + dt * env.f_scp(x.value[t], u.value[t])
+        # xprevprop[t+1] = xprevprop[t] + dt * env.f_scp(xprevprop[t], uprev[t])
 
       # print(xprop)
       if param.scp_pdf_fn is not None:
-        fig, ax = plt.subplots()
-        ax.plot(xprev[:,0], xprev[:,1], label="input")
-        ax.plot(x.value[:,0], x.value[:,1], label="opt")
-        ax.plot(xprop[:,0], xprop[:,1], label="opt forward prop")
+        for i in range(env.n):
+          fig, ax = plt.subplots()
+          ax.set_title(env.states_name[i])
+          ax.plot(xprev[:,i],label="input")
+          # ax.plot(xprevprop[:,i],label="input forward prop")
+          ax.plot(x.value[:,i],label="opt")
+          ax.plot(xprop[:,i],label="opt forward prop")
+          ax.legend()
+          pdf.savefig(fig)
+          plt.close(fig)
 
-        plt.legend()
-        # plt.show()
-        pdf.savefig(fig)
-        plt.close(fig)
-
-        fig, ax = plt.subplots()
-        ax.plot(u.value[:,0], label="u0")
-        ax.plot(u.value[:,1], label="u1")
-        ax.plot(u.value[:,2], label="u2")
-        ax.plot(u.value[:,3], label="u3")
-
-        plt.legend()
-        # plt.show()
-        pdf.savefig(fig)
-        plt.close(fig)
-
-        fig, ax = plt.subplots()
-        ax.plot(x.value[:,0], label="x")
-        ax.plot(x.value[:,1], label="y")
-        ax.plot(x.value[:,2], label="z")
-
-        plt.legend()
-        # plt.show()
-        pdf.savefig(fig)
-        plt.close(fig)
+        for i in range(env.m):
+          fig, ax = plt.subplots()
+          ax.set_title(env.actions_name[i])
+          ax.plot(uprev[:,i],label="input")
+          ax.plot(u.value[:,i],label="opt")
+          ax.legend()
+          pdf.savefig(fig)
+          plt.close(fig)
 
       xprev = np.array(x.value)
       uprev = np.array(u.value)
 
+      if obj == 'minimizeError' and result < 1e-6:
+        break
+
     if True: #obj == 'minimizeU' or obj == 'minimizeX':
-      result = np.hstack([xprev, uprev])
-      np.savetxt(param.scp_fn, result, delimiter=',')
-      return xprev, uprev
+      # result = np.hstack([xprev, uprev])
+      # np.savetxt(param.scp_fn, result, delimiter=',')
+      return xprev, uprev, objectiveValues[-1]
 
   except Exception as e:
     print(e)

@@ -1,6 +1,8 @@
 from run import run
 from systems.cartpole import CartPole
+from systems.quadrotor import Quadrotor
 from run_cartpole import CartpoleParam
+from run_quadrotor import QuadrotorParam
 from planning.rrt import rrt
 from planning.scp import scp
 import numpy as np
@@ -15,8 +17,8 @@ def run_sim(controller, initial_state):
 	for step, time in enumerate(times[:-1]):
 		state = states[step]			
 		action = controller.policy(state) 
-		reward += env.reward()
-		states[step + 1], _, done, _ = env.step(action)
+		states[step + 1], r, done, _ = env.step(action)
+		reward += r
 		actions[step] = np.squeeze(action)
 		if done:
 			break
@@ -32,8 +34,14 @@ if __name__ == '__main__':
 
 	env = CartPole(param)
 
+	# param = QuadrotorParam()
+	# env = Quadrotor(param)
+
+	# param.sim_rl_model_fn = '../models/quadrotor/rl_discrete.pt'
+
 	deeprl_controller = torch.load(param.sim_rl_model_fn)
 	times = param.sim_times
+	xf = param.ref_trajectory[:,-1]
 
 	for i in range(500):
 
@@ -47,9 +55,23 @@ if __name__ == '__main__':
 		print("Running on ", param.scp_fn)
 
 		initial_state = env.reset()
-		states_deeprl, actions_deeprl, step_deeprl = run_sim(deeprl_controller, initial_state)
-
-		data = np.hstack([states_deeprl[0:-1], actions_deeprl])
-		np.savetxt(param.rrt_fn, data, delimiter=',')
-
-		scp(param, env)
+		x, u, step = run_sim(deeprl_controller, initial_state)
+		x = x[0:-1]
+		if step + 2 == len(times):
+			try:
+				# x, u, obj = scp(param, env, x, u, "minimizeError")
+				# if obj < 1e-6:
+				x, u, obj = scp(param, env, x, u, "minimizeX")
+				idx = -1
+				# error = np.linalg.norm(x - xf, axis=1)
+				# print(error)
+				# idx = np.where(error<0.5)
+				# if len(idx) > 0:
+				# 	idx = idx[0][0]
+				# 	print(idx)
+				result = np.hstack([x[0:idx], u[0:idx]])
+				np.savetxt(param.scp_fn, result, delimiter=',')
+			except Exception as e:
+				print(e)
+				print("Error during SCP. Skipping.")
+				pass
