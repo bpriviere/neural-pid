@@ -125,6 +125,7 @@ def scp(param, env, x, u, obj, xf = None):
       prob = cp.Problem(objective, constraints)
 
       # The optimal objective value is returned by `prob.solve()`.
+      # result = prob.solve(verbose=True,solver=cp.GUROBI, BarQCPConvTol=1e-8)
       try:
         result = prob.solve(verbose=True,solver=cp.GUROBI, BarQCPConvTol=1e-8)
       except cp.error.SolverError:

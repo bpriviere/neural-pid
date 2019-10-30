@@ -15,24 +15,22 @@ class Ref_Net(nn.Module):
 	where last layer:
 	a = kp (s - s_ref) + kd (sd - sd_ref)
 	"""
-	def __init__(self, state_dim, action_dim, a_min, a_max, Kp, Kd):
+	def __init__(self, state_dim, action_dim, a_min, a_max, Kp, Kd, layers, activation):
 		super(Ref_Net, self).__init__()
 		self.a_min = torch.from_numpy(a_min).float()
 		self.a_max = torch.from_numpy(a_max).float()
 		self.Kp = Kp
 		self.Kd = Kd
-		self.fc1 = nn.Linear(state_dim, 16)
-		self.fc2 = nn.Linear(16, 16)
-		self.fc3 = nn.Linear(16, state_dim)
+		self.layers = layers
+		self.activation = activation
 		self.n = state_dim
 		self.m = action_dim
 
 	def evalNN(self, x):
-		x = torch.from_numpy(np.array(x,ndmin = 2)).float()
-		x = F.tanh(self.fc1(x))
-		x = F.tanh(self.fc2(x))
-		x = self.fc3(x)
-		return x
+		x = torch.from_numpy(np.array(x,ndmin = 2)).float()		
+		for layer in self.layers[:-1]:
+			x = self.activation(layer(x))
+		return self.layers[-1](x)
 
 	def forward(self, x):
 		# input: 

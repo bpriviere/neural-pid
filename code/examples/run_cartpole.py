@@ -13,7 +13,7 @@ class CartpoleParam(Param):
 
 		# env 
 		self.env_name = 'CartPole'
-		self.env_case = 'Any90' #'SmallAngle','Swing90','Swing180', 'Any90'
+		self.env_case = 'Swing90' #'SmallAngle','Swing90','Swing180', 'Any90'
 
 		# action constraints
 		self.a_min = np.array([-10])
@@ -26,7 +26,7 @@ class CartpoleParam(Param):
 
 		# RL
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
-		self.rl_continuous_on = False
+		self.rl_continuous_on = True
 		self.rl_lr_schedule_on = False
 		self.rl_gamma = 0.98
 		self.rl_K_epoch = 5
@@ -40,6 +40,7 @@ class CartpoleParam(Param):
 		m = 1 # action dim
 		h_mu = 32 # hidden layer
 		h_q = 32 # hidden layer
+		h_s = 32 # hidden layer discrete 
 
 		if self.rl_continuous_on:
 			# ddpg param
@@ -64,22 +65,34 @@ class CartpoleParam(Param):
 			self.rl_lr = 5e-4
 			self.rl_lmbda = 0.95
 			self.rl_eps_clip = 0.2
+			self.rl_layers = nn.ModuleList([
+				nn.Linear(n,h_s),
+				nn.Linear(h_s,h_s),
+				nn.Linear(h_s,len(self.rl_discrete_action_space)),
+				nn.Linear(h_s,1)
+				])
 
 		# IL
-		self.il_lr = 1e-4
+		h_i = 32 # hidden layers
+		self.il_n_epoch = 50000 # number of epochs per batch 
+		self.il_batch_size = 500 # number of data points per batch
+		self.il_n_data = 10000 # total number of data points 		
 		self.il_lr = 2e-4
 		self.il_log_interval = 100
 		self.il_load_dataset = "../models/CartPole/dataset_rl/*.csv"
+		self.il_load_dataset_on = False 
 		self.il_test_train_ratio = 0.8
 		self.il_state_loss_on = False
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
 		self.il_imitate_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
-		self.il_controller_class = 'NL_EL' # PID, PID_wRef, Ref, NL_EL
+		self.il_controller_class = 'Ref' # PID, PID_wRef, Ref, NL_EL
 		self.il_K = np.eye(int(n/2))
 		self.il_Lbda = np.eye(int(n/2))
 		self.il_layers = nn.ModuleList([
-			nn.Linear(n,h_q),
-			nn.Linear(h_q,int(1.5*n))])
+			nn.Linear(n,h_i),
+			nn.Linear(h_i,h_i),
+			nn.Linear(h_i,h_i),
+			nn.Linear(h_i,n)])
 		self.il_activation = tanh
 		self.il_kp = [2,4]
 		self.il_kd = [0.3, 3.5]
@@ -99,7 +112,7 @@ class CartpoleParam(Param):
 		self.sim_rl_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
-		self.controller_class = 'Ref' # PID, PID_wRef, Ref
+
 		# planning
 		# self.rrt_fn = '../models/CartPole/rrt.csv'
 		self.scp_fn = '../models/CartPole/scp.csv'
@@ -145,19 +158,20 @@ if __name__ == '__main__':
 	param = CartpoleParam()
 	env = CartPole(param)
 	
-	x0 = np.array([0.4, np.pi/2, 0.5, 0])
+	# x0 = np.array([0.4, np.pi/2, 0.5, 0])
 	x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
 
 	# scp_file = find_best_file(param.il_load_dataset, x0)
 	# print(scp_file)
 
-	scp_file, scp_x0 = find_best_file(param.il_load_dataset, x0)
-	print(scp_file, scp_x0)
+	if param.il_load_dataset_on:
+		scp_file, scp_x0 = find_best_file(param.il_load_dataset, x0)
+		print(scp_file, scp_x0)
 
 	controllers = {
 		# 'RL':	torch.load('../models/CartPole/rl_Any90_discrete.pt'),
-		'RL':	torch.load('../models/CartPole/rl_current.pt'),
-		# 'IL':	torch.load(param.sim_il_model_fn),
+		'RL':	torch.load(param.sim_rl_model_fn),
+		'IL':	torch.load(param.sim_il_model_fn),
 		# 'PD': PlainPID(param.kp, param.kd),
 		# 'SCP':	FilePolicy(scp_file),
 	}

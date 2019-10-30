@@ -11,22 +11,40 @@ class PID_wRef_Net(nn.Module):
 	"""
 	neural net to predict gains, kp, kd, from state, s
 	"""
-	def __init__(self,input_layer,output_layer):
+	def __init__(self,action_dim,layers,activation):
 		super(PID_wRef_Net, self).__init__()
-		self.fc1 = nn.Linear(input_layer, 64)
-		self.fc2 = nn.Linear(64, 64)
-		self.fc3 = nn.Linear(64, input_layer + 4)
+		#self.fc1 = nn.Linear(input_layer, 64)
+		#self.fc2 = nn.Linear(64, 64)
+		#self.fc3 = nn.Linear(64, input_layer + 4)
+
+		self.layers = layers
+		self.activation = activation
+		self.state_dim = layers[0].in_features
+		self.action_dim = action_dim
+
 
 	def evalNN(self, x):
-		x = torch.from_numpy(array(x,ndmin = 2)).float()
-		x = F.tanh(self.fc1(x))
-		x = F.tanh(self.fc2(x))
-		# # apply softplus only to PID gains part
-		x = self.fc3(x)
+		x = torch.from_numpy(np.array(x,ndmin = 2)).float()
+		for layer in self.layers[:-1]:
+			x = self.activation(layer(x))
+		x = self.layers[-1](x)
 		pid_slice = x[:,0:4]
 		ref_slice = x[:,4:]
 		x = torch.cat((F.softplus(pid_slice), ref_slice), dim=1)
 		return x
+
+
+	# def evalNN(self, x):
+	#	x = torch.from_numpy(array(x,ndmin = 2)).float()
+	#	x = F.tanh(self.fc1(x))
+	#	x = F.tanh(self.fc2(x))
+		# # apply softplus only to PID gains part
+	#	x = self.fc3(x)
+	#	pid_slice = x[:,0:4]
+	#	ref_slice = x[:,4:]
+	#	x = torch.cat((F.softplus(pid_slice), ref_slice), dim=1)
+	#	return x
+
 
 	def forward(self, x):
 		state = torch.from_numpy(array(x,ndmin = 2)).float()

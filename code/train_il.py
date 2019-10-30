@@ -181,9 +181,9 @@ def train_il(param, env):
 	elif param.il_controller_class is 'PID':
 		model = PID_Net(env.n, env.m)
 	elif param.il_controller_class is 'PID_wRef':
-		model = PID_wRef_Net(env.n, env.m)
+		model = PID_wRef_Net(env.m, param.il_layers, param.il_activation)
 	elif param.il_controller_class is 'Ref':
-		model = Ref_Net(env.n, env.m, env.a_min, env.a_max, param.kp, param.kd)
+		model = Ref_Net(env.n, env.m, env.a_min, env.a_max, param.kp, param.kd, param.il_layers, param.il_activation)
 	elif param.il_controller_class is 'Barrier':
 		model = Barrier_Net(param,param.controller_learning_module)
 	elif param.il_controller_class is 'Empty':
@@ -196,7 +196,7 @@ def train_il(param, env):
 	print("Controller: ",param.il_controller_class)
 
 	# datasets
-	if param.il_load_dataset is not None:
+	if param.il_load_dataset_on:
 		if "orca" in param.il_load_dataset:
 			dataset = []
 			for k,file in enumerate(glob.glob("../baseline/orca/build/*.npy")):

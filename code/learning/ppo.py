@@ -17,6 +17,8 @@ class PPO(nn.Module):
 		state_dim,
 		action_dim,
 		action_std,
+		layers,
+		activation,
 		cuda_on,
 		lr,
 		gamma,
@@ -36,24 +38,21 @@ class PPO(nn.Module):
 		self.lmbda = lmda
 		self.eps_clip = eps_clip
 
-		self.fc1   = nn.Linear(state_dim,32)
-		self.fc2   = nn.Linear(32,32)
-		self.fc_pi = nn.Linear(32,len(self.actions))
-		self.fc_v  = nn.Linear(32,1)
+		self.layers = layers
+		self.activation = activation
+		
 		self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
 	def pi(self, x, softmax_dim = 0):
-		state = x
-		x = F.tanh(self.fc1(x))
-		x = F.tanh(self.fc2(x))
-		x = self.fc_pi(x)
-		prob = F.softmax(x, dim=softmax_dim)
+		for layer in self.layers[-2]:
+			x = self.activation(layer(x))
+		prob = F.softmax(layer[-2](x),dim=softmax_dim) 
 		return prob
 	
 	def v(self, x):
-		x = F.tanh(self.fc1(x))
-		x = F.tanh(self.fc2(x))
-		v = self.fc_v(x)
+		for layer in self.layers[-2]:
+			x = self.activation(layer(x))
+		v = self.layer[-1](x)
 		return v
 	  
 	def put_data(self, transition):
