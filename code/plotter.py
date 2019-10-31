@@ -28,20 +28,19 @@ def subplots():
 	return plt.subplots()
 
 
-def plot(T,X,title=None,fig=None,ax=None,label=None):
+def plot(T,X,title=None,fig=None,ax=None,label=None,color=None):
 	
 	if fig is None or ax is None:
 		fig, ax = plt.subplots()
 	
+	line, = ax.plot(T,X)
 	if label is not None:
-		ax.plot(T,X,label=label)
+		line.set_label(label)
 		ax.legend()
-	else:
-		ax.plot(T,X)
-	
+	if color is not None:
+		line.set_color(color)
 	if title is not None:
 		ax.set_title(title)
-
 	return fig, ax
 
 
@@ -60,21 +59,21 @@ def make_fig(axlim = None):
 
 
 
-def plot_circle(x,y,r,fig=None,ax=None,title=None,label=None):
+def plot_circle(x,y,r,fig=None,ax=None,title=None,label=None,color=None):
 	if fig is None or ax is None:
 		fig, ax = plt.subplots()
 
+	zorder=3
+
+	circle = patches.Circle((x,y),radius=r, zorder = zorder)
+	if color is not None:
+		circle.set_color(color)
 	if label is not None:
-		circle = patches.Circle((x,y),radius=r,label=label)
-		ax.add_artist(circle)
-
-	else:
-		circle = patches.Circle((x,y),radius=r)
-		ax.add_artist(circle)
-
+		circle.set_label(label)
 	if title is not None:
 		ax.set_title(title)
 
+	ax.add_artist(circle)
 	return fig,ax
 	
 

@@ -204,4 +204,3 @@ def scp(param, env, x, u, obj, xf = None):
       plt.legend()
       pdf.savefig(fig)
       pdf.close()
-

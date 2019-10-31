@@ -1,5 +1,7 @@
 
+
 import numpy as np 
+from collections import namedtuple
 
 class ZeroPolicy:
 	def __init__(self,env):
@@ -16,7 +18,7 @@ class LCP_Policy:
 		dt = self.env.times[self.env.time_step+1] - self.env.times[self.env.time_step]
 		for agent in self.env.agents:
 			# observation_i = {s^j - s^i} \forall j in N^i
-			a[agent.i] = sum(observation[agent.i])*dt	
+			a[agent.i] = sum(observation[agent.i])*dt
 		return a
 
 class WMSR_Policy:
@@ -26,7 +28,7 @@ class WMSR_Policy:
 
 	# weighted mean subsequence reduced 
 	def policy(self,observation):
-		f = param.n_malicious
+		f = self.env.n_malicious
 		a = np.zeros((self.env.m)) 
 		dt = self.env.times[self.env.time_step+1] - self.env.times[self.env.time_step] 
 		for agent in self.env.agents: 
