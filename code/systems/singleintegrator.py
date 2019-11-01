@@ -169,7 +169,7 @@ class SingleIntegrator(Env):
 			agent_i.s = np.concatenate((agent_i.p,agent_i.v))
 
 	def agent_idx_to_state_idx(self,i):
-		return self.state_dim_per_agent*i 		
+		return self.state_dim_per_agent*i 
 
 	def visualize(self,states,dt):
 

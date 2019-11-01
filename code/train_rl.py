@@ -2,6 +2,7 @@
 # my packages
 from learning.ppo import PPO
 from learning.ddpg import DDPG
+from learning.ppo_w_deepset import PPO_w_DeepSet
 
 # standard packages
 import torch 
@@ -60,7 +61,7 @@ def train_rl(param, env):
 		print(model)
 	else:
 		print('Creating New Model...')
-		if continuous:
+		if param.rl_module is 'DDPG':
 			model = DDPG(
 				param.rl_mu_network_architecture,
 				param.rl_q_network_architecture,
@@ -77,7 +78,7 @@ def train_rl(param, env):
 				param.rl_K_epoch,
 				param.rl_buffer_limit,
 				param.rl_gpu_on)
-		else:
+		elif param.rl_module is 'PPO':
 			model = PPO(
 				param.rl_discrete_action_space, 
 				state_dim,
@@ -88,6 +89,20 @@ def train_rl(param, env):
 				param.rl_gamma, 
 				param.rl_K_epoch, 
 				param.rl_lmbda, 
+				param.rl_eps_clip)
+		elif param.rl_module is 'PPO_w_DeepSet':
+			model = PPO_w_DeepSet(
+				param.rl_discrete_action_space,
+				param.rl_pi_phi_layers,
+				param.rl_pi_rho_layers, 
+				param.rl_v_phi_layers, 
+				param.rl_v_rho_layers,
+				param.rl_activation,
+				param.rl_gpu_on,
+				param.rl_lr,
+				param.rl_gamma,
+				param.rl_K_epoch,
+				param.rl_lmbda,
 				param.rl_eps_clip)
 
 	if param.rl_lr_schedule_on:
@@ -111,21 +126,34 @@ def train_rl(param, env):
 			trial_count += 1.
 			for step, time in enumerate(times[:-1]):
 
-				if continuous:
+				if param.rl_module is 'DDPG':
 					a = model.train_policy(s)
 					s_prime, r, done, _ = env.step(a)
 					model.put_data((s,a,r,s_prime,done))
 
-				else:
+				elif param.rl_module is 'PPO':
 					prob = model.pi(torch.from_numpy(s).float())
 					c = Categorical(prob).sample().item()
 					a = model.class_to_force(c)
 					s_prime, r, done, _ = env.step([a])
 					model.put_data((s,c,r,s_prime,prob[c].item(),done))
 
+				elif param.rl_module is 'PPO_w_DeepSet':
+					observations = env.observe()
+					probs = model.pi(observations)
+					classifications = torch.zeros((env.n_agents))
+					A = torch.zeros((env.n_agents,env.action_dim_per_agent))
+					for k,prob in enumerate(probs):
+						c = Categorical(prob).sample().item()
+						classifications[k] = c
+						A[k,:] = model.class_to_action(c)
+					s_prime, r, done, _ = env.step(A)
+					model.put_data((s,c,r,s_prime,prob[c].item(),done))
+
 				s = s_prime
 				running_reward += r
-				data_count += 1
+				# data_count += 1
+				data_count += env.n_agents
 				if done:
 					break
 
