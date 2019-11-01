@@ -10,18 +10,18 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import numpy as np 
 
 class ReduceLROnRewardSchedule:
-	def __init__(self,optimizer):
+	def __init__(self,optimizer,gamma,schedule):
 		self.optimizer = optimizer
 		self.initial_lr = optimizer.param_groups[0]['lr']
-		self.gamma = 0.5
-		self.reward_schedule = np.append(np.array(-np.Inf),np.arange(-1200,0,200))
+		self.gamma = gamma
+		self.schedule = schedule
 		# print('reward schedule: ', self.reward_schedule)
 
 	def step(self,reward):
-		k = np.where(reward > self.reward_schedule)[0][-1]
+		k = np.where(reward > self.schedule)[0][-1]
 		for param_group in self.optimizer.param_groups:
 			lr = self.initial_lr*(self.gamma**k)
-			if param_group['lr'] >= lr:
+			if param_group['lr'] > lr:
 				print("Changing Learning Rate From: %5f to %5f"%((param_group['lr'],lr)))
 				param_group['lr'] = lr
 
@@ -93,8 +93,9 @@ def train_rl(param, env):
 	if param.rl_lr_schedule_on:
 		schedulers = []
 		for optimizer in model.get_optimizers():
-			# schedulers.append(ReduceLROnPlateau(optimizer, mode='max'))
-			schedulers.append(ReduceLROnRewardSchedule(optimizer))
+			schedulers.append(ReduceLROnRewardSchedule(optimizer,\
+				param.rl_lr_schedule_gamma,
+				param.rl_lr_schedule))
 
 	# logging variables
 	running_reward = 0

@@ -31,7 +31,7 @@ class CartPole(Env):
 			self.env_state_bounds = np.array([1.,np.radians(12),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing90':
 			self.init_state_start = np.array([0,np.radians(90),0,0])
-			self.init_state_disturbance = np.array([0.1,np.radians(5),0,0])
+			self.init_state_disturbance = 0*np.array([0.1,np.radians(5),0,0])
 			self.env_state_bounds = np.array([3.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Swing180':
 			self.init_state_start = np.array([0,np.radians(180),0,0])

@@ -24,15 +24,31 @@ class CartpoleParam(Param):
 		self.single_agent_sim = True
 		self.multi_agent_sim = False
 
+		# Sim
+		self.sim_t0 = 0
+		self.sim_tf = 10
+		self.sim_dt = 0.05
+		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
+		self.sim_nt = len(self.sim_times)
+		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
+		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
+		self.sim_render_on = False
+		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
+		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
+		self.sim_render_on = False
+
 		# RL
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
 		self.rl_continuous_on = True
-		self.rl_lr_schedule_on = False
-		self.rl_gamma = 0.98
-		self.rl_K_epoch = 5
+		self.rl_lr_schedule_on = True
+		self.rl_lr_schedule = np.arange(0, self.sim_nt*1, 50)
+		self.rl_lr_schedule_gamma = 0.2
+		self.rl_gamma = 0.998
+		self.rl_K_epoch = 10
+		self.rl_batch_size = 1000
 		self.rl_da = 2
-		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_da)
-		self.rl_warm_start_on = False 
+		self.rl_discrete_action_space = np.arange(self.a_min, self.a_max, self.rl_da)
+		self.rl_warm_start_on = False
 		self.rl_warm_start_fn = '../models/CartPole/rl_current.pt'
 
 		# dimensions
@@ -44,25 +60,25 @@ class CartpoleParam(Param):
 
 		if self.rl_continuous_on:
 			# ddpg param
-			self.rl_lr_mu = 5e-5
-			self.rl_lr_q = 5e-4
+			self.rl_lr_mu = 1e-3
+			self.rl_lr_q = 5e-3
 			self.rl_buffer_limit = 5e6
-			self.rl_action_std = 1
-			self.rl_max_action_perturb = 0.5
+			self.rl_action_std = 0.1
+			self.rl_max_action_perturb = 1
 			self.rl_tau = 0.995
 			# network architecture
 			self.rl_mu_network_architecture = nn.ModuleList([
-				nn.Linear(n,h_mu), 
+				nn.Linear(n,h_mu),
 				nn.Linear(h_mu,h_mu),
 				nn.Linear(h_mu,m)])
 			self.rl_q_network_architecture = nn.ModuleList([
 				nn.Linear(n+m,h_q),
 				nn.Linear(h_q,h_q),
 				nn.Linear(h_q,1)])
-			self.rl_network_activation = tanh  		
+			self.rl_network_activation = tanh
 		else:
 			# ppo param
-			self.rl_lr = 5e-4
+			self.rl_lr = 1e-4
 			self.rl_lmbda = 0.95
 			self.rl_eps_clip = 0.2
 			self.rl_layers = nn.ModuleList([
@@ -74,9 +90,9 @@ class CartpoleParam(Param):
 
 		# IL
 		h_i = 32 # hidden layers
-		self.il_n_epoch = 50000 # number of epochs per batch 
+		self.il_n_epoch = 50000 # number of epochs per batch
 		self.il_batch_size = 500 # number of data points per batch
-		self.il_n_data = 10000 # total number of data points 		
+		self.il_n_data = 10000 # total number of data points
 		self.il_lr = 2e-4
 		self.il_log_interval = 100
 		self.il_load_dataset = "../models/CartPole/dataset_rl/*.csv"
@@ -84,7 +100,7 @@ class CartpoleParam(Param):
 		self.il_test_train_ratio = 0.8
 		self.il_state_loss_on = False
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
-		self.il_imitate_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
+		self.il_imitate_model_fn = '../models/CartPole/rl_current.pt'
 		self.il_controller_class = 'Ref' # PID, PID_wRef, Ref, NL_EL
 		self.il_K = np.eye(int(n/2))
 		self.il_Lbda = np.eye(int(n/2))
@@ -98,20 +114,6 @@ class CartpoleParam(Param):
 		self.il_kd = [0.3, 3.5]
 		self.kp = [4.5,3]
 		self.kd = [0.1, 0.5]
-
-		# Sim
-		self.sim_t0 = 0
-		self.sim_tf = 5
-		self.sim_dt = 0.05
-		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
-		self.sim_nt = len(self.sim_times)
-		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
-		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
-		self.sim_render_on = False
-
-		self.sim_rl_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
-		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
-		self.sim_render_on = False
 
 		# planning
 		# self.rrt_fn = '../models/CartPole/rrt.csv'
@@ -159,7 +161,8 @@ if __name__ == '__main__':
 	env = CartPole(param)
 	
 	# x0 = np.array([0.4, np.pi/2, 0.5, 0])
-	x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
+	# x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
+	x0 = np.array([0,np.radians(90),0,0])
 
 	# scp_file = find_best_file(param.il_load_dataset, x0)
 	# print(scp_file)
