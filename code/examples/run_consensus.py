@@ -1,10 +1,15 @@
 
+# my package
 from param import Param
 from run import run
 from systems.consensus import Consensus
 from other_policy import LCP_Policy, WMSR_Policy
 
+# standard package
 import numpy as np 
+from torch import nn as nn 
+from torch import tanh
+import torch 
 
 class ConsensusParam(Param):
 	def __init__(self):
@@ -14,11 +19,16 @@ class ConsensusParam(Param):
 
 		#
 		self.pomdp_on = True
-		self.r_comm = 2.2
+		self.r_comm = 1.2
 		self.n_agents = 5
 		self.n_malicious = 1
 		self.single_agent_sim = False
 		self.multi_agent_sim = True 
+
+		# dim 
+		state_dim_per_agent = 1 
+		state_dim = self.n_agents*state_dim_per_agent
+
 
 		# RL
 		self.rl_train_model_fn = '../models/consensus/rl_current.pt'
@@ -26,14 +36,16 @@ class ConsensusParam(Param):
 		self.rl_lr_schedule_on = False
 		self.rl_gamma = 0.98
 		self.rl_K_epoch = 5
-		self.rl_da = 0.2 # action step size 
+		self.rl_da = 5 # action step size 
 		self.a_min = -1
 		self.a_max = 1
 		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_da)
 		self.rl_warm_start_on = False 
 		self.rl_warm_start_fn = '../models/consensus/rl_current.pt'
+		self.rl_module = "PPO_w_DeepSet" # PPO_w_DeepSet, DDPG, PPO, (DDPG_w_DeepSet)
+		self.rl_log_interval = 20
 
-		if self.rl_continuous_on:
+		if self.rl_module is 'DDPG':
 			# ddpg param
 			self.rl_lr_mu = 5e-5
 			self.rl_lr_q = 5e-4
@@ -51,11 +63,40 @@ class ConsensusParam(Param):
 				nn.Linear(h_q,h_q),
 				nn.Linear(h_q,1)])
 			self.rl_network_activation = tanh  		
-		else:
+		elif self.rl_module is 'PPO':
 			# ppo param
 			self.rl_lr = 5e-4
 			self.rl_lmbda = 0.95
-			self.rl_eps_clip = 0.2		
+			self.rl_eps_clip = 0.2
+			self.rl_layers = nn.ModuleList([
+				nn.Linear(n,h_s),
+				nn.Linear(h_s,h_s),
+				nn.Linear(h_s,len(self.rl_discrete_action_space)),
+				nn.Linear(h_s,1)
+				])	
+		elif self.rl_module is 'PPO_w_DeepSet':
+			
+			h_s = 32 # hidden layer
+			self.rl_pi_phi_layers = nn.ModuleList([
+				nn.Linear(state_dim_per_agent,h_s),
+				nn.Linear(h_s,h_s),
+				])
+			self.rl_pi_rho_layers = nn.ModuleList([
+				nn.Linear(h_s,h_s),
+				nn.Linear(h_s,len(self.rl_discrete_action_space)),
+				])
+			self.rl_v_phi_layers = nn.ModuleList([
+				nn.Linear(state_dim_per_agent,h_s),
+				nn.Linear(h_s,h_s),
+				])
+			self.rl_v_rho_layers = nn.ModuleList([
+				nn.Linear(h_s,h_s),
+				nn.Linear(h_s,1),
+				])
+			self.rl_activation = tanh
+			self.rl_lr = 5e-4
+			self.rl_lmbda = 0.95
+			self.rl_eps_clip = 0.2
 
 		# IL
 		self.il_train_model_fn = '../models/consensus/il_current.pt'
@@ -85,7 +126,7 @@ if __name__ == '__main__':
 	controllers = {
 		'LCP': LCP_Policy(env),
 		# 'WMSR': WMSR_Policy(env),
-		# 'RL':	torch.load('../models/CartPole/rl_Any90_discrete.pt'),
+		'RL':	torch.load(param.sim_rl_model_fn),
 		# 'RL':	torch.load('../models/CartPole/rl_current.pt'),
 		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'SCP':	FilePolicy(scp_file),

@@ -75,6 +75,7 @@ class Consensus(Env):
 			]
 
 		self.param = param
+		self.max_reward = 1 
 
 
 	def render(self):
@@ -128,10 +129,9 @@ class Consensus(Env):
 		return observations
 
 
-
 	def reward(self):
-		curr_ave = self.good_node_average()
-		return 1-np.linalg.norm(curr_ave-self.desired_ave)/\
+		curr_vals = self.state[np.arange(0,self.n_agents,self.state_dim_per_agent)]
+		return 1-np.linalg.norm(curr_vals-self.desired_ave)/\
 			np.linalg.norm(self.worst_bad_node-self.desired_ave)
 
 
