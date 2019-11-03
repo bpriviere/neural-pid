@@ -13,7 +13,7 @@ class CartpoleParam(Param):
 
 		# env 
 		self.env_name = 'CartPole'
-		self.env_case = 'Swing90' #'SmallAngle','Swing90','Swing180', 'Any90'
+		self.env_case = 'Swing180' #'SmallAngle','Swing90','Swing180', 'Any90'
 
 		# action constraints
 		self.a_min = np.array([-10])
@@ -40,17 +40,17 @@ class CartpoleParam(Param):
 		# RL
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
 		self.rl_continuous_on = True
-		self.rl_lr_schedule_on = True
-		self.rl_lr_schedule = np.arange(0, self.sim_nt*1, 30)
+		self.rl_lr_schedule_on = False
+		self.rl_lr_schedule = np.arange(0, self.sim_nt*1, 50)
 		self.rl_lr_schedule_gamma = 0.2
 		self.rl_gamma = 0.998
 		self.rl_K_epoch = 10
 		self.rl_batch_size = 1000
 		self.rl_da = 2
 		self.rl_discrete_action_space = np.arange(self.a_min, self.a_max, self.rl_da)
-		self.rl_warm_start_on = False
+		self.rl_warm_start_on = True
 		self.rl_warm_start_fn = '../models/CartPole/rl_current.pt'
-		self.rl_module = 'DDPG'
+		self.rl_module = 'DDPG' # 'DDPG','PPO','PPO_w_DeepSet'
 
 		# dimensions
 		n = 4 # state dim
@@ -163,7 +163,8 @@ if __name__ == '__main__':
 	
 	# x0 = np.array([0.4, np.pi/2, 0.5, 0])
 	# x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
-	x0 = np.array([0,np.radians(90),0,0])
+
+	x0 = np.array([0,np.radians(180),0,0])
 
 	# scp_file = find_best_file(param.il_load_dataset, x0)
 	# print(scp_file)

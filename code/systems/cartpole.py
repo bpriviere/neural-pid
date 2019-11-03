@@ -16,6 +16,9 @@ class CartPole(Env):
 		self.time_step = None
 		self.ave_dt = self.times[1]-self.times[0]
 
+		# 
+		self.n_agents = 1 
+
 		# default parameters [SI units]
 		self.n = 4
 		self.m = 1
@@ -36,7 +39,7 @@ class CartPole(Env):
 		elif param.env_case is 'Swing180':
 			self.init_state_start = np.array([0,np.radians(180),0,0])
 			self.init_state_disturbance = np.array([0,np.radians(0),0,0])
-			self.env_state_bounds = np.array([10.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
+			self.env_state_bounds = np.array([5.,np.radians(360),5/self.ave_dt,np.radians(180)/self.ave_dt])
 		elif param.env_case is 'Any90':
 			self.init_state_start = np.array([0,np.radians(0),0,0])
 			self.init_state_disturbance = np.array([3.,np.radians(90),4.,10.])
@@ -79,8 +82,9 @@ class CartPole(Env):
 		error = self.state - state_ref
 		C = 1.
 		# r = exp(-C*dot(error.T,dot(W,error)))
-		return 1 - np.power(np.dot(error.T,np.dot(self.W,error))/self.max_penalty,1/6)
 		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
+		# return np.cos(self.state[1]) - 0.1*np.abs(self.state[0])
+		return 1 - np.power(np.dot(error.T,np.dot(self.W,error))/self.max_penalty,1/6)
 
 		
 	def reset(self, initial_state = None):
