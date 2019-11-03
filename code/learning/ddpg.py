@@ -12,6 +12,18 @@ import torch.optim as optim
 # adapted from 
 # https://github.com/seungeunrho/minimalRL/blob/master/ddpg.py
 
+class OrnsteinUhlenbeckNoise:
+    def __init__(self, mu):
+        self.theta, self.dt, self.sigma = 0.1, 0.01, 0.1
+        self.mu = mu
+        self.x_prev = np.zeros_like(self.mu)
+
+    def __call__(self):
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
+                self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
+        self.x_prev = x
+        return x
+
 class DDPG():
 
 	def __init__(self,
@@ -63,6 +75,9 @@ class DDPG():
 		self.data = ReplayBuffer(int(self.buffer_limit))
 		# self.data = []
 
+		# noise
+		self.ou_noise = OrnsteinUhlenbeckNoise(mu=np.zeros(self.action_dim))
+
 		# network
 		self.q = QNet(q_network_architecture,activation,self.device)
 		self.q_target = QNet(q_network_architecture,activation,self.device)
@@ -99,11 +114,14 @@ class DDPG():
 	# 	return s, a, r, s_prime, done_mask
 
 	def train_net(self):
-		s,a,r,s_prime,done_mask  = self.data.sample(self.batch_size)
-		done_mask = done_mask.float()
+
 		# s,a,r,s_prime,done_mask  = self.make_batch()
 		
 		for _ in range(self.K_epoch):
+
+			s,a,r,s_prime,done_mask  = self.data.sample(self.batch_size)
+			done_mask = done_mask.float()
+
 			target = r + self.gamma*(1-done_mask)*self.q_target(s_prime, self.mu_target(s_prime))
 
 			q_loss = F.smooth_l1_loss(self.q(s,a), target.detach())
@@ -138,12 +156,17 @@ class DDPG():
 		# output: 
 		# a, nd array, (m,1)
 
-		s = torch.from_numpy(s).float().to(self.device)
+		# a = self.mu(s).detach()
+		# b = torch.randn(self.action_dim)*self.action_std 
+		# b = torch.clamp(b,-self.eps,self.eps)
+		# a = a + b
+		# a = a.cpu().numpy()
+
+		s = torch.from_numpy(s).float().to(self.device)		
 		a = self.mu(s).detach()
-		b = torch.randn(self.action_dim)*self.action_std 
-		b = torch.clamp(b,-self.eps,self.eps)
-		a = a + b
-		a = a.cpu().numpy()
+		a = a.item() + self.ou_noise()[0]
+		a = np.float32(a)
+		a = np.reshape(np.squeeze(a),(self.action_dim))
 		return a
 
 
@@ -153,10 +176,16 @@ class DDPG():
 		# output: 
 		# a, nd array, (m,1)
 		
-		s = torch.from_numpy(s).float().to(self.device)
+		# s = torch.from_numpy(s).float().to(self.device)
+		# a = self.mu(s).detach()
+		# a = a.cpu().numpy()
+		# a = np.reshape(np.squeeze(a),(self.action_dim,1))
+
+		s = torch.from_numpy(s).float().to(self.device)		
 		a = self.mu(s).detach()
-		a = a.cpu().numpy()
-		a = np.reshape(np.squeeze(a),(self.action_dim,1))
+		a = a.item() + self.ou_noise()[0]
+		a = np.float32(a)
+		a = np.reshape(np.squeeze(a),(self.action_dim,1))		
 
 		return a
 
