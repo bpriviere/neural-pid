@@ -48,9 +48,10 @@ class CartpoleParam(Param):
 		self.rl_batch_size = 1000
 		self.rl_da = 2
 		self.rl_discrete_action_space = np.arange(self.a_min, self.a_max, self.rl_da)
-		self.rl_warm_start_on = True
+		self.rl_warm_start_on = False
 		self.rl_warm_start_fn = '../models/CartPole/rl_current.pt'
 		self.rl_module = 'DDPG' # 'DDPG','PPO','PPO_w_DeepSet'
+		self.rl_scale_reward = 0.01 
 
 		# dimensions
 		n = 4 # state dim
@@ -61,9 +62,9 @@ class CartpoleParam(Param):
 
 		if self.rl_continuous_on:
 			# ddpg param
-			self.rl_lr_mu = 1e-3
-			self.rl_lr_q = 5e-3
-			self.rl_buffer_limit = 5e6
+			self.rl_lr_mu = 1e-4
+			self.rl_lr_q = 1e-3
+			self.rl_buffer_limit = 1e6
 			self.rl_action_std = 0.1
 			self.rl_max_action_perturb = 1
 			self.rl_tau = 0.995

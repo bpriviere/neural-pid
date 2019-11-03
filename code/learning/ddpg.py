@@ -92,27 +92,6 @@ class DDPG():
 	def make_replay_buffer(self,buffer_limit):
 		self.data = ReplayBuffer(int(self.buffer_limit))
 
-	# def make_batch(self):
-	# 	s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, done_lst = [], [], [], [], [], []
-	# 	for transition in self.data:
-	# 		s, a, r, s_prime, done = transition
-			
-	# 		s_lst.append(s)
-	# 		a_lst.append([a])
-	# 		r_lst.append([r])
-	# 		s_prime_lst.append(s_prime)
-	# 		done_mask = 0 if done else 1
-	# 		done_lst.append([done_mask])
-			
-	# 	s = torch.tensor(s_lst, dtype=torch.float)
-	# 	a = torch.tensor(a_lst, dtype=torch.float)
-	# 	r = torch.tensor(r_lst, dtype=torch.float)
-	# 	s_prime = torch.tensor(s_prime_lst, dtype=torch.float)
-	# 	done_mask = torch.tensor(done_lst, dtype=torch.float)
-		
-	# 	self.data = []
-	# 	return s, a, r, s_prime, done_mask
-
 	def train_net(self):
 
 		# s,a,r,s_prime,done_mask  = self.make_batch()
@@ -183,7 +162,7 @@ class DDPG():
 
 		s = torch.from_numpy(s).float().to(self.device)		
 		a = self.mu(s).detach()
-		a = a.item() + self.ou_noise()[0]
+		a = a.item()
 		a = np.float32(a)
 		a = np.reshape(np.squeeze(a),(self.action_dim,1))		
 

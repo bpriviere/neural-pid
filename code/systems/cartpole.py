@@ -51,9 +51,10 @@ class CartPole(Env):
 		self.s_max = -self.s_min
 
 		self.W = np.diag([0.01,1,0,0])
+		self.reward_scale = param.rl_scale_reward
 		self.max_error = 2*self.env_state_bounds
 		self.max_penalty = np.dot(self.max_error.T,np.dot(self.W,self.max_error))
-		self.max_reward = 1.
+		self.max_reward = 1. * self.reward_scale
 
 		self.states_name = [
 			'Cart Position [m]',
@@ -84,7 +85,7 @@ class CartPole(Env):
 		# r = exp(-C*dot(error.T,dot(W,error)))
 		# return 1 - power(dot(error.T,dot(self.W,error))/self.max_penalty,1)
 		# return np.cos(self.state[1]) - 0.1*np.abs(self.state[0])
-		return 1 - np.power(np.dot(error.T,np.dot(self.W,error))/self.max_penalty,1/6)
+		return (1 - np.power(np.dot(error.T,np.dot(self.W,error))/self.max_penalty,1/6))*self.reward_scale
 
 		
 	def reset(self, initial_state = None):
