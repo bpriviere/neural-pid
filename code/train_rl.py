@@ -61,6 +61,7 @@ def train_rl(param, env):
 		print(model)
 	else:
 		print('Creating New Model...')
+		print(param)
 		if param.rl_module is 'DDPG':
 			model = DDPG(
 				param.rl_mu_network_architecture,
@@ -152,8 +153,8 @@ def train_rl(param, env):
 
 				s = s_prime
 				running_reward += r
-				# data_count += 1
-				data_count += env.n_agents
+				data_count += 1
+				# data_count += env.n_agents
 				if done:
 					break
 

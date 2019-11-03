@@ -41,7 +41,7 @@ class CartpoleParam(Param):
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
 		self.rl_continuous_on = True
 		self.rl_lr_schedule_on = True
-		self.rl_lr_schedule = np.arange(0, self.sim_nt*1, 50)
+		self.rl_lr_schedule = np.arange(0, self.sim_nt*1, 30)
 		self.rl_lr_schedule_gamma = 0.2
 		self.rl_gamma = 0.998
 		self.rl_K_epoch = 10
@@ -50,6 +50,7 @@ class CartpoleParam(Param):
 		self.rl_discrete_action_space = np.arange(self.a_min, self.a_max, self.rl_da)
 		self.rl_warm_start_on = False
 		self.rl_warm_start_fn = '../models/CartPole/rl_current.pt'
+		self.rl_module = 'DDPG'
 
 		# dimensions
 		n = 4 # state dim
