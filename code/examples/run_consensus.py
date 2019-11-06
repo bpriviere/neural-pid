@@ -26,8 +26,10 @@ class ConsensusParam(Param):
 		self.multi_agent_sim = True 
 
 		# dim 
-		state_dim_per_agent = 1 
-		state_dim = self.n_agents*state_dim_per_agent
+		self.state_dim_per_agent = 1 
+		self.state_dim = self.n_agents*self.state_dim_per_agent
+		self.action_dim_per_agent = 1
+		self.action_dim = self.n_agents*self.action_dim_per_agent
 
 
 		# RL
@@ -42,9 +44,11 @@ class ConsensusParam(Param):
 		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_da)
 		self.rl_warm_start_on = False 
 		self.rl_warm_start_fn = '../models/consensus/rl_current.pt'
-		self.rl_module = "PPO_w_DeepSet" # PPO_w_DeepSet, DDPG, PPO, (DDPG_w_DeepSet)
+		self.rl_module = "PPO" # PPO_w_DeepSet, DDPG, PPO, (DDPG_w_DeepSet)
 		self.rl_log_interval = 20
 
+		h_s = 32 # hidden layer
+		self.rl_activation = tanh
 		if self.rl_module is 'DDPG':
 			# ddpg param
 			self.rl_lr_mu = 5e-5
@@ -63,20 +67,24 @@ class ConsensusParam(Param):
 				nn.Linear(h_q,h_q),
 				nn.Linear(h_q,1)])
 			self.rl_network_activation = tanh  		
+
 		elif self.rl_module is 'PPO':
 			# ppo param
 			self.rl_lr = 5e-4
 			self.rl_lmbda = 0.95
 			self.rl_eps_clip = 0.2
+
+			# case specific param
+			n_neighbors = 2 
+
 			self.rl_layers = nn.ModuleList([
-				nn.Linear(n,h_s),
+				nn.Linear(1*n_neighbors,h_s),
 				nn.Linear(h_s,h_s),
 				nn.Linear(h_s,len(self.rl_discrete_action_space)),
 				nn.Linear(h_s,1)
 				])	
+
 		elif self.rl_module is 'PPO_w_DeepSet':
-			
-			h_s = 32 # hidden layer
 			self.rl_pi_phi_layers = nn.ModuleList([
 				nn.Linear(state_dim_per_agent,h_s),
 				nn.Linear(h_s,h_s),
@@ -108,7 +116,7 @@ class ConsensusParam(Param):
 		self.sim_il_model_fn = '../models/consensus/il_current.pt'
 		self.sim_render_on = True
 		self.sim_t0 = 0
-		self.sim_tf = 5
+		self.sim_tf = 8
 		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -126,7 +134,7 @@ if __name__ == '__main__':
 	controllers = {
 		'LCP': LCP_Policy(env),
 		# 'WMSR': WMSR_Policy(env),
-		'RL':	torch.load(param.sim_rl_model_fn),
+		# 'RL':	torch.load(param.sim_rl_model_fn),
 		# 'RL':	torch.load('../models/CartPole/rl_current.pt'),
 		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'SCP':	FilePolicy(scp_file),

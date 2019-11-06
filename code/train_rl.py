@@ -1,6 +1,6 @@
 
 # my packages
-from learning.ppo import PPO
+from learning.ppo_v2 import PPO
 from learning.ddpg import DDPG
 from learning.ppo_w_deepset import PPO_w_DeepSet
 
@@ -79,18 +79,21 @@ def train_rl(param, env):
 				param.rl_K_epoch,
 				param.rl_buffer_limit,
 				param.rl_gpu_on)
+
 		elif param.rl_module is 'PPO':
 			model = PPO(
 				param.rl_discrete_action_space, 
 				state_dim,
 				action_dim,
-				param.rl_action_std,
+				param.rl_layers, 
+				param.rl_activation,
 				param.rl_gpu_on,
 				param.rl_lr, 
 				param.rl_gamma, 
 				param.rl_K_epoch, 
 				param.rl_lmbda, 
 				param.rl_eps_clip)
+
 		elif param.rl_module is 'PPO_w_DeepSet':
 			model = PPO_w_DeepSet(
 				param.rl_discrete_action_space,
@@ -132,24 +135,38 @@ def train_rl(param, env):
 					s_prime, r, done, _ = env.step(a)
 					model.put_data((s,a,r,s_prime,done))
 
-				elif param.rl_module is 'PPO':
-					prob = model.pi(torch.from_numpy(s).float())
-					c = Categorical(prob).sample().item()
-					a = model.class_to_force(c)
-					s_prime, r, done, _ = env.step([a])
-					model.put_data((s,c,r,s_prime,prob[c].item(),done))
+				elif param.rl_module is 'PPO' and env.:
+					observations = env.observe() 
+					classifications = []
+					actions = []
+					probs = []
+					r  = 0 
+					for agent in env.agents:
+						o_i = obervations[agent.i]
+						p_i = model.pi(observation)
+						c_i = Categorical(prob).sample().item()
+						a_i = model.class_to_action(classification)
+						s_i = agent.x
+						op_i, r_i, d_i = env.step_i(self, agent_i, a_i)
 
-				elif param.rl_module is 'PPO_w_DeepSet':
-					observations = env.observe()
-					probs = model.pi(observations)
-					classifications = torch.zeros((env.n_agents))
-					A = torch.zeros((env.n_agents,env.action_dim_per_agent))
-					for k,prob in enumerate(probs):
-						c = Categorical(prob).sample().item()
-						classifications[k] = c
-						A[k,:] = model.class_to_action(c)
-					s_prime, r, done, _ = env.step(A)
-					model.put_data((s,c,r,s_prime,prob[c].item(),done))
+						actions.append(a_i)
+						model.put_data((o_i,op_i,r_i,p_i,c_i))
+
+					env.step(actions)
+					
+
+				# not implemented
+				# elif param.rl_module is 'PPO_w_DeepSet':
+				# 	observations = env.observe()
+				# 	probs = model.pi(observations)
+				# 	classifications = torch.zeros((env.n_agents))
+				# 	A = torch.zeros((env.n_agents,env.action_dim_per_agent))
+				# 	for k,prob in enumerate(probs):
+				# 		c = Categorical(prob).sample().item()
+				# 		classifications[k] = c
+				# 		A[k,:] = model.class_to_action(c)
+				# 	s_prime, r, done, _ = env.step(A)
+				# 	model.put_data((s,classiciations,r,s_prime,probs,done))
 
 				s = s_prime
 				running_reward += r

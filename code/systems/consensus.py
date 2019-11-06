@@ -27,8 +27,8 @@ class Consensus(Env):
 		self.n_agents = param.n_agents
 		self.n_malicious = param.n_malicious
 		self.r_comm = param.r_comm
-		self.state_dim_per_agent = 3
-		self.action_dim_per_agent = 1
+		self.state_dim_per_agent = param.state_dim_per_agent
+		self.action_dim_per_agent = param.action_dim_per_agent
 
 		# default parameters [SI units]
 		self.n = self.state_dim_per_agent*self.n_agents
@@ -42,10 +42,11 @@ class Consensus(Env):
 		# determine malicious nodes 
 		self.bad_nodes = np.zeros(self.n_agents, dtype=bool)
 		for _ in range(self.n_malicious):
-			rand_idx = np.random.randint(0,self.n_agents)
-			while self.bad_nodes[rand_idx]:
-				rand_idx = np.random.randint(0,self.n_agents)
-			self.bad_nodes[rand_idx] = True
+			# rand_idx = np.random.randint(0,self.n_agents)
+			# while self.bad_nodes[rand_idx]:
+			# 	rand_idx = np.random.randint(0,self.n_agents)
+			# self.bad_nodes[rand_idx] = True
+			self.bad_nodes[1] = True
 
 		self.good_nodes = np.logical_not(self.bad_nodes)
 		self.desired_ave = None
@@ -56,14 +57,24 @@ class Consensus(Env):
 		# environment 
 		self.env_state_bounds = np.array([5])
 
-		self.init_state_start = np.array([
-			[0,0,0],
-			[0,1,0],
-			[0,0,1],
-			[0,1,1],
-			[0,2,1]],dtype=float)
+		# initialize 
+		
+		# self.init_state_start = np.array([
+		# 	[0,0,0],
+		# 	[0,1,0],
+		# 	[0,0,1],
+		# 	[0,1,1],
+		# 	[0,2,1]],dtype=float)
+
+		init_positions = np.zeros((self.n_agents,2))
+		d_rad = 2*np.pi/self.n_agents
+		for agent in self.agents:
+			init_positions[agent.i,:] = [np.cos(d_rad*agent.i),np.sin(d_rad*agent.i)]
+		self.update_agents_position(init_positions)
+
+		# disturbances on initial state 
 		self.init_state_disturbance = np.array(
-			[10,0,0],dtype=float)
+			[10],dtype=float)
 
 		self.states_name = [
 			'Node Value',
@@ -100,6 +111,15 @@ class Consensus(Env):
 				color = 'red'
 			plotter.plot_circle(p_i[0],p_i[1],0.1,fig=fig,ax=ax,color=color)
 
+		# 
+		xlim = ax.get_xlim()
+		ylim = ax.get_ylim()
+
+		buff = 0.2
+		ax.set_xlim(xlim[0]-buff,xlim[1]+buff)
+		ax.set_ylim(ylim[0]-buff,ylim[1]+buff)
+		ax.set_axis_off()
+
 
 	def step(self, a):
 		self.state = self.next_state(self.state, a)
@@ -109,6 +129,18 @@ class Consensus(Env):
 		self.time_step += 1
 		return self.state, r, d, {}
 
+	def step_i(self, agent_i, a_i):
+		# step function for a single agent, used for training
+		s_i = self.next_state_i(agent_i,a_i)
+		r_i = self.reward_i(agent_i)
+		d_i = self.done()
+		return s_i,r_i,d_i
+
+	def next_state_i(self,agent,a):
+		return agent.x + a 
+
+	def reward_i(self,agent):
+		return -np.abs(agent.x-self.desired_ave)
 
 	def done(self):
 		return False
@@ -157,12 +189,18 @@ class Consensus(Env):
 	def reset(self, initial_state = None):
 		self.time_step = 0				
 		if initial_state is None:
-			init_state = self.init_state_start
-			for agent_i in self.agents:
-				init_state[agent_i.i,0] += self.init_state_disturbance[0]*np.random.uniform() 
-			self.state = init_state.flatten()
+			self.state = np.zeros((self.state_dim))
+			for agent in self.agents:
+				self.state[self.agent_i_idx_to_value_i_idx(agent_i.i)] 
+				= self.init_state_disturbance[0]*np.random.uniform() 
 		else:
 			self.state = initial_state
+
+		for agent_i in self.agents:
+			if self.bad_nodes[agent_i.i]:
+				self.state[
+				self.agent_i_idx_to_value_i_idx(agent_i.i)] = 10 
+		
 
 		self.update_agents()			
 		self.desired_ave = self.good_node_average()
@@ -182,7 +220,7 @@ class Consensus(Env):
 		dt = self.times[self.time_step+1]-self.times[self.time_step]		
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
-			if self.good_nodes[agent_i.i]:
+			if self.good_nodes[agent_i.i]: 
 				sp1[idx] = s[idx] + a[agent_i.i]
 			else:
 				sp1[idx] = s[idx]
@@ -192,8 +230,11 @@ class Consensus(Env):
 		s = self.state
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
-			agent_i.x = s[idx+0]
-			agent_i.p = s[idx+1:idx+3]
+			agent_i.x = s[idx]
+
+	def update_agents_position(self,p):
+		for agent in self.agents:
+			agent.p = p[agent.i,:]			
 
 	def agent_idx_to_state_idx(self,i):
 		return i*self.state_dim_per_agent

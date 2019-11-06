@@ -60,9 +60,12 @@ class QuadrotorParam(Param):
 
 		# RL
 		self.rl_train_model_fn = '../models/quadrotor/rl_current.pt'
-		self.rl_lr_schedule_on = True
-		self.rl_warm_start_on = True
+		self.rl_lr_schedule_on = False
+		self.rl_lr_schedule_gamma = 0.2
+		self.rl_warm_start_on = False
 		self.rl_warm_start_fn = '../models/quadrotor/rl_continuous_v3.pt'
+		self.rl_module = 'DDPG'
+		self.rl_lr_schedule = np.arange(0,10)
 
 		# common param
 		self.rl_gamma = 0.999
@@ -248,7 +251,7 @@ if __name__ == '__main__':
 	env = Quadrotor(param)
 
 	controllers = {
-		'RL':	torch.load(param.sim_rl_model_fn),
+		# 'RL':	torch.load(param.sim_rl_model_fn),
 		'FW':	FirmwareController(param.a_min, param.a_max),
 		# 'RRT':	FilePolicy(param.rrt_fn),
 		# 'SCP':	FilePolicy(param.scp_fn),
