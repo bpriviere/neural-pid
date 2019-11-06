@@ -135,7 +135,7 @@ def train_rl(param, env):
 					s_prime, r, done, _ = env.step(a)
 					model.put_data((s,a,r,s_prime,done))
 
-				elif param.rl_module is 'PPO' and env.:
+				elif param.rl_module is 'PPO' and env.pomdp_on:
 					observations = env.observe() 
 					classifications = []
 					actions = []

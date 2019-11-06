@@ -189,9 +189,9 @@ class Consensus(Env):
 	def reset(self, initial_state = None):
 		self.time_step = 0				
 		if initial_state is None:
-			self.state = np.zeros((self.state_dim))
+			self.state = np.zeros((self.n))
 			for agent in self.agents:
-				self.state[self.agent_i_idx_to_value_i_idx(agent_i.i)] 
+				self.state[self.agent_i_idx_to_value_i_idx(agent.i)] \
 				= self.init_state_disturbance[0]*np.random.uniform() 
 		else:
 			self.state = initial_state
