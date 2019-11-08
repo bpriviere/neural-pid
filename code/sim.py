@@ -23,9 +23,10 @@ def sim(param, env, controllers, initial_state, visualize):
 			state = states[step]
 			if param.pomdp_on:
 				observation = env.observe()
-				action = controller.policy(observation)
 			else:
-				action = controller.policy(state) 
+				observation = state
+							
+			action = controller.policy(observation) 
 			states[step + 1], r, done, _ = env.step(action)
 			reward += r
 			actions[step] = action.flatten()

@@ -3,6 +3,7 @@
 from learning.ppo_v2 import PPO
 from learning.ddpg import DDPG
 from learning.ppo_w_deepset import PPO_w_DeepSet
+from utilities import debug_lst
 
 # standard packages
 import torch 
@@ -81,6 +82,18 @@ def train_rl(param, env):
 				param.rl_gpu_on)
 
 		elif param.rl_module is 'PPO':
+			# model = PPO(
+			# 	param.rl_discrete_action_space,
+			# 	state_dim,
+			# 	action_dim,
+			# 	3,
+			# 	param.rl_gpu_on,
+			# 	param.rl_lr,
+			# 	param.rl_gamma,
+			# 	param.rl_K_epoch,
+			# 	param.rl_lmbda,
+			# 	param.rl_eps_clip)
+
 			model = PPO(
 				param.rl_discrete_action_space, 
 				state_dim,
@@ -92,21 +105,6 @@ def train_rl(param, env):
 				param.rl_gamma, 
 				param.rl_K_epoch, 
 				param.rl_lmbda, 
-				param.rl_eps_clip)
-
-		elif param.rl_module is 'PPO_w_DeepSet':
-			model = PPO_w_DeepSet(
-				param.rl_discrete_action_space,
-				param.rl_pi_phi_layers,
-				param.rl_pi_rho_layers, 
-				param.rl_v_phi_layers, 
-				param.rl_v_rho_layers,
-				param.rl_activation,
-				param.rl_gpu_on,
-				param.rl_lr,
-				param.rl_gamma,
-				param.rl_K_epoch,
-				param.rl_lmbda,
 				param.rl_eps_clip)
 
 	if param.rl_lr_schedule_on:
@@ -128,6 +126,7 @@ def train_rl(param, env):
 			s = env.reset()
 			done = False
 			trial_count += 1.
+
 			for step, time in enumerate(times[:-1]):
 
 				if param.rl_module is 'DDPG':
@@ -135,24 +134,62 @@ def train_rl(param, env):
 					s_prime, r, done, _ = env.step(a)
 					model.put_data((s,a,r,s_prime,done))
 
-				elif param.rl_module is 'PPO' and env.pomdp_on:
+				elif param.rl_module is 'PPO' and param.pomdp_on:
 					observations = env.observe() 
-					classifications = []
-					actions = []
-					probs = []
-					r  = 0 
-					for agent in env.agents:
-						o_i = obervations[agent.i]
-						p_i = model.pi(observation)
-						c_i = Categorical(prob).sample().item()
-						a_i = model.class_to_action(classification)
-						s_i = agent.x
-						op_i, r_i, d_i = env.step_i(self, agent_i, a_i)
+					
+					o_lst = []
+					c_lst = []
+					r_lst = []
+					p_lst = []
+					d_lst = []
+					a_lst = []
 
-						actions.append(a_i)
-						model.put_data((o_i,op_i,r_i,p_i,c_i))
+					for agent_i in env.agents:
+						o_i = torch.tensor(observations[agent_i.i])
+						c_i = Categorical(model.pi(o_i)).sample().item()
+						p_i = model.pi(o_i)[c_i].item()
+						a_i = model.class_to_action(c_i)
+						s_i = agent_i.x
+						sp_i, r_i, d_i = env.step_i(agent_i, a_i)
 
-					env.step(actions)
+						# print('o_i: ', o_i)
+						# print('c_i: ', c_i)
+						# print('p_i: ', p_i)
+						# print('a_i: ', a_i)
+						# print('r_i: ', r_i)
+						# print('d_i: ', d_i)
+						# exit()
+
+						o_lst.append(o_i.numpy())
+						c_lst.append(c_i)
+						r_lst.append(r_i)
+						p_lst.append(p_i)
+						d_lst.append(d_i)
+						a_lst.append(a_i)
+
+						
+					s_prime, r, d, _ = env.step(a_lst)
+					op_lst = env.observe()
+
+					for agent_i in env.agents:
+						i = agent_i.i
+						model.put_data((np.array(o_lst[i]),c_lst[i],
+							r_lst[i],np.array(op_lst[i]),
+							p_lst[i],d_lst[i]))
+
+					# print('o_lst: ', o_lst)
+					# print('c_lst: ', c_lst)
+					# print('r_lst: ', r_lst)
+					# print('op_lst: ', op_lst)
+					# print('p_lst: ', p_lst)
+					# print('d_lst: ', d_lst)
+
+				elif param.rl_module is 'PPO' and not param.pomdp_on:
+					prob = model.pi(torch.from_numpy(s).float())
+					c = Categorical(prob).sample().item()
+					a = model.class_to_action(c)
+					s_prime, r, done, _ = env.step([a])
+					model.put_data((s,c,r,s_prime,prob[c].item(),done))
 					
 
 				# not implemented
@@ -170,8 +207,11 @@ def train_rl(param, env):
 
 				s = s_prime
 				running_reward += r
+				
 				data_count += 1
+				
 				# data_count += env.n_agents
+
 				if done:
 					break
 

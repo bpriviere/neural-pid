@@ -22,4 +22,11 @@ def extract_ref_state(controller, states):
 		ref_state[i] = controller.get_ref_state(state)
 	return ref_state
 
+def debug(variable):
+	print(variable + '=' + repr(eval(variable)))
+
+def debug_lst(variable_lst):
+	for variable in variable_lst:
+		debug(variable)
+
 

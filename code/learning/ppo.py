@@ -1,4 +1,3 @@
-
 import gym
 import torch
 import torch.nn as nn
@@ -17,8 +16,6 @@ class PPO(nn.Module):
 		state_dim,
 		action_dim,
 		action_std,
-		layers,
-		activation,
 		cuda_on,
 		lr,
 		gamma,
@@ -42,10 +39,10 @@ class PPO(nn.Module):
 		self.fc2   = nn.Linear(32,32)
 		self.fc_pi = nn.Linear(32,len(self.actions))
 		self.fc_v  = nn.Linear(32,1)
-		
 		self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
 	def pi(self, x, softmax_dim = 0):
+		state = x
 		x = F.tanh(self.fc1(x))
 		x = F.tanh(self.fc2(x))
 		x = self.fc_pi(x)
@@ -112,7 +109,10 @@ class PPO(nn.Module):
 		prob = self.pi(torch.from_numpy(state).float())
 		m = Categorical(prob)
 		classification = m.sample().item()
-		return self.class_to_force(classification)
+		return self.class_to_action(classification)
 
-	def class_to_force(self, a):
+	def class_to_action(self, a):
 		return self.actions[a]
+
+	def get_optimizers(self):
+		return [self.optimizer]
