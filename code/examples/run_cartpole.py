@@ -13,7 +13,7 @@ class CartpoleParam(Param):
 
 		# env 
 		self.env_name = 'CartPole'
-		self.env_case = 'Swing180' #'SmallAngle','Swing90','Swing180', 'Any90'
+		self.env_case = 'Any90' #'SmallAngle','Swing90','Swing180', 'Any90'
 
 		# action constraints
 		self.a_min = np.array([-10])
@@ -30,10 +30,8 @@ class CartpoleParam(Param):
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
-		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
-		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
+		self.sim_rl_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
 
@@ -98,7 +96,7 @@ class CartpoleParam(Param):
 		self.il_lr = 2e-4
 		self.il_log_interval = 100
 		self.il_load_dataset = "../models/CartPole/dataset_rl/*.csv"
-		self.il_load_dataset_on = False 
+		self.il_load_dataset_on = True 
 		self.il_test_train_ratio = 0.8
 		self.il_state_loss_on = False
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
@@ -162,10 +160,10 @@ if __name__ == '__main__':
 	param = CartpoleParam()
 	env = CartPole(param)
 	
-	# x0 = np.array([0.4, np.pi/2, 0.5, 0])
+	x0 = np.array([0.4, np.pi/2, 0.5, 0])
 	# x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
 
-	x0 = np.array([0,np.radians(180),0,0])
+	# x0 = np.array([0,np.radians(180),0,0])
 
 	# scp_file = find_best_file(param.il_load_dataset, x0)
 	# print(scp_file)
@@ -176,10 +174,10 @@ if __name__ == '__main__':
 
 	controllers = {
 		# 'RL':	torch.load('../models/CartPole/rl_Any90_discrete.pt'),
-		'RL':	torch.load(param.sim_rl_model_fn),
-		'IL':	torch.load(param.sim_il_model_fn),
+		# 'RL':	torch.load(param.sim_rl_model_fn),
+		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'PD': PlainPID(param.kp, param.kd),
-		# 'SCP':	FilePolicy(scp_file),
+		'SCP':	FilePolicy(scp_file),
 	}
 
 
