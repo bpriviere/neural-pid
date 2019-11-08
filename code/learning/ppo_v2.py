@@ -39,6 +39,9 @@ class PPO(nn.Module):
 
 		self.layers = layers
 		self.activation = activation
+
+		self.action_dim_per_agent = self.layers[-1].out_features
+
 		self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
 	def pi(self, x, softmax_dim = 0):
@@ -57,11 +60,18 @@ class PPO(nn.Module):
 		self.data.append(transition)
 		
 	def make_batch(self):
-		o_lst, a_lst, r_lst, o_prime_lst, prob_a_lst, done_lst = [], [], [], [], [], []
+		s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, done_lst = [], [], [], [], [], []
 		for transition in self.data:
-			o, op_i, r_i, p_i, c_i, done = transition 
 			s, a, r, s_prime, prob_a, done = transition
-			
+
+			# print(s)
+			# print(a)
+			# print(r)
+			# print(s_prime)
+			# print(prob_a)
+			# print(done)
+			# exit()
+
 			s_lst.append(s)
 			a_lst.append([a])
 			r_lst.append([r])
@@ -69,13 +79,25 @@ class PPO(nn.Module):
 			prob_a_lst.append([prob_a])
 			done_mask = 0 if done else 1
 			done_lst.append([done_mask])
-			
-		s,a,r,s_prime,done_mask, prob_a = torch.tensor(s_lst, dtype=torch.float), torch.tensor(a_lst), \
-										  torch.tensor(r_lst, dtype=torch.float), torch.tensor(s_prime_lst, dtype=torch.float), \
-										  torch.tensor(done_lst, dtype=torch.float), torch.tensor(prob_a_lst)
+
+		s = torch.tensor(s_lst,dtype=torch.float)
+		a = torch.tensor(a_lst)
+		r = torch.tensor(r_lst,dtype=torch.float)
+		s_prime = torch.tensor(s_prime_lst,dtype=torch.float)
+		done_mask = torch.tensor(done_lst,dtype=torch.float)
+		prob_a = torch.tensor(prob_a_lst,dtype=torch.float)
+
+		# print(s.shape)
+		# print(a.shape)
+		# print(r.shape)
+		# print(s_prime.shape)
+		# print(prob_a.shape)
+		# print(done.shape)
+		# exit()
+
 		self.data = []
 		return s, a, r, s_prime, done_mask, prob_a
-		
+	
 	def train_net(self):
 		s, a, r, s_prime, done_mask, prob_a = self.make_batch()
 
@@ -94,6 +116,7 @@ class PPO(nn.Module):
 
 			pi = self.pi(s, softmax_dim=1)
 			pi_a = pi.gather(1,a)
+
 			ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == exp(log(a)-log(b))
 
 			surr1 = ratio * advantage
@@ -104,11 +127,22 @@ class PPO(nn.Module):
 			loss.mean().backward()
 			self.optimizer.step()
 
+	# def policy(self, o):
+		# actions = np.zeros((len(o),1))
+		# for k,o_i in enumerate(o):
+		# 	o_i = torch.tensor(o_i)
+		# 	c = Categorical(self.pi(o_i)).sample().item()
+		# 	actions[k,:] = self.class_to_action(c)
+		# return actions
+
 	def policy(self, state):
 		prob = self.pi(torch.from_numpy(state).float())
 		m = Categorical(prob)
 		classification = m.sample().item()
-		return self.class_to_force(classification)
+		return self.class_to_action(classification)
 
-	def class_to_force(self, a):
+	def class_to_action(self, a):
 		return self.actions[a]
+
+	def get_optimizers(self):
+		return [self.optimizer]

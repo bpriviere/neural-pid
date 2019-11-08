@@ -10,10 +10,24 @@ from collections import namedtuple
 import plotter 
 
 class Agent:
-	def __init__(self,x=None,p=None,i=None):
+	def __init__(self,x=None,p=None,i=None,N=2):
 		self.x = x # value
 		self.p = np.array(p) # position
 		self.i = i # index 
+		self.observation_history = []
+		self.N = N
+
+	def add_observation(self,relative_neighbors):
+		
+		self.observation_history.insert(0,relative_neighbors)
+
+		while len(self.observation_history) < self.N:
+			self.observation_history.insert(0,relative_neighbors)
+
+		if len(self.observation_history) > self.N:
+			self.observation_history = self.observation_history[0:self.N]
+
+
 
 class Consensus(Env):
 
@@ -37,7 +51,7 @@ class Consensus(Env):
 		# initialize agents
 		self.agents = []
 		for i in range(self.n_agents):
-			self.agents.append(Agent(i=i))
+			self.agents.append(Agent(i=i,N=param.agent_memory))
 
 		# determine malicious nodes 
 		self.bad_nodes = np.zeros(self.n_agents, dtype=bool)
@@ -140,11 +154,11 @@ class Consensus(Env):
 		return agent.x + a 
 
 	def reward_i(self,agent):
-		return -np.abs(agent.x-self.desired_ave)
+		return -np.abs((agent.x-self.desired_ave)/\
+			(self.worst_bad_node-self.desired_ave))
 
 	def done(self):
 		return False
-
 
 	def observe(self):
 		observations = []
@@ -156,15 +170,22 @@ class Consensus(Env):
 					p_j = agent_j.p
 					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
 						relative_neighbors.append(agent_j.x-agent_i.x)
-			observation_i = relative_neighbors
+			
+			agent_i.add_observation(relative_neighbors)
+			
+			observation_i = [relative_neighbor \
+				for relative_neighbors in agent_i.observation_history \
+				for relative_neighbor in relative_neighbors]
+
 			observations.append(observation_i)
 		return observations
 
 
 	def reward(self):
-		curr_vals = self.state[np.arange(0,self.n_agents,self.state_dim_per_agent)]
-		return 1-np.linalg.norm(curr_vals-self.desired_ave)/\
-			np.linalg.norm(self.worst_bad_node-self.desired_ave)
+		r = 0
+		for agent in self.agents:
+			r += self.reward_i(agent)
+		return r
 
 
 	def good_node_average(self):

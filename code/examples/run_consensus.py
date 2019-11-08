@@ -22,6 +22,8 @@ class ConsensusParam(Param):
 		self.r_comm = 1.2
 		self.n_agents = 5
 		self.n_malicious = 1
+		self.agent_memory = 2
+		self.n_neighbors = 2
 		self.single_agent_sim = False
 		self.multi_agent_sim = True 
 
@@ -31,17 +33,16 @@ class ConsensusParam(Param):
 		self.action_dim_per_agent = 1
 		self.action_dim = self.n_agents*self.action_dim_per_agent
 
-
 		# RL
 		self.rl_train_model_fn = '../models/consensus/rl_current.pt'
 		self.rl_continuous_on = False
 		self.rl_lr_schedule_on = False
 		self.rl_gamma = 0.98
 		self.rl_K_epoch = 5
-		self.rl_da = 5 # action step size 
+		self.rl_num_actions = 5
 		self.a_min = -1
 		self.a_max = 1
-		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_da)
+		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
 		self.rl_warm_start_on = False 
 		self.rl_warm_start_fn = '../models/consensus/rl_current.pt'
 		self.rl_module = "PPO" # PPO_w_DeepSet, DDPG, PPO, (DDPG_w_DeepSet)
@@ -74,37 +75,12 @@ class ConsensusParam(Param):
 			self.rl_lmbda = 0.95
 			self.rl_eps_clip = 0.2
 
-			# case specific param
-			n_neighbors = 2 
-
 			self.rl_layers = nn.ModuleList([
-				nn.Linear(1*n_neighbors,h_s),
+				nn.Linear(self.agent_memory*self.n_neighbors,h_s),
 				nn.Linear(h_s,h_s),
 				nn.Linear(h_s,len(self.rl_discrete_action_space)),
 				nn.Linear(h_s,1)
-				])	
-
-		elif self.rl_module is 'PPO_w_DeepSet':
-			self.rl_pi_phi_layers = nn.ModuleList([
-				nn.Linear(state_dim_per_agent,h_s),
-				nn.Linear(h_s,h_s),
 				])
-			self.rl_pi_rho_layers = nn.ModuleList([
-				nn.Linear(h_s,h_s),
-				nn.Linear(h_s,len(self.rl_discrete_action_space)),
-				])
-			self.rl_v_phi_layers = nn.ModuleList([
-				nn.Linear(state_dim_per_agent,h_s),
-				nn.Linear(h_s,h_s),
-				])
-			self.rl_v_rho_layers = nn.ModuleList([
-				nn.Linear(h_s,h_s),
-				nn.Linear(h_s,1),
-				])
-			self.rl_activation = tanh
-			self.rl_lr = 5e-4
-			self.rl_lmbda = 0.95
-			self.rl_eps_clip = 0.2
 
 		# IL
 		self.il_train_model_fn = '../models/consensus/il_current.pt'
@@ -134,8 +110,7 @@ if __name__ == '__main__':
 	controllers = {
 		'LCP': LCP_Policy(env),
 		# 'WMSR': WMSR_Policy(env),
-		# 'RL':	torch.load(param.sim_rl_model_fn),
-		# 'RL':	torch.load('../models/CartPole/rl_current.pt'),
+		'RL':	torch.load(param.sim_rl_model_fn),
 		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'SCP':	FilePolicy(scp_file),
 	}

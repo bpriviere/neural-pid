@@ -13,7 +13,7 @@ class CartpoleParam(Param):
 
 		# env 
 		self.env_name = 'CartPole'
-		self.env_case = 'Swing180' #'SmallAngle','Swing90','Swing180', 'Any90'
+		self.env_case = 'Swing180' #'SmallAngle','Swing90','Swing180', 'Any90', 'WiderAngle'
 
 		# action constraints
 		self.a_min = np.array([-10])
@@ -23,7 +23,7 @@ class CartpoleParam(Param):
 		self.pomdp_on = False
 		self.single_agent_sim = True
 		self.multi_agent_sim = False
-
+		
 		# Sim
 		self.sim_t0 = 0
 		self.sim_tf = 10
@@ -35,30 +35,33 @@ class CartpoleParam(Param):
 		self.sim_render_on = False
 		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
-		self.sim_render_on = False
+		self.ref_trajectory = np.zeros((4,self.sim_nt))
 
 		# RL
+		self.rl_gpu_on = False
+		self.rl_log_interval = 20 
+		self.rl_max_episodes = 50000
 		self.rl_train_model_fn = '../models/CartPole/rl_current.pt'
-		self.rl_continuous_on = True
-		self.rl_lr_schedule_on = False
-		self.rl_lr_schedule = np.arange(0, self.sim_nt*1, 50)
+		self.rl_continuous_on = False
+		self.rl_lr_schedule_on = True
+		self.rl_lr_schedule = np.array((0,0.8,1.2))
 		self.rl_lr_schedule_gamma = 0.2
-		self.rl_gamma = 0.998
-		self.rl_K_epoch = 10
+		self.rl_gamma = 0.999
+		self.rl_K_epoch = 5
 		self.rl_batch_size = 1000
-		self.rl_da = 2
-		self.rl_discrete_action_space = np.arange(self.a_min, self.a_max, self.rl_da)
-		self.rl_warm_start_on = False
+		self.rl_num_actions = 10
+		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
+		self.rl_warm_start_on = True
 		self.rl_warm_start_fn = '../models/CartPole/rl_current.pt'
-		self.rl_module = 'DDPG' # 'DDPG','PPO','PPO_w_DeepSet'
+		self.rl_module = 'PPO' # 'DDPG','PPO','PPO_w_DeepSet'
 		self.rl_scale_reward = 0.01 
 
 		# dimensions
 		n = 4 # state dim
 		m = 1 # action dim
-		h_mu = 32 # hidden layer
-		h_q = 32 # hidden layer
-		h_s = 32 # hidden layer discrete 
+		h_mu = 256 # hidden layer
+		h_q = 256 # hidden layer
+		h_s = 256 # hidden layer discrete 
 
 		if self.rl_continuous_on:
 			# ddpg param
@@ -80,18 +83,19 @@ class CartpoleParam(Param):
 			self.rl_network_activation = tanh
 		else:
 			# ppo param
-			self.rl_lr = 1e-4
+			self.rl_lr = 1e-3
 			self.rl_lmbda = 0.95
-			self.rl_eps_clip = 0.2
+			self.rl_eps_clip = 0.1
 			self.rl_layers = nn.ModuleList([
 				nn.Linear(n,h_s),
 				nn.Linear(h_s,h_s),
 				nn.Linear(h_s,len(self.rl_discrete_action_space)),
 				nn.Linear(h_s,1)
 				])
+			self.rl_activation = tanh
 
 		# IL
-		h_i = 32 # hidden layers
+		h_i = 256 # hidden layers
 		self.il_n_epoch = 50000 # number of epochs per batch
 		self.il_batch_size = 500 # number of data points per batch
 		self.il_n_data = 10000 # total number of data points
@@ -109,7 +113,6 @@ class CartpoleParam(Param):
 		self.il_layers = nn.ModuleList([
 			nn.Linear(n,h_i),
 			nn.Linear(h_i,h_i),
-			nn.Linear(h_i,h_i),
 			nn.Linear(h_i,n)])
 		self.il_activation = tanh
 		self.il_kp = [2,4]
@@ -121,6 +124,9 @@ class CartpoleParam(Param):
 		# self.rrt_fn = '../models/CartPole/rrt.csv'
 		self.scp_fn = '../models/CartPole/scp.csv'
 		self.scp_pdf_fn = '../models/CartPole/scp.pdf'
+
+		# plots
+		self.plots_fn = 'plots.pdf'
 
 class PlainPID:
 	"""
@@ -165,7 +171,8 @@ if __name__ == '__main__':
 	# x0 = np.array([0.4, np.pi/2, 0.5, 0])
 	# x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
 
-	x0 = np.array([0,np.radians(180),0,0])
+	# x0 = np.array([0,np.radians(180),0,0])
+	x0 = env.reset()
 
 	# scp_file = find_best_file(param.il_load_dataset, x0)
 	# print(scp_file)
