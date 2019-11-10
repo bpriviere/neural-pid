@@ -127,19 +127,19 @@ class PPO(nn.Module):
 			loss.mean().backward()
 			self.optimizer.step()
 
-	# def policy(self, o):
-		# actions = np.zeros((len(o),1))
-		# for k,o_i in enumerate(o):
-		# 	o_i = torch.tensor(o_i)
-		# 	c = Categorical(self.pi(o_i)).sample().item()
-		# 	actions[k,:] = self.class_to_action(c)
-		# return actions
+	def policy(self, o):
+		actions = np.zeros((len(o),1))
+		for k,o_i in enumerate(o):
+			o_i = torch.tensor(o_i)
+			c = Categorical(self.pi(o_i)).sample().item()
+			actions[k,:] = self.class_to_action(c)
+		return actions
 
-	def policy(self, state):
-		prob = self.pi(torch.from_numpy(state).float())
-		m = Categorical(prob)
-		classification = m.sample().item()
-		return self.class_to_action(classification)
+	# def policy(self, state):
+	# 	prob = self.pi(torch.from_numpy(state).float())
+	# 	m = Categorical(prob)
+	# 	classification = m.sample().item()
+	# 	return self.class_to_action(classification)
 
 	def class_to_action(self, a):
 		return self.actions[a]

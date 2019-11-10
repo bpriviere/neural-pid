@@ -56,11 +56,11 @@ class Consensus(Env):
 		# determine malicious nodes 
 		self.bad_nodes = np.zeros(self.n_agents, dtype=bool)
 		for _ in range(self.n_malicious):
-			# rand_idx = np.random.randint(0,self.n_agents)
-			# while self.bad_nodes[rand_idx]:
-			# 	rand_idx = np.random.randint(0,self.n_agents)
-			# self.bad_nodes[rand_idx] = True
-			self.bad_nodes[1] = True
+			rand_idx = np.random.randint(0,self.n_agents)
+			while self.bad_nodes[rand_idx]:
+				rand_idx = np.random.randint(0,self.n_agents)
+			self.bad_nodes[rand_idx] = True
+			# self.bad_nodes[1] = True
 
 		self.good_nodes = np.logical_not(self.bad_nodes)
 		self.desired_ave = None
@@ -87,8 +87,8 @@ class Consensus(Env):
 		self.update_agents_position(init_positions)
 
 		# disturbances on initial state 
-		self.init_state_disturbance = np.array(
-			[10],dtype=float)
+		self.init_state_disturbance = np.array([10],dtype=float)
+		self.bias_disturbance = 10
 
 		self.states_name = [
 			'Node Value',
@@ -100,7 +100,8 @@ class Consensus(Env):
 			]
 
 		self.param = param
-		self.max_reward = 1 
+		self.scale_reward = param.rl_scale_reward
+		self.max_reward = 1 *self.scale_reward
 
 
 	def render(self):
@@ -155,7 +156,7 @@ class Consensus(Env):
 
 	def reward_i(self,agent):
 		return -np.abs((agent.x-self.desired_ave)/\
-			(self.worst_bad_node-self.desired_ave))
+			(self.worst_bad_node-self.desired_ave))*self.scale_reward
 
 	def done(self):
 		return False
@@ -209,18 +210,19 @@ class Consensus(Env):
 
 	def reset(self, initial_state = None):
 		self.time_step = 0				
+		bias = self.bias_disturbance*np.random.uniform()
 		if initial_state is None:
 			self.state = np.zeros((self.n))
 			for agent in self.agents:
 				self.state[self.agent_i_idx_to_value_i_idx(agent.i)] \
-				= self.init_state_disturbance[0]*np.random.uniform() 
+				= self.init_state_disturbance[0]*np.random.uniform() + bias
 		else:
 			self.state = initial_state
 
-		for agent_i in self.agents:
-			if self.bad_nodes[agent_i.i]:
-				self.state[
-				self.agent_i_idx_to_value_i_idx(agent_i.i)] = 10 
+		# for agent_i in self.agents:
+		# 	if self.bad_nodes[agent_i.i]:
+		# 		self.state[
+		# 		self.agent_i_idx_to_value_i_idx(agent_i.i)] = 10 
 		
 
 		self.update_agents()			
