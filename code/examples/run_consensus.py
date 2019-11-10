@@ -19,11 +19,11 @@ class ConsensusParam(Param):
 
 		#
 		self.pomdp_on = True
-		self.r_comm = 1.2
+		self.r_comm = 5
 		self.n_agents = 5
 		self.n_malicious = 1
 		self.agent_memory = 2
-		self.n_neighbors = 2
+		self.n_neighbors = 4
 		self.single_agent_sim = False
 		self.multi_agent_sim = True 
 
@@ -37,6 +37,9 @@ class ConsensusParam(Param):
 		self.rl_train_model_fn = '../models/consensus/rl_current.pt'
 		self.rl_continuous_on = False
 		self.rl_lr_schedule_on = False
+		self.rl_gpu_on = False
+		self.rl_max_episodes = 50000
+		self.rl_batch_size = 500
 		self.rl_gamma = 0.98
 		self.rl_K_epoch = 5
 		self.rl_num_actions = 5
@@ -47,6 +50,7 @@ class ConsensusParam(Param):
 		self.rl_warm_start_fn = '../models/consensus/rl_current.pt'
 		self.rl_module = "PPO" # PPO_w_DeepSet, DDPG, PPO, (DDPG_w_DeepSet)
 		self.rl_log_interval = 20
+		self.rl_scale_reward = 0.01
 
 		h_s = 32 # hidden layer
 		self.rl_activation = tanh
@@ -96,6 +100,8 @@ class ConsensusParam(Param):
 		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
+
+		self.plots_fn = 'plots.pdf'
 
 
 

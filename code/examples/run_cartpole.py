@@ -30,10 +30,8 @@ class CartpoleParam(Param):
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
-		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.sim_render_on = False
-		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
+		self.sim_rl_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.ref_trajectory = np.zeros((4,self.sim_nt))
 
@@ -102,7 +100,7 @@ class CartpoleParam(Param):
 		self.il_lr = 2e-4
 		self.il_log_interval = 100
 		self.il_load_dataset = "../models/CartPole/dataset_rl/*.csv"
-		self.il_load_dataset_on = False 
+		self.il_load_dataset_on = True 
 		self.il_test_train_ratio = 0.8
 		self.il_state_loss_on = False
 		self.il_train_model_fn = '../models/CartPole/il_current.pt'
@@ -183,10 +181,10 @@ if __name__ == '__main__':
 
 	controllers = {
 		# 'RL':	torch.load('../models/CartPole/rl_Any90_discrete.pt'),
-		'RL':	torch.load(param.sim_rl_model_fn),
-		'IL':	torch.load(param.sim_il_model_fn),
+		# 'RL':	torch.load(param.sim_rl_model_fn),
+		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'PD': PlainPID(param.kp, param.kd),
-		# 'SCP':	FilePolicy(scp_file),
+		'SCP':	FilePolicy(scp_file),
 	}
 
 

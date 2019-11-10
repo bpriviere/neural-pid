@@ -50,13 +50,14 @@ def sim(param, env, controllers, initial_state, visualize):
 
 	# run sim
 	SimResult = namedtuple('SimResult', ['states', 'actions', 'steps', 'name'])
-	sim_results = []
+	
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
 		if hasattr(controller, 'policy'):
 			result = SimResult._make(run_sim(controller, initial_state) + (name, ))
 		else:
 			result = SimResult._make((controller.states, controller.actions, controller.steps, name))
+		sim_results = []		
 		sim_results.append(result)
 
 		if param.sim_render_on:
@@ -120,7 +121,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		# 				result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1],
 		# 				label=result.name)
 
-		# # extract gains
+		# extract gains
 		if param.il_controller_class in ['PID_wRef','PID']:
 			controller = controllers['IL']
 			for result in sim_results:
