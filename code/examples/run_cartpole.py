@@ -181,10 +181,10 @@ if __name__ == '__main__':
 
 	controllers = {
 		# 'RL':	torch.load('../models/CartPole/rl_Any90_discrete.pt'),
-		# 'RL':	torch.load(param.sim_rl_model_fn),
-		# 'IL':	torch.load(param.sim_il_model_fn),
+		'RL':	torch.load(param.sim_rl_model_fn),
+		'IL':	torch.load(param.sim_il_model_fn),
 		# 'PD': PlainPID(param.kp, param.kd),
-		'SCP':	FilePolicy(scp_file),
+		# 'SCP':	FilePolicy(scp_file),
 	}
 
 

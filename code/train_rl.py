@@ -146,6 +146,10 @@ def train_rl(param, env):
 
 					for agent_i in env.agents:
 						o_i = torch.tensor(observations[agent_i.i])
+						# print(agent_i.i)
+						# print(o_i)
+						# print(observations)
+						# exit()
 						c_i = Categorical(model.pi(o_i)).sample().item()
 						p_i = model.pi(o_i)[c_i].item()
 						a_i = model.class_to_action(c_i)
@@ -208,9 +212,9 @@ def train_rl(param, env):
 				s = s_prime
 				running_reward += r
 				
-				data_count += 1
+				# data_count += 1
 				
-				# data_count += env.n_agents
+				data_count += env.n_agents
 
 				if done:
 					break

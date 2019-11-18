@@ -20,12 +20,12 @@ class ConsensusParam(Param):
 		#
 		self.pomdp_on = True
 		self.r_comm = 5
-		self.n_agents = 5
-		self.n_malicious = 1
-		self.agent_memory = 2
-		self.n_neighbors = 4
+		self.n_agents = 2
+		self.n_malicious = 0
+		self.agent_memory = 1
+		self.n_neighbors = 1
 		self.single_agent_sim = False
-		self.multi_agent_sim = True 
+		self.multi_agent_sim = True
 
 		# dim 
 		self.state_dim_per_agent = 1 
@@ -39,20 +39,20 @@ class ConsensusParam(Param):
 		self.rl_lr_schedule_on = False
 		self.rl_gpu_on = False
 		self.rl_max_episodes = 50000
-		self.rl_batch_size = 500
-		self.rl_gamma = 0.98
+		self.rl_batch_size = 10000
+		self.rl_gamma = 0.998
 		self.rl_K_epoch = 5
-		self.rl_num_actions = 5
+		self.rl_num_actions = 11
 		self.a_min = -1
 		self.a_max = 1
 		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
 		self.rl_warm_start_on = False 
 		self.rl_warm_start_fn = '../models/consensus/rl_current.pt'
 		self.rl_module = "PPO" # PPO_w_DeepSet, DDPG, PPO, (DDPG_w_DeepSet)
-		self.rl_log_interval = 20
-		self.rl_scale_reward = 0.01
+		self.rl_log_interval = 5
+		self.rl_scale_reward = 0.0001
 
-		h_s = 32 # hidden layer
+		h_s = 128 # hidden layer
 		self.rl_activation = tanh
 		if self.rl_module is 'DDPG':
 			# ddpg param
@@ -96,11 +96,10 @@ class ConsensusParam(Param):
 		self.sim_il_model_fn = '../models/consensus/il_current.pt'
 		self.sim_render_on = True
 		self.sim_t0 = 0
-		self.sim_tf = 8
-		self.sim_dt = 0.01
+		self.sim_tf = 5
+		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-
 		self.plots_fn = 'plots.pdf'
 
 
@@ -113,12 +112,14 @@ if __name__ == '__main__':
 	# x0 = np.array([0.07438156, 0.33501733, 0.50978889, 0.52446423])
 
 
+	x0 = env.reset()
+
 	controllers = {
 		'LCP': LCP_Policy(env),
-		# 'WMSR': WMSR_Policy(env),
+		'WMSR': WMSR_Policy(env),
 		'RL':	torch.load(param.sim_rl_model_fn),
 		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'SCP':	FilePolicy(scp_file),
 	}
 
-	run(param, env, controllers)
+	run(param, env, controllers, initial_state = x0)
