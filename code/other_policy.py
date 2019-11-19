@@ -16,9 +16,11 @@ class LCP_Policy:
 	def policy(self,observation):
 		a = np.zeros((self.env.m))
 		dt = self.env.times[self.env.time_step+1] - self.env.times[self.env.time_step]
+		n_neighbors = self.env.n_neighbors
+
 		for agent in self.env.agents:
 			# observation_i = {s^j - s^i} \forall j in N^i
-			a[agent.i] = sum(observation[agent.i])*dt
+			a[agent.i] = sum(observation[agent.i][0:n_neighbors])*dt
 		return a
 
 class WMSR_Policy:
@@ -31,13 +33,15 @@ class WMSR_Policy:
 		f = self.env.n_malicious
 		a = np.zeros((self.env.m)) 
 		dt = self.env.times[self.env.time_step+1] - self.env.times[self.env.time_step] 
+		n_neighbors = self.env.n_neighbors
+
 		for agent in self.env.agents: 
 
 			x_i = agent.x 
-			x_js = observation[agent.i] + x_i 
+			x_js = observation[agent.i][0:n_neighbors] + x_i 
 			x_js_sorted = np.sort( np.array(x_js)) 
 
-			ng = sum(x_i<=x_js)
+			ng = sum(x_i<x_js)
 			nl = sum(x_i>x_js)
 		
 			R = []
@@ -61,15 +65,17 @@ class WMSR_Policy:
 					if x_j < x_i:
 						R.append(x_i)
 			
-			R = np.array(R)
+			# R = np.array(R)
 
-			count = 1
-			summ = x_i
+			count = 0
+			summ = 0 #x_i
 			for x_j in x_js:
 				if not x_j in R:
 					count += 1
-					summ += x_j 
-
-			a[agent.i] = -summ/count
+					summ += x_j-x_i
+			if count != 0:
+				a[agent.i] = summ/count
+			else:
+				a[agent.i] = 0.0 
 		return a
 

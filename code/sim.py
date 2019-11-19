@@ -46,13 +46,12 @@ def sim(param, env, controllers, initial_state, visualize):
 	if initial_state is None:
 		initial_state = env.reset()
 
-	print("Initial State: ", initial_state)
-
 	# run sim
 	SimResult = namedtuple('SimResult', ['states', 'actions', 'steps', 'name'])
 	
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
+		print("Initial State: ", initial_state)
 		if hasattr(controller, 'policy'):
 			result = SimResult._make(run_sim(controller, initial_state) + (name, ))
 		else:
@@ -110,19 +109,8 @@ def sim(param, env, controllers, initial_state, visualize):
 					label='desired',
 					color='green')
 				
-		# # plot state space
-		# if param.multi_agent_sim:
-		# 	fig,ax = plotter.make_fig()
-		# 	for agent in env.agents:
-		# 		ax.set_title('State Space')
-		# 		for result in sim_results:
-		# 			ax.plot(
-		# 				result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)],
-		# 				result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1],
-		# 				label=result.name)
-
 		# extract gains
-		if param.il_controller_class in ['PID_wRef','PID']:
+		if name in ['PID_wRef','PID']:
 			controller = controllers['IL']
 			for result in sim_results:
 				if result.name == 'IL':
@@ -134,7 +122,7 @@ def sim(param, env, controllers, initial_state, visualize):
 			fig,ax = plotter.plot(times[1:result.steps],kd[0:result.steps,1],title='Kd theta')
 
 		# extract reference trajectory
-		if param.il_controller_class in ['PID_wRef','Ref']:
+		if name in ['PID_wRef','Ref']:
 			controller = controllers['IL']
 			for result in sim_results:
 				if result.name == 'IL':
