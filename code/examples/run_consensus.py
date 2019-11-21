@@ -116,8 +116,8 @@ if __name__ == '__main__':
 
 	controllers = {
 		'LCP': LCP_Policy(env),
-		'WMSR': WMSR_Policy(env),
-		'RL':	torch.load(param.sim_rl_model_fn),
+		# 'WMSR': WMSR_Policy(env),
+		# 'RL':	torch.load(param.sim_rl_model_fn),
 		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'SCP':	FilePolicy(scp_file),
 	}

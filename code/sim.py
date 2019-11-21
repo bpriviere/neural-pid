@@ -21,11 +21,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		reward = 0 
 		for step, time in enumerate(times[:-1]):
 			state = states[step]
-			if param.pomdp_on:
-				observation = env.observe()
-			else:
-				observation = state
-							
+			observation = env.observe()
 			action = controller.policy(observation) 
 			states[step + 1], r, done, _ = env.step(action)
 			reward += r
@@ -89,7 +85,7 @@ def sim(param, env, controllers, initial_state, visualize):
 					ax.plot(times[0:result.steps], result.actions[0:result.steps,i],label=result.name)
 				ax.legend()
 
-		elif param.multi_agent_sim:
+		elif param.env_name == 'Consensus':
 			for i_config in range(1): #range(env.state_dim_per_agent):
 				fig,ax = plotter.make_fig()
 				ax.set_title(env.states_name[i_config])			
@@ -108,6 +104,17 @@ def sim(param, env, controllers, initial_state, visualize):
 					env.desired_ave,
 					label='desired',
 					color='green')
+
+		elif param.env_name == 'SingleIntegrator':
+			for i_config in range(env.state_dim_per_agent):
+				fig,ax = plotter.make_fig()
+				ax.set_title(env.states_name[i_config])			
+				for agent in env.agents:
+					for result in sim_results:
+						ax.plot(
+							times[0:result.steps],
+							result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+i_config],
+							label=result.name)
 				
 		# extract gains
 		if name in ['PID_wRef','PID']:

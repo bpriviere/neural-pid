@@ -64,6 +64,7 @@ def train_rl(param, env):
 		print('Creating New Model...')
 		print(param)
 		if param.rl_module is 'DDPG':
+			print('DDPG')
 			model = DDPG(
 				param.rl_mu_network_architecture,
 				param.rl_q_network_architecture,
@@ -82,6 +83,7 @@ def train_rl(param, env):
 				param.rl_gpu_on)
 
 		elif param.rl_module is 'PPO':
+			print('PPO')
 			# model = PPO(
 			# 	param.rl_discrete_action_space,
 			# 	state_dim,
@@ -156,13 +158,15 @@ def train_rl(param, env):
 						s_i = agent_i.x
 						sp_i, r_i, d_i = env.step_i(agent_i, a_i)
 
-						# print('o_i: ', o_i)
-						# print('c_i: ', c_i)
-						# print('p_i: ', p_i)
-						# print('a_i: ', a_i)
-						# print('r_i: ', r_i)
-						# print('d_i: ', d_i)
-						# exit()
+						print('o_i: ', o_i)
+						print('c_i: ', c_i)
+						print('p_i: ', p_i)
+						print('a_i: ', a_i)
+						print('r_i: ', r_i)
+						print('d_i: ', d_i)
+						print('s_i: ', s_i)
+						print('sp_i: ', sp_i)
+						exit()
 
 						o_lst.append(o_i.numpy())
 						c_lst.append(c_i)

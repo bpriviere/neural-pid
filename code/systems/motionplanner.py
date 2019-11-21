@@ -68,6 +68,8 @@ class MotionPlanner(Env):
 		plotter.plot_circle(self.s_g[0],self.s_g[1],self.delta_g,fig=fig,ax=ax,title=title,label='goal')
 
 		return fig,ax
+
+	
 		
 
 	def step(self, a):

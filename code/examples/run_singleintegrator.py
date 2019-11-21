@@ -22,28 +22,31 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 5
+		self.n_agents = 2
 		self.r_comm = 15
 		self.r_agent = 1.5
 		self.sim_dt = 0.25
-		self.a_min = np.array([-2.0,-2.0]) # m/s
-		self.a_max = np.array([2.0,2.0]) # m/s
+		# self.a_min = np.array([-2.0,-2.0]) # m/s
+		# self.a_max = np.array([2.0,2.0]) # m/s
+		self.a_min = -2.
+		self.a_max = 2. 
 
 		# other
+		self.sim_t0 = 0
 		self.sim_tf = 100
+		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
+		self.sim_nt = len(self.sim_times)
 
-		# learning hyperparameters
-		n,m,h = 4,2,32 # state dim, action dim, hidden layer
-		self.rl_phi_network_architecture = nn.ModuleList([
-			nn.Linear(n,h),
-			nn.Linear(h,h)])
-		self.rl_rho_network_architecture = nn.ModuleList([
-			nn.Linear(h+n,h+n),
-			nn.Linear(h+n,m)])
-		self.rl_network_activation = tanh 
+		self.plots_fn = 'plots.pdf'
 
 		# RL
-		self.rl_train_model_fn = '../models/singleintegrator/rl_current.pt'
+		# NO RL FOR THIS
+		# self.rl_train_model_fn = '../models/singleintegrator/rl_current.pt'
+		# self.rl_continuous_on = False
+		# self.rl_warm_start_on = False
+		# self.rl_module = 'PPO'
+		# self.rl_num_actions = 5 
+		# self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
 
 		# IL
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
@@ -51,11 +54,23 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 500
-		self.il_n_data = 10000
-
-		# Controller
-		self.controller_class = 'Barrier' # 'Empty','Barrier','PID',
+		self.il_n_epoch = 10
+		self.il_lr = 5e-4
+		self.il_n_data = 5000
+		self.il_log_interval = 10
+		self.il_load_dataset = 'orca'
+		self.il_controller_class = 'Empty' # 'Empty','Barrier','PID',
 		self.controller_learning_module = 'DeepSet' # 
+
+		# learning hyperparameters
+		n,m,h = 4,2,32 # state dim, action dim, hidden layer
+		self.il_phi_network_architecture = nn.ModuleList([
+			nn.Linear(n,h),
+			nn.Linear(h,h)])
+		self.il_rho_network_architecture = nn.ModuleList([
+			nn.Linear(h+n,h+n),
+			nn.Linear(h+n,m)])
+		self.il_network_activation = tanh 
 
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'

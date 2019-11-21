@@ -93,6 +93,8 @@ class CartPole(Env):
 		# 	return (1 - np.power(penalty/self.max_penalty,1/6))*self.reward_scale
 		return (1 - np.power(np.dot(error.T,np.dot(self.W,error))/self.max_penalty,1/6))*self.reward_scale
 
+	def observe(self):
+		return np.copy(self.state)
 		
 	def reset(self, initial_state = None):
 		if initial_state is None:

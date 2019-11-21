@@ -18,14 +18,16 @@ class Empty_Net(nn.Module):
 
 		if learning_module is "DeepSet":
 			self.model = DeepSet(
-				param.rl_phi_network_architecture,
-				param.rl_rho_network_architecture,
-				param.rl_network_activation,
-				param.a_max,
-				param.a_min
+				param.il_phi_network_architecture,
+				param.il_rho_network_architecture,
+				param.il_network_activation,
+				param.env_name
 				)
 
-			self.action_dim = param.rl_rho_network_architecture[-1].out_features
+			self.action_dim = param.il_rho_network_architecture[-1].out_features
+		
+		self.a_max = param.a_max
+		self.a_min = param.a_min
 
 	def policy(self,x):
 
@@ -40,7 +42,7 @@ class Empty_Net(nn.Module):
 
 	def __call__(self,x):			
 		# if no control authority lim in deepset implement here instead:
-		x = torch.tanh(self.model(x)) #, x \in [-1,1]
+		x = torch.tanh(self.model.forward(x)) # x \in [-1,1]
 		x = (x+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() #, x \in [amin,amax]
 		return x
 

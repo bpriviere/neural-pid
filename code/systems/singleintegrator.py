@@ -59,6 +59,7 @@ class SingleIntegrator(Env):
 			]
 
 		self.param = param
+		self.max_reward = 0 
 
 
 	def render(self):
@@ -71,10 +72,8 @@ class SingleIntegrator(Env):
 		self.time_step += 1
 		return self.s, r, d, {}
 
-
 	def done(self):
 		return False
-
 
 	def observe(self):
 		Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
