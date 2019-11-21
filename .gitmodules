@@ -1,3 +1,6 @@
 [submodule "baseline/orca/RVO2"]
 	path = baseline/orca/RVO2
 	url = https://github.com/snape/RVO2.git
+[submodule "baseline/avo/AVO2"]
+	path = baseline/avo/AVO2
+	url = https://github.com/snape/AVO2.git
