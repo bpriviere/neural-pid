@@ -14,24 +14,16 @@ class Agent:
 		self.x = x # value
 		self.p = np.array(p) # position
 		self.i = i # index 
-		self.observation_history = []
 		self.agent_memory = agent_memory
 		self.n_neighbors = n_neighbors
 
-		zeros = []
-		for _ in range(n_neighbors):
-			zeros.append(0)
-
-		while len(self.observation_history) < self.agent_memory:
-			self.observation_history.append(zeros)
-
-	def add_observation(self,relative_neighbors):
-		
-		self.observation_history.insert(0,relative_neighbors)
-
-		if len(self.observation_history) > self.agent_memory:
-			self.observation_history = self.observation_history[0:self.agent_memory]
-
+		# observation history is the relative neighbor histories 
+		self.observation_history = []
+		for agent_j in range(n_neighbors):
+			relative_neighbor_history = []
+			for history_j in range(agent_memory):
+				relative_neighbor_history.append(0)
+			self.observation_history.append(relative_neighbor_history)
 
 
 class Consensus(Env):
@@ -56,43 +48,11 @@ class Consensus(Env):
 		self.n = self.state_dim_per_agent*self.n_agents
 		self.m = self.action_dim_per_agent*self.n_agents
 
-		# initialize agents
-		self.agents = []
-		for i in range(self.n_agents):
-			self.agents.append(Agent(i=i,agent_memory=self.agent_memory,n_neighbors=self.n_neighbors))
-
-		# determine malicious nodes 
-		self.bad_nodes = np.zeros(self.n_agents, dtype=bool)
-		for _ in range(self.n_malicious):
-			rand_idx = np.random.randint(0,self.n_agents)
-			while self.bad_nodes[rand_idx]:
-				rand_idx = np.random.randint(0,self.n_agents)
-			self.bad_nodes[rand_idx] = True
-			# self.bad_nodes[1] = True
-
-		self.good_nodes = np.logical_not(self.bad_nodes)
-		self.desired_ave = None
-
 		# environment 
 		self.env_state_bounds = np.array([5])
 
-		# initialize 
-		
-		# self.init_state_start = np.array([
-		# 	[0,0,0],
-		# 	[0,1,0],
-		# 	[0,0,1],
-		# 	[0,1,1],
-		# 	[0,2,1]],dtype=float)
-
-		init_positions = np.zeros((self.n_agents,2))
-		d_rad = 2*np.pi/self.n_agents
-		for agent in self.agents:
-			init_positions[agent.i,:] = [np.cos(d_rad*agent.i),np.sin(d_rad*agent.i)]
-		self.update_agents_position(init_positions)
-
 		# disturbances on initial state 
-		self.init_state_disturbance = np.array([10],dtype=float)
+		self.init_state_disturbance = np.array([20],dtype=float)
 		self.bias_disturbance = 10
 
 		self.states_name = [
@@ -106,14 +66,7 @@ class Consensus(Env):
 
 		self.param = param
 		self.scale_reward = param.rl_scale_reward
-		self.max_reward = 1 *self.scale_reward
-
-
-		# print env stuff 
-		print('Initial state: ', self.state)
-		print('Good Nodes:', self.good_nodes)
-		print('Bad Nodes:', self.bad_nodes)
-
+		self.max_reward = 1*self.scale_reward
 
 	def render(self):
 
@@ -149,7 +102,7 @@ class Consensus(Env):
 
 	def step(self, a):
 		self.state = self.next_state(self.state, a)
-		self.update_agents()
+		self.update_agents_value(self.state)
 		d = self.done()
 		r = self.reward()
 		self.time_step += 1
@@ -166,31 +119,82 @@ class Consensus(Env):
 		return agent.x + a 
 
 	def reward_i(self,agent):
-		return -np.abs((agent.x-self.desired_ave)/\
-			(self.worst_bad_node-self.desired_ave))*self.scale_reward
+		# return -np.abs((agent.x-self.desired_ave)/\
+		# 	(self.worst_bad_node-self.desired_ave))*self.scale_reward
+		return -np.abs((agent.x-self.desired_ave))*self.scale_reward
+		# return (1.-np.abs((agent.x-self.desired_ave)/(self.worst_bad_node-self.desired_ave)))/self.n_agents*self.scale_reward
 
 	def done(self):
 		return False
 
-	def observe(self):
+	def observe(self, update_agents=True):
+
+		# global observations is a list of observation_i 
 		observations = []
+
 		for agent_i in self.agents:
 			p_i = agent_i.p
-			relative_neighbors = []
+
+			# observation_i is a list of lists: first index is neighbor index, second index is history values 
+			# ie observation_i is the relative neighbor histories 
+			observation_i = [] 
+			n_neighbor_count = -1
 			for agent_j in self.agents:
+				relative_neighbor_history = []
+				
 				if agent_j.i != agent_i.i:
 					p_j = agent_j.p
-					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
-						relative_neighbors.append(agent_j.x-agent_i.x)
-			
-			agent_i.add_observation(relative_neighbors)
-			
-			observation_i = [relative_neighbor \
-				for relative_neighbors in agent_i.observation_history \
-				for relative_neighbor in relative_neighbors]
 
+					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
+						n_neighbor_count += 1
+
+						# current value 
+						relative_neighbor_history.append(agent_j.x-agent_i.x)
+
+						# history values
+						for i_history in range(self.agent_memory-1):
+							relative_neighbor_history.append(agent_i.observation_history[n_neighbor_count][i_history])
+
+					observation_i.append(relative_neighbor_history)
 			observations.append(observation_i)
-		return observations
+
+		if update_agents:
+			for agent in self.agents:
+				# print(agent.i)
+				agent.observation_history = observations[agent.i]
+
+		return observations	
+
+
+	def unpack_observations(self,observations):
+
+		observations_size = self.n_neighbors*self.agent_memory*self.state_dim_per_agent
+		observations_array = np.empty((self.n_agents, observations_size))
+
+		for agent in self.agents:
+
+			observation_i_lst = [ relative_neighbor \
+				for relative_neighbor_history in observations[agent.i]
+				for relative_neighbor in relative_neighbor_history]
+
+			observations_array[agent.i,:] = np.asarray(observation_i_lst)
+
+		return observations_array
+
+	def unpack_observation_temp_for_prev_rl_model(self,observations):
+
+		observations_size = self.n_neighbors*self.agent_memory*self.state_dim_per_agent
+		observations_array = np.empty((self.n_agents, observations_size))
+
+		for agent in self.agents:
+
+			observation_i_array = np.empty((observations_size))
+			for i_neighbor, relative_neighbor_history in enumerate(observations[agent.i]):
+				for i_history, relative_neighbor in enumerate(relative_neighbor_history):
+					observation_i_array[ i_history*self.n_neighbors + i_neighbor] = relative_neighbor
+
+			observations_array[agent.i,:] = observation_i_array
+		return observations_array
 
 
 	def reward(self):
@@ -221,27 +225,59 @@ class Consensus(Env):
 
 	def reset(self, initial_state=None):
 
-		self.time_step = 0				
-		bias = self.bias_disturbance*np.random.uniform()
+		# init agents
+		self.agents = []
+		for i in range(self.n_agents):
+			self.agents.append(Agent(i=i,agent_memory=self.agent_memory,n_neighbors=self.n_neighbors))
 
-		if initial_state is None:
-			state = np.zeros((self.n))
+		if initial_state is None: 
+			
+			# initial behavior 
+			bad_nodes = np.zeros(self.n_agents, dtype=bool)
+			for _ in range(self.n_malicious):
+				rand_idx = np.random.randint(0,self.n_agents)
+				while bad_nodes[rand_idx]:
+					rand_idx = np.random.randint(0,self.n_agents)
+				bad_nodes[rand_idx] = True
+			initial_behaviors = np.logical_not(bad_nodes)
+
+			# initial positions 
+			initial_positions = np.zeros((self.n_agents,2))
+			d_rad = 2*np.pi/self.n_agents
 			for agent in self.agents:
-				state[self.agent_i_idx_to_value_i_idx(agent.i)] \
-				= self.init_state_disturbance[0]*np.random.uniform() + bias
-		else:
-			state = np.array(initial_state).copy()
+				initial_positions[agent.i,:] = [np.cos(d_rad*agent.i),np.sin(d_rad*agent.i)]
 
-		# for agent_i in self.agents:
-		# 	if self.bad_nodes[agent_i.i]:
-		# 		self.state[
-		# 		self.agent_i_idx_to_value_i_idx(agent_i.i)] = 10 
-		
-		self.state = state
-		self.update_agents()			
+			# initial value
+			bias = self.bias_disturbance*np.random.uniform()
+			initial_values = np.zeros((self.n))
+			for agent in self.agents:
+				initial_values[self.agent_i_idx_to_value_i_idx(agent.i)] \
+				= self.init_state_disturbance[0]*np.random.uniform() + bias
+
+			Initial_State = namedtuple('Initial_State',['initial_values','initial_positions','initial_behaviors']) 
+			initial_state = Initial_State._make((initial_values,initial_positions,initial_behaviors))
+
+		else:
+
+			initial_values = initial_state.initial_values
+			initial_positions = initial_state.initial_positions
+			initial_behaviors = initial_state.initial_behaviors
+
+
+		# update agents
+		self.update_agents_behavior(initial_behaviors)
+		self.update_agents_position(initial_positions)
+		self.update_agents_value(initial_values)
+
+		# update environment stuff
+		self.bad_nodes = np.logical_not(initial_behaviors)
+		self.good_nodes = initial_behaviors
+		self.state = np.copy(initial_values)
 		self.desired_ave = self.good_node_average()
 		self.worst_bad_node = self.find_worst_bad_node_value()
-		return np.array(state).copy()
+		self.time_step = 0
+
+		return initial_state
 
 
 	def next_state(self,s,a):
@@ -260,18 +296,20 @@ class Consensus(Env):
 				sp1[idx] = s[idx] + a[agent_i.i]
 			else:
 				sp1[idx] = s[idx]
-
 		return sp1
 
-	def update_agents(self):
-		s = self.state
-		for agent_i in self.agents:
-			idx = self.agent_idx_to_state_idx(agent_i.i)
-			agent_i.x = s[idx]
-
-	def update_agents_position(self,p):
+	def update_agents_behavior(self, behaviors):
 		for agent in self.agents:
-			agent.p = p[agent.i,:]			
+			agent.behavior = behaviors[agent.i]
+
+	def update_agents_value(self,values):
+		for agent in self.agents:
+			idx = self.agent_idx_to_state_idx(agent.i)
+			agent.x = values[idx]
+
+	def update_agents_position(self,positions):
+		for agent in self.agents:
+			agent.p = positions[agent.i,:]
 
 	def agent_idx_to_state_idx(self,i):
 		return i*self.state_dim_per_agent

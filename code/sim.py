@@ -10,28 +10,40 @@ from collections import namedtuple
 # my package
 import plotter 
 import utilities as util
-from other_policy import ZeroPolicy
+from other_policy import ZeroPolicy, LCP_Policy
+from learning.ppo_v2 import PPO
 
 def sim(param, env, controllers, initial_state, visualize):
 
 	def run_sim(controller, initial_state):
 		states = np.zeros((len(times), env.n))
 		actions = np.zeros((len(times)-1,env.m))
-		states[0] = env.reset(initial_state)
+		observations = [] 
 		reward = 0 
+
+		env.reset(initial_state)
+		states[0] = np.copy(env.state)
 		for step, time in enumerate(times[:-1]):
 			state = states[step]
 			observation = env.observe()
+
+			if param.env_name is 'Consensus' and (isinstance(controller, LCP_Policy) or isinstance(controller,PPO)):
+				observation = env.unpack_observations(observation)
+
 			action = controller.policy(observation) 
-			states[step + 1], r, done, _ = env.step(action)
+			next_state, r, done, _ = env.step(action)
 			reward += r
+			
+			states[step + 1] = next_state
 			actions[step] = action.flatten()
+			observations.append(observation)
+
 			if done:
 				break
 
 		print('reward: ',reward)
 		env.close()
-		return states, actions, step
+		return states, observations, actions, step
 
 	# -------------------------------------------
 
@@ -43,7 +55,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		initial_state = env.reset()
 
 	# run sim
-	SimResult = namedtuple('SimResult', ['states', 'actions', 'steps', 'name'])
+	SimResult = namedtuple('SimResult', ['states', 'observations', 'actions', 'steps', 'name'])
 	
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
@@ -51,7 +63,8 @@ def sim(param, env, controllers, initial_state, visualize):
 		if hasattr(controller, 'policy'):
 			result = SimResult._make(run_sim(controller, initial_state) + (name, ))
 		else:
-			result = SimResult._make((controller.states, controller.actions, controller.steps, name))
+			observations = [] 
+			result = SimResult._make((controller.states, observations, controller.actions, controller.steps, name))
 		sim_results = []		
 		sim_results.append(result)
 
@@ -137,6 +150,21 @@ def sim(param, env, controllers, initial_state, visualize):
 			ref_state = util.extract_ref_state(controller, result.states)
 			for i in range(env.n):
 				fig,ax = plotter.plot(times[1:result.steps+1],ref_state[0:result.steps,i],title="ref " + env.states_name[i])
+
+		# extract belief topology
+		if param.env_name is 'Consensus' and controller is controllers['IL']:
+			for result in sim_results:
+				if result.name == 'IL':
+					break
+
+			fig,ax = plotter.make_fig()
+			belief_topology = util.extract_belief_topology(controller, result.observations)
+			for i_agent in range(param.n_agents):
+				for j_agent in range(param.n_agents):
+					if not i_agent == j_agent and env.good_nodes[i_agent]:
+						plotter.plot(times[0:result.steps+1],belief_topology[:,i_agent,j_agent],
+							fig=fig,ax=ax,label="K:{}{}".format(i_agent,j_agent))
+
 
 	plotter.save_figs(param.plots_fn)
 	plotter.open_figs(param.plots_fn)

@@ -53,10 +53,10 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
-		self.il_batch_size = 500
-		self.il_n_epoch = 10
-		self.il_lr = 5e-4
-		self.il_n_data = 5000
+		self.il_batch_size = 5000
+		self.il_n_epoch = 5000
+		self.il_lr = 5e-3
+		self.il_n_data = 50000
 		self.il_log_interval = 10
 		self.il_load_dataset = 'orca'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier','PID',

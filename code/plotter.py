@@ -81,3 +81,11 @@ def plot_ss(env,states):
 	fig,ax = env.render()
 	ax.plot(states[:,0],states[:,1],linestyle='dashed')
 
+
+# def debug_plot_batch(batch):
+	# batch = [o_lst,c_lst,r_lst,op_lst,p_lst,d_lst,s_lst,sp_lst]
+
+	
+
+
+

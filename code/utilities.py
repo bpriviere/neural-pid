@@ -16,6 +16,21 @@ def extract_gains(controller, states):
 		i += 1
 	return kp,kd
 
+def extract_belief_topology(controller,observations):
+
+	n_agents = len(observations[0])
+	K = np.zeros((len(observations),n_agents,n_agents))
+
+	for t,observation_t in enumerate(observations):
+		k_t = controller.get_belief_topology(observation_t)
+
+		for i_agent in range(n_agents):
+			n_neighbors = len(k_t[i_agent])
+			for j_agent in range(n_neighbors):
+				K[t,i_agent,j_agent] = k_t[i_agent][j_agent]
+	return K
+
+
 def extract_ref_state(controller, states):
 	ref_state = np.zeros((len(states)-1,4))
 	for i, state in enumerate(states[1:]):

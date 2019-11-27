@@ -127,13 +127,22 @@ class PPO(nn.Module):
 			loss.mean().backward()
 			self.optimizer.step()
 
-	def policy(self, o):
-		actions = np.zeros((len(o),1))
+	def policy(self,o):
+
+		n_agents = len(o)
+		actions = np.zeros((n_agents,self.action_dim_per_agent))
 		for k,o_i in enumerate(o):
-			o_i = torch.tensor(o_i)
+			o_i = torch.tensor(o_i).float()
 			c = Categorical(self.pi(o_i)).sample().item()
 			actions[k,:] = self.class_to_action(c)
 		return actions
+
+	def class_to_action(self, a):
+		return self.actions[a]
+
+	def get_optimizers(self):
+		return [self.optimizer]
+
 
 	# def policy(self, state):
 	# 	prob = self.pi(torch.from_numpy(state).float())
@@ -141,8 +150,3 @@ class PPO(nn.Module):
 	# 	classification = m.sample().item()
 	# 	return self.class_to_action(classification)
 
-	def class_to_action(self, a):
-		return self.actions[a]
-
-	def get_optimizers(self):
-		return [self.optimizer]

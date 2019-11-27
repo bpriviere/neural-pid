@@ -17,6 +17,7 @@ from learning.ref_net import Ref_Net
 from learning.empty_net import Empty_Net
 from learning.barrier_net import Barrier_Net
 from learning.nl_el_net import NL_EL_Net
+from learning.consensus_net import Consensus_Net
 
 def load_orca_dataset_action_loss(filename,neighborDist):
 	data = np.load(filename)
@@ -43,6 +44,25 @@ def load_orca_dataset_action_loss(filename,neighborDist):
 	print('Dataset Size: ',len(dataset))
 	return dataset
 
+def load_consensus_dataset(filename,n_neighbor,agent_memory):
+	dataset = []
+	data = np.load(filename)
+	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
+
+	for t in range(data.shape[0]-1):
+		relative_neighbor_histories = []
+		for i in range(n_neighbor):
+			relative_neighbor_history = []
+			for h in range(agent_memory):
+				relative_neighbor_history.append(data[t,i+h*n_neighbor])
+			relative_neighbor_histories.append(relative_neighbor_history)
+
+		o = relative_neighbor_histories
+		a = data[t,agent_memory*n_neighbor:]
+		oa_pair = Observation_Action_Pair._make((o,a))
+		dataset.append(oa_pair)
+	print('Dataset Size: ', len(dataset))
+	return dataset
 
 def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=True,batch_size=None):
 
@@ -81,6 +101,33 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Tru
 	loader_test = make_loader(test_dataset)
 	return loader_train,loader_test	
 
+# This was an attempt to make consensus dataset 
+# def make_dataset(param, env):
+# 	model = torch.load(param.il_imitate_model_fn)
+# 	times = param.sim_times
+# 	states = []
+# 	actions = []
+# 	while len(states) < param.il_n_data:
+# 		for step, time in enumerate(times[:-1]):
+
+# 			observations = env.observe()			
+# 			step_actions = model.policy(observations)
+# 			s_prime, _, done, _ = env.step(step_actions)
+			
+# 			for k_obs,observation in enumerate(observations):
+# 				states.append(observation)
+# 				actions.append(step_actions[k_obs])
+			
+# 			if done:
+# 				break
+
+# 		actions.append(zeros(env.action_dim_per_agent))
+
+# 	states = states[0:param.il_n_data]
+# 	actions = actions[0:param.il_n_data]
+
+# 	return torch.tensor(states).float(),torch.tensor(actions).float()
+
 
 def make_dataset(param, env):
 	model = torch.load(param.il_imitate_model_fn)
@@ -90,15 +137,20 @@ def make_dataset(param, env):
 	while len(states) < param.il_n_data:
 		states.append(env.reset())
 		for step, time in enumerate(times[:-1]):
-			action = model.policy(states[-1])
+
+			observations = env.observe()
+			action = model.policy(observation)
 			s_prime, _, done, _ = env.step(action)
+
 			states.append(s_prime)
 			if param.il_state_loss_on:
 				actions.append(s_prime)
 			else:
 				actions.append(action.reshape(-1))
+			
 			if done:
 				break
+
 		if param.il_state_loss_on:
 			actions.append(zeros(env.n))
 		else:
@@ -106,7 +158,6 @@ def make_dataset(param, env):
 
 	states = states[0:param.il_n_data]
 	actions = actions[0:param.il_n_data]
-
 	return torch.tensor(states).float(),torch.tensor(actions).float()
 
 
@@ -186,6 +237,8 @@ def train_il(param, env):
 		model = Ref_Net(env.n, env.m, env.a_min, env.a_max, param.kp, param.kd, param.il_layers, param.il_activation)
 	elif param.il_controller_class is 'Barrier':
 		model = Barrier_Net(param,param.controller_learning_module)
+	elif param.il_controller_class is 'Consensus':
+		model = Consensus_Net(param,param.il_module)
 	elif param.il_controller_class is 'Empty':
 		model = Empty_Net(param,param.controller_learning_module) 
 	else:
@@ -197,6 +250,8 @@ def train_il(param, env):
 
 	# datasets
 	if param.il_load_dataset_on:
+
+		# orca dataset
 		if "orca" in param.il_load_dataset:
 			dataset = []
 			for k,file in enumerate(glob.glob("../baseline/orca/build/*.npy")):
@@ -207,8 +262,23 @@ def train_il(param, env):
 					dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
 				print(len(dataset))
 
-				if k == 0:
-					break
+			print('Total Dataset Size: ',len(dataset))
+			loader_train,loader_test = make_orca_loaders(
+				dataset=dataset,
+				shuffle=True,
+				batch_size=param.il_batch_size,
+				test_train_ratio=param.il_test_train_ratio,
+				n_data=param.il_n_data)
+
+		# consensus dataset 
+		elif "consensus" in param.il_load_dataset:
+
+			observation_size = param.n_neighbors*param.agent_memory*param.state_dim_per_agent
+
+			dataset = []
+			for k,file in enumerate(glob.glob("../data/consensus/*.npy")):
+				print(file)
+				dataset.extend(load_consensus_dataset(file,param.n_neighbors,param.agent_memory))
 
 			print('Total Dataset Size: ',len(dataset))
 			loader_train,loader_test = make_orca_loaders(
@@ -217,6 +287,8 @@ def train_il(param, env):
 				batch_size=param.il_batch_size,
 				test_train_ratio=param.il_test_train_ratio,
 				n_data=param.il_n_data)
+
+		# scp dataset 
 		else:
 			if param.il_state_loss_on:
 				states = np.empty((0,env.n), dtype=np.float32)
@@ -239,10 +311,9 @@ def train_il(param, env):
 					else:
 						print("Skipping ", file)
 
-			print('Total Dataset Size: ', states.shape[0])
 
+			print('Total Dataset Size: ', states.shape[0])
 			idx = int(param.il_test_train_ratio * states.shape[0])
-			print("Train idx ", idx)
 
 			x_train = torch.from_numpy(states[0:idx])
 			y_train = torch.from_numpy(actions[0:idx])
@@ -251,21 +322,24 @@ def train_il(param, env):
 
 			dataset_train = Data.TensorDataset(x_train, y_train)
 			loader_train = Data.DataLoader(
-				dataset=dataset_train, 
-				batch_size=param.il_batch_size, 
+				dataset=dataset_train,
+				batch_size=param.il_batch_size,
 				shuffle=True)
 			dataset_test = Data.TensorDataset(x_test, y_test)
 			loader_test = Data.DataLoader(
-				dataset=dataset_test, 
-				batch_size=param.il_batch_size, 
+				dataset=dataset_test,
+				batch_size=param.il_batch_size,
 				shuffle=True)
+
+	# make dataset 
 	else:
+		print('Making Dataset')
 		x_train,y_train = make_dataset(param, env)
 		x_test,y_test = make_dataset(param, env)
 		dataset_train = Data.TensorDataset(x_train, y_train)
 		loader_train = Data.DataLoader(
-			dataset=dataset_train, 
-			batch_size=param.il_batch_size, 
+			dataset=dataset_train,
+			batch_size=param.il_batch_size,
 			shuffle=True)
 		dataset_test = Data.TensorDataset(x_test, y_test)
 		loader_test = Data.DataLoader(
@@ -273,6 +347,8 @@ def train_il(param, env):
 			batch_size=param.il_batch_size, 
 			shuffle=True)
 
+
+	# training 
 	best_test_loss = Inf
 	for epoch in range(1,param.il_n_epoch+1):
 		train_epoch_loss = train(param,env,model,loader_train)

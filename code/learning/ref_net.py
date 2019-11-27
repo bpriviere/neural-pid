@@ -64,6 +64,8 @@ class Ref_Net(nn.Module):
 
 
 	def policy(self,state):
+
+		state = state[0]
 		action = self(torch.from_numpy(state).float())
 		action = np.squeeze(action.detach().numpy())
 		return action

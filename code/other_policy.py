@@ -13,14 +13,17 @@ class LCP_Policy:
 	# linear consensus protocol
 	def __init__(self,env):
 		self.env = env
+
 	def policy(self,observation):
 		a = np.zeros((self.env.m))
 		dt = self.env.times[self.env.time_step+1] - self.env.times[self.env.time_step]
 		n_neighbors = self.env.n_neighbors
-
+		agent_memory = self.env.agent_memory
 		for agent in self.env.agents:
 			# observation_i = {s^j - s^i} \forall j in N^i
-			a[agent.i] = sum(observation[agent.i][0:n_neighbors])*dt
+			
+			idx = np.arange(0,len(observation[agent.i]),agent_memory)
+			a[agent.i] = sum(observation[agent.i][idx])*dt
 		return a
 
 class WMSR_Policy:

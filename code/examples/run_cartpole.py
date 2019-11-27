@@ -13,7 +13,7 @@ class CartpoleParam(Param):
 
 		# env 
 		self.env_name = 'CartPole'
-		self.env_case = 'Swing180' #'SmallAngle','Swing90','Swing180', 'Any90', 'WiderAngle'
+		self.env_case = 'SmallAngle' #'SmallAngle','Swing90','Swing180', 'Any90', 'WiderAngle'
 
 		# action constraints
 		self.a_min = np.array([-10])
@@ -31,7 +31,7 @@ class CartpoleParam(Param):
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.sim_render_on = False
-		self.sim_rl_model_fn = '../models/CartPole/rl_Any90_discrete.pt'
+		self.sim_rl_model_fn = '../models/CartPole/rl_current.pt'
 		self.sim_il_model_fn = '../models/CartPole/il_current.pt'
 		self.ref_trajectory = np.zeros((4,self.sim_nt))
 
@@ -49,7 +49,7 @@ class CartpoleParam(Param):
 		self.rl_batch_size = 1000
 		self.rl_num_actions = 10
 		self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
-		self.rl_warm_start_on = True
+		self.rl_warm_start_on = False
 		self.rl_warm_start_fn = '../models/CartPole/rl_current.pt'
 		self.rl_module = 'PPO' # 'DDPG','PPO','PPO_w_DeepSet'
 		self.rl_scale_reward = 0.01 
@@ -153,7 +153,7 @@ def find_best_file(path, x0):
 	best_file = None
 	best_x0 = None
 	for file in glob.glob(path):
-		data = np.loadtxt(file, delimiter=',', ndmin=2,max_rows=1)
+		data = np.loadtxt(file, delimiter=',',ndmin=2,max_rows=1)
 		dist = np.linalg.norm(x0 - data[0,0:x0.shape[0]])
 		if best_dist is None or dist < best_dist:
 			best_dist = dist

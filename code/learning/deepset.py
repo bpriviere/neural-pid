@@ -30,18 +30,18 @@ class DeepSet(nn.Module):
 			return self.si_forward(x)
 
 	def consensus_forward(self,x):
-		# x is a list of namedtuple with <relative_neighbors> where relative_neighbors is a list
-		X = torch.zeros((len(x),self.hidden_dim))
+
+		# x is a list of namedtuple with <relative_neighbors> where relative_neighbors is a list including histories! 
+		RHO_IN = torch.zeros((len(x),self.rho_in_dim))
 		for step,x_i in enumerate(x):
-			relative_neighbors = x_i
-			summ = torch.zeros((self.hidden_dim))
-			for relative_neighbor in relative_neighbors:
-				relative_neighbor = np.array(relative_neighbor, ndmin=1)
-				relative_neighbor = torch.from_numpy(relative_neighbor).float()
-				summ += self.phi(relative_neighbor)
-			X[step,:] = summ
-		out = self.rho(X)
-		return out
+			summ = torch.zeros((self.phi_out_dim))
+			for relative_neighbor_history in x_i:
+				relative_neighbor_history = np.array(relative_neighbor_history, ndmin=1)
+				relative_neighbor_history = torch.from_numpy(relative_neighbor_history).float()
+				summ += self.phi(relative_neighbor_history)
+			RHO_IN[step,:] = summ
+		RHO_OUT = self.rho(RHO_IN)
+		return RHO_OUT
 
 	def si_forward(self,x):
 		# x is a list of namedtuple with <relative_goal, relative_neighbors> where relative_neighbors is a list
