@@ -4,3 +4,9 @@
 [submodule "baseline/avo/AVO2"]
 	path = baseline/avo/AVO2
 	url = https://github.com/snape/AVO2.git
+[submodule "baseline/centralized-planner/libMultiRobotPlanning"]
+	path = baseline/centralized-planner/libMultiRobotPlanning
+	url = https://github.com/whoenig/libMultiRobotPlanning.git
+[submodule "baseline/centralized-planner/smoothener"]
+	path = baseline/centralized-planner/smoothener
+	url = https://github.com/whoenig/smoothener.git
