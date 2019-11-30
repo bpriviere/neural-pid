@@ -45,20 +45,29 @@ def load_orca_dataset_action_loss(filename,neighborDist):
 	return dataset
 
 def load_consensus_dataset(filename,n_neighbor,agent_memory):
+	
 	dataset = []
 	data = np.load(filename)
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 
-	for t in range(data.shape[0]-1):
+	for t in range(1,data.shape[0]-1):
 		relative_neighbor_histories = []
+
+		self_history = []
+		for h in range(agent_memory):
+			self_history.append(data[t,h])
+		relative_neighbor_histories.append(self_history)
+
 		for i in range(n_neighbor):
 			relative_neighbor_history = []
+
 			for h in range(agent_memory):
-				relative_neighbor_history.append(data[t,i+h*n_neighbor])
+				relative_neighbor_history.append(data[t,(i+1)*agent_memory+h])
 			relative_neighbor_histories.append(relative_neighbor_history)
 
 		o = relative_neighbor_histories
-		a = data[t,agent_memory*n_neighbor:]
+		a = [data[t,-1]]
+
 		oa_pair = Observation_Action_Pair._make((o,a))
 		dataset.append(oa_pair)
 	print('Dataset Size: ', len(dataset))
@@ -182,14 +191,21 @@ def train(param,env,model,loader):
 			b_y = torch.from_numpy(np.array(b_y)).float()
 
 		prediction = model(b_x)     # input x and predict based on x
+		
+		# print('prediction: ', prediction.shape)
+		# print('b_x: ', len(b_x))
+		# print('b_y: ', b_y.shape)
+		# exit()
 
-		if param.il_state_loss_on:
-			prediction_a = prediction
-			prediction = torch.zeros((b_y.shape))
-			for k,a in enumerate(prediction_a): 
-				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
+		# if param.il_state_loss_on:
+		# 	prediction_a = prediction
+		# 	prediction = torch.zeros((b_y.shape))
+		# 	for k,a in enumerate(prediction_a): 
+		# 		prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
 
+		# print('preloss')
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
+		# print('postloss')
 
 		optimizer.zero_grad()   # clear gradients for next train
 		loss.backward()         # backpropagation, compute gradients

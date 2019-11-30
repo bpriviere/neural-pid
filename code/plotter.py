@@ -6,6 +6,11 @@ import os, subprocess
 from matplotlib.backends.backend_pdf import PdfPages
 
 
+# some plotting stuff 
+plt.rcParams.update({'font.size': 18})
+plt.rcParams['lines.linewidth'] = 4
+
+
 def show():
 	plt.show()
 

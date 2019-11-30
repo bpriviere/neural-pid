@@ -21,10 +21,12 @@ class ReduceLROnRewardSchedule:
 		# print('reward schedule: ', self.reward_schedule)
 
 	def step(self,reward):
+
 		k = np.where(reward > self.schedule)[0][-1]
+
 		for param_group in self.optimizer.param_groups:
 			lr = self.initial_lr*(self.gamma**k)
-			if param_group['lr'] > lr:
+			if not param_group['lr'] == lr:
 				print("Changing Learning Rate From: %5f to %5f"%((param_group['lr'],lr)))
 				param_group['lr'] = lr
 
@@ -51,7 +53,7 @@ def train_rl(param, env):
 		np.random.seed(random_seed)
 
 	# exit condition
-	solved_reward = 0.97*env.max_reward*param.sim_nt
+	solved_reward = 0.97*env.max_reward
 	print('Solved Reward: ',solved_reward)
 
 	# init model 
@@ -89,7 +91,8 @@ def train_rl(param, env):
 				param.rl_discrete_action_space, 
 				state_dim,
 				action_dim,
-				param.rl_layers, 
+				param.rl_pi_layers, 
+				param.rl_v_layers, 
 				param.rl_activation,
 				param.rl_gpu_on,
 				param.rl_lr, 
@@ -142,7 +145,7 @@ def train_rl(param, env):
 					sp_lst = []
 
 					# try training with data from one agent: 
-					if True: 
+					if False: 
 						for i_good_node in range(env.n_agents):
 							if env.good_nodes[i_good_node]:
 								break
@@ -190,34 +193,23 @@ def train_rl(param, env):
 					op_lst = env.observe(update_agents=False)
 					op_lst = env.unpack_observations(op_lst)
 
-					for agent_i in training_data_agents:
-						i = agent_i.i
+
+					if step > param.agent_memory: 
+						for agent_i in training_data_agents:
+							i = agent_i.i
 
 
-						# print('putting data')
-						# print('i: ', i)
-						# print('state_i: ', s_lst[agent_i.i])
-						# print('observation_i: ', observations[agent_i.i])
-						# print('unpacked observation_i: ', unpacked_observations[agent_i.i])
-						# print('o_i: ', o_lst[i])
-						# exit()
+							# print('putting data')
+							# print('i: ', i)
+							# print('full state: ', s_lst)
+							# print('observation_i: ', observations[agent_i.i])
+							# print('o_i: ', o_lst[i])
+							# exit()
 
-						model.put_data((np.array(o_lst[i]),c_lst[i],
-							r_lst[i],np.array(op_lst[i]),
-							p_lst[i],d_lst[i]))
+							model.put_data((np.array(o_lst[i]),c_lst[i],
+								r_lst[i],np.array(op_lst[i]),
+								p_lst[i],d_lst[i]))
 
-						# print('making batch:')
-						# print('	i: ', i)
-						# print('	o_lst[i]: ', o_lst[i])
-						# print('c_lst[i]: ', c_lst[i])
-						# print('r_lst[i]: ', r_lst[i])
-						# print('	op_lst[i]: ', op_lst[i])
-						# print('p_lst[i]: ', p_lst[i])
-						# print('d_lst[i]: ', d_lst[i])
-						# print('	s_lst: ', s_lst)
-						# print('	sp_lst: ', sp_lst)
-						# if step == 2:
-						# 	exit()
 
 				elif param.rl_module is 'PPO' and not param.pomdp_on:
 					prob = model.pi(torch.from_numpy(s).float())
@@ -260,10 +252,11 @@ def train_rl(param, env):
 			print('Episode {} \t Avg reward: {:2f}'.format(i_episode, running_reward/trial_count_per_interval))
 			
 			# save latest
-			temp_buffer = model.data
-			model.data = []
-			torch.save(model, param.rl_train_latest_model_fn)
-			model.data = temp_buffer
+			if False:
+				temp_buffer = model.data
+				model.data = []
+				torch.save(model, param.rl_train_latest_model_fn)
+				model.data = temp_buffer
 
 
 			# save best iteration

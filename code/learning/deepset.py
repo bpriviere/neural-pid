@@ -31,15 +31,27 @@ class DeepSet(nn.Module):
 
 	def consensus_forward(self,x):
 
-		# x is a list of namedtuple with <relative_neighbors> where relative_neighbors is a list including histories! 
-		RHO_IN = torch.zeros((len(x),self.rho_in_dim))
-		for step,x_i in enumerate(x):
-			summ = torch.zeros((self.phi_out_dim))
-			for relative_neighbor_history in x_i:
-				relative_neighbor_history = np.array(relative_neighbor_history, ndmin=1)
-				relative_neighbor_history = torch.from_numpy(relative_neighbor_history).float()
-				summ += self.phi(relative_neighbor_history)
-			RHO_IN[step,:] = summ
+		# x is a relative neighbor histories 
+		# RHO_IN = torch.zeros((1,self.rho_in_dim))
+
+		summ = torch.zeros((self.phi_out_dim))
+		for step_rnh, rnh in enumerate(x):
+
+			if step_rnh == 0:
+				self_history = np.array(rnh, ndmin=1)					
+				self_history = torch.from_numpy(self_history).float()
+			else:
+				rnh = np.array(rnh, ndmin=1)
+				rnh = torch.from_numpy(rnh).float()
+				summ += self.phi(rnh)
+
+		# print(self_history.shape)
+		# print(summ.shape)
+		# print(torch.cat((self_history,summ)))
+
+		# exit()
+
+		RHO_IN = torch.cat((self_history,summ))
 		RHO_OUT = self.rho(RHO_IN)
 		return RHO_OUT
 
