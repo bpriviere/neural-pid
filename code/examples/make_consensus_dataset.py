@@ -66,9 +66,9 @@ if __name__ == '__main__':
 	times = param.sim_times 
 
 	data = np.empty((1,observation_size+action_size))
-	# controller = torch.load(param.il_imitate_model_fn)
+	controller = torch.load(param.il_imitate_model_fn)
 	# controller = torch.load(param.sim_rl_model_fn)
-	controller = torch.load(param.rl_train_best_model_fn)
+	# controller = torch.load(param.rl_train_best_model_fn)
 	
 	first_pass = True
 	trajectory_rollout_count = 0

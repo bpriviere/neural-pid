@@ -51,7 +51,6 @@ def run_sim(controller, initial_state):
 	return states, observations, rewards, actions, step
 
 
-
 if __name__ == '__main__':
 	param = ConsensusParam()
 	env = Consensus(param)
@@ -61,6 +60,7 @@ if __name__ == '__main__':
 		'WMSR': WMSR_Policy(env),
 		#'RL':	torch.load(param.sim_rl_model_fn),
 		'aLCP':	torch.load(param.sim_il_model_fn),
+		# 'aLCP':	torch.load('../models/consensus/3_node_aLCP.pt')
 	}
 
 	n_trials = 100
@@ -97,3 +97,6 @@ if __name__ == '__main__':
 	ax.legend(loc='lower left')
 	plotter.save_figs(param.plots_fn)
 	plotter.open_figs(param.plots_fn)
+
+
+
