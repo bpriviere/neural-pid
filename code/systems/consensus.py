@@ -130,7 +130,7 @@ class Consensus(Env):
 		# 	(self.worst_bad_node-self.desired_ave))*self.scale_reward
 		# return (1.-np.abs((agent.x-self.desired_ave)/(self.worst_bad_node-self.desired_ave)))/self.n_agents*self.scale_reward
 
-		if False: 
+		if True: 
 			return -np.abs((agent.x-self.desired_ave))
 		else:
 			score = 0 
