@@ -72,7 +72,7 @@ class WMSR_Policy:
 					if x_j > x_i:
 						R.append(x_j)
 
-			if nl <= f:
+			if nl >= f:
 				# add f smallest values to R
 				for i in range(f):
 					R.append(x_js_sorted[i])
@@ -94,5 +94,14 @@ class WMSR_Policy:
 				a[agent.i] = summ/count
 			else:
 				a[agent.i] = 0.0 
-		return a
+
+			# print(observation[agent.i])
+			# print(x_i)
+			# print(x_js)
+			# print(ng)
+			# print(nl)
+			# print(R)
+			# exit()
+
+		return a*dt
 

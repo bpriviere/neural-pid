@@ -102,7 +102,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		elif param.env_name == 'Consensus':
 			for i_config in range(1): #range(env.state_dim_per_agent):
 				fig,ax = plotter.make_fig()
-				ax.set_title(env.states_name[i_config])			
+				# ax.set_title(env.states_name[i_config])
 				for agent in env.agents:
 					if env.good_nodes[agent.i]:
 						color = 'blue'

@@ -30,7 +30,8 @@ class ConsensusParam(Param):
 
 		# Sim
 		self.sim_rl_model_fn = '../models/consensus/rl_best.pt'
-		self.sim_il_model_fn = '../models/consensus/il_current.pt'
+		self.sim_il_model_fn = '../models/consensus/il_current.pt' 
+		# self.sim_il_model_fn = '../models/consensus/5_node_aLCP.pt'
 		self.sim_render_on = True
 		self.sim_t0 = 0
 		self.sim_tf = 5
@@ -52,6 +53,7 @@ class ConsensusParam(Param):
 		self.env_state_bounds = 5*np.ones((self.state_dim),dtype=float)
 
 		# RL
+		self.rl_gpu_on = True 
 		self.rl_train_latest_model_fn = '../models/consensus/rl_latest.pt'
 		self.rl_train_best_model_fn = '../models/consensus/rl_best.pt'
 		self.rl_continuous_on = False
@@ -122,7 +124,8 @@ class ConsensusParam(Param):
 
 		# IL
 		self.il_train_model_fn = '../models/consensus/il_current.pt'
-		self.il_imitate_model_fn = '../models/consensus/rl_best.pt'
+		# self.il_imitate_model_fn = '../models/consensus/rl_best.pt'
+		self.il_imitate_model_fn = '../models/consensus/5_node_rl_final.pt'		
 		self.il_controller_class = 'Consensus'
 		self.il_module = 'DeepSet'
 		self.il_load_dataset_on = True 
@@ -167,7 +170,7 @@ if __name__ == '__main__':
 	controllers = {
 		'LCP': LCP_Policy(env),
 		'WMSR': WMSR_Policy(env),
-		'RL':	torch.load(param.sim_rl_model_fn),
+		# 'RL':	torch.load(param.sim_rl_model_fn),
 		'IL':	torch.load(param.sim_il_model_fn),
 	}
 
