@@ -269,14 +269,23 @@ def train_il(param, env):
 
 		# orca dataset
 		if "orca" in param.il_load_dataset:
+
+			if "ring" in param.il_load_dataset:
+				datadir = glob.glob("../data/singleintegrator/ring/*.npy")
+			elif "random" in param.il_load_dataset:
+				datadir = glob.glob("../data/singleintegrator/random/*.npy")
+
 			dataset = []
-			for k,file in enumerate(glob.glob("../baseline/orca/build/*.npy")):
+			for k,file in enumerate(datadir):
 				print(file)
 				if param.il_state_loss_on:
 					dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 				else:
 					dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
 				print(len(dataset))
+
+				if len(dataset) > param.il_n_data:
+					break
 
 			print('Total Dataset Size: ',len(dataset))
 			loader_train,loader_test = make_orca_loaders(
@@ -347,7 +356,7 @@ def train_il(param, env):
 				batch_size=param.il_batch_size,
 				shuffle=True)
 
-	# make dataset 
+	# make dataset from rl model 
 	else:
 		print('Making Dataset')
 		x_train,y_train = make_dataset(param, env)

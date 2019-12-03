@@ -69,7 +69,24 @@ def sim(param, env, controllers, initial_state, visualize):
 		sim_results = []		
 		sim_results.append(result)
 
-		if param.sim_render_on:
+		# plot state space
+		if param.env_name == 'SingleIntegrator':
+			fig,ax = plotter.make_fig()
+			ax.set_title('State Space')
+			ax.set_aspect('equal')
+
+			for agent in env.agents:
+				
+				line = ax.plot(result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)], 
+					result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1])
+				color = line[0].get_color()
+
+				plotter.plot_circle(result.states[1,env.agent_idx_to_state_idx(agent.i)],
+					result.states[1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
+
+		elif param.env_name == 'Consensus' and param.sim_render_on:
+			env.render()
+		elif param.sim_render_on:
 			env.render()
 	
 		# plot time varying states

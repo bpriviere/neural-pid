@@ -53,21 +53,23 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
-		self.il_batch_size = 5000
+		self.il_batch_size = 200
 		self.il_n_epoch = 5000
 		self.il_lr = 5e-3
 		self.il_n_data = 50000
-		self.il_log_interval = 10
-		self.il_load_dataset = 'orca'
+		self.il_log_interval = 1
+		self.il_load_dataset = ['orca','random']
 		self.il_controller_class = 'Empty' # 'Empty','Barrier','PID',
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
-		n,m,h = 4,2,32 # state dim, action dim, hidden layer
+		n,m,h = 4,2,64 # state dim, action dim, hidden layer
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(n,h),
+			nn.Linear(h,h),
 			nn.Linear(h,h)])
 		self.il_rho_network_architecture = nn.ModuleList([
+			nn.Linear(h+n,h+n),
 			nn.Linear(h+n,h+n),
 			nn.Linear(h+n,m)])
 		self.il_network_activation = tanh 

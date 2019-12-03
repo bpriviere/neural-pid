@@ -68,9 +68,12 @@ def plot_circle(x,y,r,fig=None,ax=None,title=None,label=None,color=None):
 	if fig is None or ax is None:
 		fig, ax = plt.subplots()
 
-	zorder=3
-
-	circle = patches.Circle((x,y),radius=r, zorder = zorder)
+	if False:
+		zorder=3
+		circle = patches.Circle((x,y),radius=r, zorder = zorder)
+	else:
+		circle = patches.Circle((x,y),radius=r)
+		
 	if color is not None:
 		circle.set_color(color)
 	if label is not None:

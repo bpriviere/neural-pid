@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
 	data = np.load(args.file)
 
-	# data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
+	# data = np.loadtxt(args.file, delimiter=',', skiprows=1, dtype=np.float32)
 
 	# print(data.dtype)
 
