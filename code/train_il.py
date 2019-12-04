@@ -73,7 +73,7 @@ def load_consensus_dataset(filename,n_neighbor,agent_memory):
 	print('Dataset Size: ', len(dataset))
 	return dataset
 
-def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=True,batch_size=None):
+def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=False,batch_size=None):
 
 	def make_loader(dataset):
 		batch_x = []
@@ -109,34 +109,6 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Tru
 	loader_train = make_loader(train_dataset)
 	loader_test = make_loader(test_dataset)
 	return loader_train,loader_test	
-
-# This was an attempt to make consensus dataset 
-# def make_dataset(param, env):
-# 	model = torch.load(param.il_imitate_model_fn)
-# 	times = param.sim_times
-# 	states = []
-# 	actions = []
-# 	while len(states) < param.il_n_data:
-# 		for step, time in enumerate(times[:-1]):
-
-# 			observations = env.observe()			
-# 			step_actions = model.policy(observations)
-# 			s_prime, _, done, _ = env.step(step_actions)
-			
-# 			for k_obs,observation in enumerate(observations):
-# 				states.append(observation)
-# 				actions.append(step_actions[k_obs])
-			
-# 			if done:
-# 				break
-
-# 		actions.append(zeros(env.action_dim_per_agent))
-
-# 	states = states[0:param.il_n_data]
-# 	actions = actions[0:param.il_n_data]
-
-# 	return torch.tensor(states).float(),torch.tensor(actions).float()
-
 
 def make_dataset(param, env):
 	model = torch.load(param.il_imitate_model_fn)
@@ -211,7 +183,7 @@ def train(param,env,model,loader):
 		loss.backward()         # backpropagation, compute gradients
 		optimizer.step()        # apply gradients
 		
-		epoch_loss += loss 
+		epoch_loss += float(loss)
 	return epoch_loss/step
 
 
@@ -233,7 +205,7 @@ def test(param,env,model,loader):
 				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
 
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
-		epoch_loss += loss 
+		epoch_loss += float(loss)
 	return epoch_loss/step
 
 
@@ -274,6 +246,8 @@ def train_il(param, env):
 				datadir = glob.glob("../data/singleintegrator/ring/*.npy")
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
+			elif "centralplanner" in param.il_load_dataset:
+				datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
 
 			dataset = []
 			for k,file in enumerate(datadir):
@@ -308,7 +282,7 @@ def train_il(param, env):
 			print('Total Dataset Size: ',len(dataset))
 			loader_train,loader_test = make_orca_loaders(
 				dataset=dataset,
-				shuffle=True,
+				shuffle=False,
 				batch_size=param.il_batch_size,
 				test_train_ratio=param.il_test_train_ratio,
 				n_data=param.il_n_data)

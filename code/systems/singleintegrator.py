@@ -11,11 +11,12 @@ import torch
 import plotter 
 
 class Agent:
-	def __init__(self,s=None,i=None):
-		self.s = s
-		self.i = i # index 
+	def __init__(self,i):
+		self.i = i 
+		self.s = None
 		self.p = None
 		self.v = None
+		self.s_g = None
 
 class SingleIntegrator(Env):
 
@@ -39,14 +40,14 @@ class SingleIntegrator(Env):
 		self.n = self.state_dim_per_agent*self.n_agents
 		self.m = self.action_dim_per_agent*self.n_agents
 
+		# init agents
 		self.agents = []
 		for i in range(self.n_agents):
-			self.agents.append(Agent(i=i))
+			self.agents.append(Agent(i))
 
 		# environment 
-		self.env_state_bounds = np.array([5])
-		self.init_state_start = np.zeros((self.n_agents))
-		self.init_state_disturbance = 10*np.ones((self.n_agents))
+		self.init_state_mean = 0.
+		self.init_state_var = 10.
 
 		self.states_name = [
 			'x-Position [m]',
@@ -111,22 +112,55 @@ class SingleIntegrator(Env):
 		return 0
 
 
-	def reset(self, initial_state = None):
+	def reset(self, initial_state=None):
 		self.time_step = 0				
 		if initial_state is None:
-			self.s = self.init_state_start+np.multiply(
-					self.init_state_disturbance,np.random.uniform(size=(self.n,)))
+
+			initial_state = np.zeros((self.n))
+			for agent_i in self.agents:
+				agent_i.s = self.find_collision_free_state('initial')
+				# agent_i.s_g = self.find_collision_free_state('goal')
+				agent_i.s_g = -agent_i.s
+				idx = self.agent_idx_to_state_idx(agent_i.i) + \
+					np.arange(0,self.state_dim_per_agent)
+				initial_state[idx] = agent_i.s
+
 		else:
-			self.s = initial_state
 
-		# assign goal state 
-		for agent in self.agents:
-			idx = self.agent_idx_to_state_idx(agent.i) + \
-				np.arange(0,self.state_dim_per_agent)
-			agent.s_g = -initial_state[idx]
+			# assign goal state 
+			for agent in self.agents:
+				idx = self.agent_idx_to_state_idx(agent.i) + \
+					np.arange(0,self.state_dim_per_agent)
+				agent.s_g = -initial_state[idx]
 
+		self.s = initial_state
 		self.update_agents(self.s)			
-		return np.array(self.s) 
+		return np.copy(self.s)
+
+
+	def find_collision_free_state(self,config):
+		collision = True
+		count = 0 
+		while collision:
+			count += 1
+			collision = False
+			s = self.init_state_mean + \
+					self.init_state_var*np.random.uniform(size=(self.state_dim_per_agent))
+			for agent_j in self.agents:
+				if agent_j.s is not None and agent_j.s_g is not None:
+					if config == 'initial': 
+						dist = np.linalg.norm(agent_j.s[0:2] - s[0:2])
+					elif config == 'goal':
+						dist = np.linalg.norm(agent_j.s_g[0:2] - s[0:2])
+					if dist < 2*self.r_agent:
+						collision = True
+						break
+
+			if count > 1000:
+				print('Infeasible initial conditions')
+				exit()
+
+		return s 
 
 
 	def next_state(self,s,a):

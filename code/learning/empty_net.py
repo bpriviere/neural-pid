@@ -42,6 +42,7 @@ class Empty_Net(nn.Module):
 
 	def __call__(self,x):			
 		# if no control authority lim in deepset implement here instead:
+		
 		x = torch.tanh(self.model.forward(x)) # x \in [-1,1]
 		x = (x+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() #, x \in [amin,amax]
 		return x
