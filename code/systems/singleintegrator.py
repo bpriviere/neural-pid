@@ -124,14 +124,17 @@ class SingleIntegrator(Env):
 				idx = self.agent_idx_to_state_idx(agent_i.i) + \
 					np.arange(0,self.state_dim_per_agent)
 				initial_state[idx] = agent_i.s
-
+			self.s = initial_state
 		else:
+			print(initial_state)
+			self.s = initial_state.start
 
 			# assign goal state 
 			for agent in self.agents:
 				idx = self.agent_idx_to_state_idx(agent.i) + \
 					np.arange(0,self.state_dim_per_agent)
 				agent.s_g = -initial_state[idx]
+				agent.s_g = initial_state.goal[idx]
 
 		self.s = initial_state
 		self.update_agents(self.s)			
