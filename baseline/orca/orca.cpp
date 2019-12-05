@@ -8,25 +8,27 @@
 
 #include <boost/program_options.hpp>
 
+#include <yaml-cpp/yaml.h>
+
 #include "RVO.h"
 
 /* Store the goals of the agents. */
 std::vector<RVO::Vector2> goals;
 
 
-void setupScenario(RVO::RVOSimulator *sim, int numAgents, float size)
+void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
 {
   /* Specify the global time step of the simulation. */
-  sim->setTimeStep(0.25f);
+  sim->setTimeStep(0.1f);
 
   /* Specify the default parameters for agents that are subsequently added. */
   sim->setAgentDefaults(
-    /* neighborDist*/ 15.0f,
-    /* maxNeighbors*/ 10,
+    /* neighborDist*/ 2.0f,
+    /* maxNeighbors*/ 30,
     /* timeHorizon*/ 10.0f,
     /* timeHorizonObst*/ 10.0f,
-    /* radius*/ 1.5f,
-    /* maxSpeed*/ 2.0f);
+    /* radius*/ 0.2f,
+    /* maxSpeed*/ 0.5f);
 
 
 // Ring Example 
@@ -43,44 +45,79 @@ void setupScenario(RVO::RVOSimulator *sim, int numAgents, float size)
 // }
 
 
-// Random Examples 
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<> dis(-size, size);
-  for (size_t i = 0; i < numAgents;) {
-    float x = dis(gen);
-    float y = dis(gen);
-    RVO::Vector2 pos(x, y);
-    bool collision = false;
-    for (size_t j = 0; j < i; ++j) {
-      float dist = RVO::abs(pos - sim->getAgentPosition(j));
-      if (dist <= 3.5) {
-        collision = true;
-        break;
-      }
+// // Random Examples 
+//   std::random_device rd;
+//   std::mt19937 gen(rd());
+//   std::uniform_real_distribution<> dis(-size, size);
+//   for (size_t i = 0; i < numAgents;) {
+//     float x = dis(gen);
+//     float y = dis(gen);
+//     RVO::Vector2 pos(x, y);
+//     bool collision = false;
+//     for (size_t j = 0; j < i; ++j) {
+//       float dist = RVO::abs(pos - sim->getAgentPosition(j));
+//       if (dist <= 3.5) {
+//         collision = true;
+//         break;
+//       }
+//     }
+//     if (!collision) {
+//       sim->addAgent(pos);
+//       // find a collision-free goal
+//       do {
+//         RVO::Vector2 goal(dis(gen), dis(gen));
+//         collision = false;
+//         for (size_t j = 0; j < i; ++j) {
+//           float dist = RVO::abs(goal - goals[j]);
+//           if (dist <= 3.5) {
+//             collision = true;
+//             break;
+//           }
+//         }
+//         if (!collision) {
+//           goals.push_back(goal);
+//           break;
+//         }
+//       } while(true);
+//       // next agent
+//       ++i;
+//     }
+//   }
+
+
+    // Load from file
+
+    YAML::Node config = YAML::LoadFile(inputFile);
+    for (const auto& node : config["agents"]) {
+      const auto& start = node["start"];
+      const auto& goal = node["goal"];
+
+      RVO::Vector2 startPos(start[0].as<int>() + 0.5f, start[1].as<int>()+ 0.5f);
+      sim->addAgent(startPos);
+
+      RVO::Vector2 goalPos(goal[0].as<int>()+ 0.5f, goal[1].as<int>()+ 0.5f);
+      goals.push_back(goalPos);
+
     }
-    if (!collision) {
-      sim->addAgent(pos);
-      // find a collision-free goal
-      do {
-        RVO::Vector2 goal(dis(gen), dis(gen));
-        collision = false;
-        for (size_t j = 0; j < i; ++j) {
-          float dist = RVO::abs(goal - goals[j]);
-          if (dist <= 3.5) {
-            collision = true;
-            break;
-          }
-        }
-        if (!collision) {
-          goals.push_back(goal);
-          break;
-        }
-      } while(true);
-      // next agent
-      ++i;
+
+    /*
+     * Add (polygonal) obstacles, specifying their vertices in counterclockwise
+     * order.
+     */
+    for (const auto& node : config["map"]["obstacles"]) {
+      float x = node[0].as<int>();
+      float y = node[1].as<int>();
+      std::vector<RVO::Vector2> obstacle;
+      obstacle.push_back(RVO::Vector2(x, y));
+      obstacle.push_back(RVO::Vector2(x+1, y));
+      obstacle.push_back(RVO::Vector2(x+1, y+1));
+      obstacle.push_back(RVO::Vector2(x, y+1));
+
+      sim->addObstacle(obstacle);
     }
-  }
+
+    /* Process the obstacles so that they are accounted for in the simulation. */
+    sim->processObstacles();
 }
 
 void setPreferredVelocities(RVO::RVOSimulator *sim)
@@ -123,16 +160,14 @@ bool reachedGoal(RVO::RVOSimulator *sim)
 
 int main(int argc, char** argv)
 {
-  int numAgents;
-  float size;
+  std::string inputFile;
 
   namespace po = boost::program_options;
 
   po::options_description desc("Allowed options");
   desc.add_options()
     ("help", "produce help message")
-    ("numAgents", po::value<int>(&numAgents)->default_value(10), "Number of agents")
-    ("size", po::value<float>(&size)->default_value(10), "half-size of square to operate in")
+    ("input,i", po::value<std::string>(&inputFile)->required(),"input file (YAML)")
   ;
 
   try
@@ -157,7 +192,7 @@ int main(int argc, char** argv)
   RVO::RVOSimulator sim;
 
   /* Set up the scenario. */
-  setupScenario(&sim, numAgents, size);
+  setupScenario(&sim, inputFile);
 
   std::ofstream output("orca.csv");
   output << "t";

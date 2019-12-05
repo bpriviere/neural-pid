@@ -28,6 +28,12 @@ sudo pip3 install numpy-stl
 python3 ../orca/orca.py examples/test_2_agents.yaml orca.csv
 ```
 
+### Run Planner
+
+```
+./run.sh examples/test_2_agents.yaml data/test_2_agents.npy
+```
+
 ### Discrete Planning
 
 ````
@@ -45,5 +51,11 @@ python3 ../orca/orca.py examples/test_2_agents.yaml orca.csv
 ### Temporal stretching and export
 
 ```
-python3 exportTrajectories.py multi-robot-trajectory-planning/examples/ground/output/pps/ multi-robot-trajectory-planning/examples/ground/types.yaml examples/test_2_agents.yaml
+./export.sh examples/test_2_agents.yaml data/test_2_agents.npy
+```
+
+### Visualize
+
+```
+python3 ../orca/orca.py examples/empty-8-8-random-1_20_agents.yaml central.csv
 ```
