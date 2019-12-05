@@ -133,11 +133,10 @@ class SingleIntegrator(Env):
 			for agent in self.agents:
 				idx = self.agent_idx_to_state_idx(agent.i) + \
 					np.arange(0,self.state_dim_per_agent)
-				agent.s_g = -initial_state[idx]
+				print(idx)
 				agent.s_g = initial_state.goal[idx]
 
-		self.s = initial_state
-		self.update_agents(self.s)			
+		self.update_agents(self.s)
 		return np.copy(self.s)
 
 
