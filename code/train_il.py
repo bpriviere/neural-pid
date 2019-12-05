@@ -88,6 +88,8 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Fal
 				loader.append([batch_x,batch_y])
 				batch_x = []
 				batch_y = []
+		if len(batch_x) > 0:
+			loader.append([batch_x,batch_y])
 		return loader
 
 	if dataset is None:
@@ -184,7 +186,7 @@ def train(param,env,model,loader):
 		optimizer.step()        # apply gradients
 		
 		epoch_loss += float(loss)
-	return epoch_loss/step
+	return epoch_loss/(step+1)
 
 
 def test(param,env,model,loader):
@@ -206,7 +208,7 @@ def test(param,env,model,loader):
 
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
 		epoch_loss += float(loss)
-	return epoch_loss/step
+	return epoch_loss/(step+1)
 
 
 def train_il(param, env):
