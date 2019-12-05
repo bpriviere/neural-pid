@@ -16,7 +16,8 @@ class PPO(nn.Module):
 		action_list,
 		state_dim,
 		action_dim,
-		layers,
+		pi_layers,
+		v_layers,
 		activation,
 		cuda_on,
 		lr,
@@ -37,23 +38,26 @@ class PPO(nn.Module):
 		self.lmbda = lmda
 		self.eps_clip = eps_clip
 
-		self.layers = layers
+		self.pi_layers = pi_layers
+		self.v_layers = v_layers
 		self.activation = activation
 
-		self.action_dim_per_agent = self.layers[-1].out_features
+		# i think this is wrong... it should v_layers out should always just be one 
+		# it should be the second dimension of action_list? idk 
+		self.action_dim_per_agent = self.v_layers[-1].out_features
 
 		self.optimizer = optim.Adam(self.parameters(), lr=self.lr)
 
 	def pi(self, x, softmax_dim = 0):
-		for layer in self.layers[:-2]:
+		for layer in self.pi_layers[:-1]:
 			x = self.activation(layer(x))
-		x = F.softmax(self.layers[-2](x),dim=softmax_dim)
+		x = F.softmax(self.pi_layers[-1](x),dim=softmax_dim)
 		return x
 	
 	def v(self, x):
-		for layer in self.layers[:-2]:
+		for layer in self.v_layers[:-1]:
 			x = self.activation(layer(x))
-		x = self.layers[-1](x) 
+		x = self.v_layers[-1](x)
 		return x
 	  
 	def put_data(self, transition):

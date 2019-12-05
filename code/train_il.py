@@ -45,26 +45,35 @@ def load_orca_dataset_action_loss(filename,neighborDist):
 	return dataset
 
 def load_consensus_dataset(filename,n_neighbor,agent_memory):
+	
 	dataset = []
 	data = np.load(filename)
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 
-	for t in range(data.shape[0]-1):
+	for t in range(1,data.shape[0]-1):
 		relative_neighbor_histories = []
+
+		self_history = []
+		for h in range(agent_memory):
+			self_history.append(data[t,h])
+		relative_neighbor_histories.append(self_history)
+
 		for i in range(n_neighbor):
 			relative_neighbor_history = []
+
 			for h in range(agent_memory):
-				relative_neighbor_history.append(data[t,i+h*n_neighbor])
+				relative_neighbor_history.append(data[t,(i+1)*agent_memory+h])
 			relative_neighbor_histories.append(relative_neighbor_history)
 
 		o = relative_neighbor_histories
-		a = data[t,agent_memory*n_neighbor:]
+		a = [data[t,-1]]
+
 		oa_pair = Observation_Action_Pair._make((o,a))
 		dataset.append(oa_pair)
 	print('Dataset Size: ', len(dataset))
 	return dataset
 
-def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=True,batch_size=None):
+def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=False,batch_size=None):
 
 	def make_loader(dataset):
 		batch_x = []
@@ -100,34 +109,6 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Tru
 	loader_train = make_loader(train_dataset)
 	loader_test = make_loader(test_dataset)
 	return loader_train,loader_test	
-
-# This was an attempt to make consensus dataset 
-# def make_dataset(param, env):
-# 	model = torch.load(param.il_imitate_model_fn)
-# 	times = param.sim_times
-# 	states = []
-# 	actions = []
-# 	while len(states) < param.il_n_data:
-# 		for step, time in enumerate(times[:-1]):
-
-# 			observations = env.observe()			
-# 			step_actions = model.policy(observations)
-# 			s_prime, _, done, _ = env.step(step_actions)
-			
-# 			for k_obs,observation in enumerate(observations):
-# 				states.append(observation)
-# 				actions.append(step_actions[k_obs])
-			
-# 			if done:
-# 				break
-
-# 		actions.append(zeros(env.action_dim_per_agent))
-
-# 	states = states[0:param.il_n_data]
-# 	actions = actions[0:param.il_n_data]
-
-# 	return torch.tensor(states).float(),torch.tensor(actions).float()
-
 
 def make_dataset(param, env):
 	model = torch.load(param.il_imitate_model_fn)
@@ -182,20 +163,27 @@ def train(param,env,model,loader):
 			b_y = torch.from_numpy(np.array(b_y)).float()
 
 		prediction = model(b_x)     # input x and predict based on x
+		
+		# print('prediction: ', prediction.shape)
+		# print('b_x: ', len(b_x))
+		# print('b_y: ', b_y.shape)
+		# exit()
 
-		if param.il_state_loss_on:
-			prediction_a = prediction
-			prediction = torch.zeros((b_y.shape))
-			for k,a in enumerate(prediction_a): 
-				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
+		# if param.il_state_loss_on:
+		# 	prediction_a = prediction
+		# 	prediction = torch.zeros((b_y.shape))
+		# 	for k,a in enumerate(prediction_a): 
+		# 		prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
 
+		# print('preloss')
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
+		# print('postloss')
 
 		optimizer.zero_grad()   # clear gradients for next train
 		loss.backward()         # backpropagation, compute gradients
 		optimizer.step()        # apply gradients
 		
-		epoch_loss += loss 
+		epoch_loss += float(loss)
 	return epoch_loss/step
 
 
@@ -217,7 +205,7 @@ def test(param,env,model,loader):
 				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
 
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
-		epoch_loss += loss 
+		epoch_loss += float(loss)
 	return epoch_loss/step
 
 
@@ -253,14 +241,25 @@ def train_il(param, env):
 
 		# orca dataset
 		if "orca" in param.il_load_dataset:
+
+			if "ring" in param.il_load_dataset:
+				datadir = glob.glob("../data/singleintegrator/ring/*.npy")
+			elif "random" in param.il_load_dataset:
+				datadir = glob.glob("../data/singleintegrator/random/*.npy")
+			elif "centralplanner" in param.il_load_dataset:
+				datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
+
 			dataset = []
-			for k,file in enumerate(glob.glob("../baseline/orca/build/*.npy")):
+			for k,file in enumerate(datadir):
 				print(file)
 				if param.il_state_loss_on:
 					dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 				else:
 					dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
 				print(len(dataset))
+
+				if len(dataset) > param.il_n_data:
+					break
 
 			print('Total Dataset Size: ',len(dataset))
 			loader_train,loader_test = make_orca_loaders(
@@ -283,7 +282,7 @@ def train_il(param, env):
 			print('Total Dataset Size: ',len(dataset))
 			loader_train,loader_test = make_orca_loaders(
 				dataset=dataset,
-				shuffle=True,
+				shuffle=False,
 				batch_size=param.il_batch_size,
 				test_train_ratio=param.il_test_train_ratio,
 				n_data=param.il_n_data)
@@ -331,7 +330,7 @@ def train_il(param, env):
 				batch_size=param.il_batch_size,
 				shuffle=True)
 
-	# make dataset 
+	# make dataset from rl model 
 	else:
 		print('Making Dataset')
 		x_train,y_train = make_dataset(param, env)

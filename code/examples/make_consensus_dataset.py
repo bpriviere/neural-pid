@@ -18,7 +18,7 @@ import os
 
 def run_sim(param, env, controller, initial_state):
 	
-	observation_size = param.n_neighbors*param.agent_memory*param.state_dim_per_agent
+	observation_size = (param.n_neighbors+1)*param.agent_memory*param.state_dim_per_agent
 	times = param.sim_times
 	states = np.zeros((len(times), env.n))
 	actions = np.zeros(( (len(times)-1)*(param.n_agents-param.n_malicious), param.action_dim_per_agent))
@@ -66,9 +66,9 @@ if __name__ == '__main__':
 	times = param.sim_times 
 
 	data = np.empty((1,observation_size+action_size))
-	# controller = torch.load(param.il_imitate_model_fn)
+	controller = torch.load(param.il_imitate_model_fn)
 	# controller = torch.load(param.sim_rl_model_fn)
-	controller = torch.load(param.rl_train_best_model_fn)
+	# controller = torch.load(param.rl_train_best_model_fn)
 	
 	first_pass = True
 	trajectory_rollout_count = 0
@@ -89,24 +89,25 @@ if __name__ == '__main__':
 			data = np.vstack((data, oa_pair))
 
 		# # plotting
-		env.render()
+		if True:
+			env.render()
 
-		for i_config in range(1): #range(env.state_dim_per_agent):
-			fig,ax = plotter.make_fig()
-			# ax.set_title(env.states_name[i_config])			
-			for agent in env.agents:
-				if env.good_nodes[agent.i]:
-					color = 'blue'
-				else:
-					color = 'red'
-				ax.plot(
-					times[0:steps],
-					states[0:steps,env.agent_idx_to_state_idx(agent.i)+i_config],
-					color=color)
-			ax.axhline(
-				env.desired_ave,
-				label='desired',
-				color='green')
+			for i_config in range(1): #range(env.state_dim_per_agent):
+				fig,ax = plotter.make_fig()
+				# ax.set_title(env.states_name[i_config])			
+				for agent in env.agents:
+					if env.good_nodes[agent.i]:
+						color = 'blue'
+					else:
+						color = 'red'
+					ax.plot(
+						times[0:steps],
+						states[0:steps,env.agent_idx_to_state_idx(agent.i)+i_config],
+						color=color)
+				ax.axhline(
+					env.desired_ave,
+					label='desired',
+					color='green')
 		
 		print('Number of Trajectories:', trajectory_rollout_count)
 		print('Data Shape: ', data.shape)

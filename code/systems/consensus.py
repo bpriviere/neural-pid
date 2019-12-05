@@ -19,6 +19,12 @@ class Agent:
 
 		# observation history is the relative neighbor histories 
 		self.observation_history = []
+
+		self_history = []
+		for history_j in range(agent_memory):
+			self_history.append(0)
+		self.observation_history.append(self_history)
+
 		for agent_j in range(n_neighbors):
 			relative_neighbor_history = []
 			for history_j in range(agent_memory):
@@ -49,11 +55,12 @@ class Consensus(Env):
 		self.m = self.action_dim_per_agent*self.n_agents
 
 		# environment 
-		self.env_state_bounds = np.array([5])
+		self.env_state_bounds = param.env_state_bounds
+		self.score_zone = param.score_zone
 
 		# disturbances on initial state 
-		self.init_state_disturbance = np.array([20],dtype=float)
-		self.bias_disturbance = 10
+		self.init_state_disturbance = param.init_state_disturbance
+		self.bias_disturbance = param.bias_disturbance
 
 		self.states_name = [
 			'Node Value',
@@ -121,8 +128,23 @@ class Consensus(Env):
 	def reward_i(self,agent):
 		# return -np.abs((agent.x-self.desired_ave)/\
 		# 	(self.worst_bad_node-self.desired_ave))*self.scale_reward
-		return -np.abs((agent.x-self.desired_ave))*self.scale_reward
 		# return (1.-np.abs((agent.x-self.desired_ave)/(self.worst_bad_node-self.desired_ave)))/self.n_agents*self.scale_reward
+
+		if True: 
+			return -np.abs((agent.x-self.desired_ave))
+		else:
+			score = 0 
+			# consensus score
+			for agent_j in self.agents:
+				if not agent.i == agent_j.i and self.good_nodes[agent_j.i] and np.abs(agent.x - agent_j.x) < 0.1:
+					score += 1./(self.n_neighbors - self.n_malicious)/2.
+			# goal score
+			if np.abs(agent.x - self.desired_ave) < self.score_zone:
+				score += 1/2.
+			# got trapped 
+			elif np.abs(agent.x - self.agents[np.where(self.bad_nodes)[0][0]].x) < self.score_zone:
+				score += -1 
+			return score
 
 	def done(self):
 		return False
@@ -137,8 +159,14 @@ class Consensus(Env):
 
 			# observation_i is a list of lists: first index is neighbor index, second index is history values 
 			# ie observation_i is the relative neighbor histories 
-			observation_i = [] 
-			n_neighbor_count = -1
+			observation_i = []
+
+			self_history = [agent_i.x]
+			for i_history in range(self.agent_memory-1):
+				self_history.append(agent_i.observation_history[0][i_history])
+			observation_i.append(self_history)
+
+			n_neighbor_count = 0
 			for agent_j in self.agents:
 				relative_neighbor_history = []
 				
@@ -156,6 +184,7 @@ class Consensus(Env):
 							relative_neighbor_history.append(agent_i.observation_history[n_neighbor_count][i_history])
 
 					observation_i.append(relative_neighbor_history)
+
 			observations.append(observation_i)
 
 		if update_agents:
@@ -168,7 +197,7 @@ class Consensus(Env):
 
 	def unpack_observations(self,observations):
 
-		observations_size = self.n_neighbors*self.agent_memory*self.state_dim_per_agent
+		observations_size = (self.n_neighbors+1)*self.agent_memory*self.state_dim_per_agent
 		observations_array = np.empty((self.n_agents, observations_size))
 
 		for agent in self.agents:
@@ -199,16 +228,19 @@ class Consensus(Env):
 
 	def reward(self):
 		r = 0
+		
 		for agent in self.agents:
-			r += self.reward_i(agent)
+			if self.good_nodes[agent.i]:
+				r += self.reward_i(agent)
+		r = r/(self.n_agents - self.n_malicious)/len(self.times)
 		return r
 
 
-	def good_node_average(self):
+	def good_node_average(self, good_nodes):
 		summ = 0
 		count = 0 
 		for agent_i in self.agents:
-			if self.good_nodes[agent_i.i]:
+			if good_nodes[agent_i.i]:
 				count += 1
 				summ += agent_i.x 
 		return summ/count
@@ -254,6 +286,11 @@ class Consensus(Env):
 				initial_values[self.agent_i_idx_to_value_i_idx(agent.i)] \
 				= self.init_state_disturbance[0]*np.random.uniform() + bias
 
+			# make sure bad node is far enough from desired ave 
+			desired_ave = np.mean(initial_values[np.where(initial_behaviors)])
+			while abs(initial_values[np.where(bad_nodes)] - desired_ave) < 3*self.score_zone:
+				initial_values[np.where(bad_nodes)] = self.init_state_disturbance[0]*np.random.uniform() + bias
+
 			Initial_State = namedtuple('Initial_State',['initial_values','initial_positions','initial_behaviors']) 
 			initial_state = Initial_State._make((initial_values,initial_positions,initial_behaviors))
 
@@ -273,7 +310,7 @@ class Consensus(Env):
 		self.bad_nodes = np.logical_not(initial_behaviors)
 		self.good_nodes = initial_behaviors
 		self.state = np.copy(initial_values)
-		self.desired_ave = self.good_node_average()
+		self.desired_ave = self.good_node_average(initial_behaviors)
 		self.worst_bad_node = self.find_worst_bad_node_value()
 		self.time_step = 0
 
@@ -290,6 +327,7 @@ class Consensus(Env):
 
 		sp1 = s
 		dt = self.times[self.time_step+1]-self.times[self.time_step]		
+
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			if self.good_nodes[agent_i.i]: 

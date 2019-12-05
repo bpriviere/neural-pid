@@ -23,14 +23,15 @@ class Consensus_Net(nn.Module):
 				param.il_network_activation, 
 				param.env_name)
 
-			self.action_dim = param.il_rho_network_architecture[-1].out_features
-			self.state_dim = param.il_phi_network_architecture[0].in_features
+			self.action_dim = 1 
+			self.state_dim = 1
 
 		self.a_max = param.a_max
 		self.a_min = param.a_min 
 		self.agent_memory = param.agent_memory
 		self.n_neighbors = param.n_neighbors
 		self.n_agents = param.n_agents
+		self.bw_threshold = param.il_bw_threshold
 
 	def policy(self,x):
 
@@ -50,21 +51,33 @@ class Consensus_Net(nn.Module):
 		a = torch.zeros((len(x),self.action_dim))
 		my_relu = nn.ReLU()
 		for step,x_step in enumerate(x):
-			# bw_no_relu = self.model(x_step)
+
+			# belief_weights = self.model(x_step)
+
 			belief_weights = my_relu(self.model(x_step))
 
-			curr_measurements = torch.zeros((1,self.n_neighbors))
+			# minimum threshold
+			# eps = self.bw_threshold
+			eps = 0.02
+			belief_weights[torch.where(belief_weights < eps)] = 0
+
+			curr_measurements = torch.zeros((self.n_neighbors))
 			for i in range(self.n_neighbors):
-				curr_measurements[0,i] = x_step[i][0]
+				curr_measurements[i] = x_step[i+1][0]
 
-			a[step] = torch.mm( curr_measurements, belief_weights)
+			# print(curr_measurements)
+			# print(belief_weights)
+			# print(x_step)
+			# print(torch.sum( torch.mul(curr_measurements, belief_weights)))
+			# exit()
 
-			print('x_step: ', x_step)
-			print('curr_measurements: ', curr_measurements)
-			print('bw: ', belief_weights)
-			# print('bw_no_relu: ', bw_no_relu)
-			print('a[step]: ', a[step])
+			a[step] = torch.sum( torch.mul(curr_measurements, belief_weights))
 
+			# print('x_step: ', x_step)
+			# print('curr_measurements: ', curr_measurements)
+			# print('bw: ', belief_weights)
+			# # print('bw_no_relu: ', bw_no_relu)
+			# print('a[step]: ', a[step])
 
 		return a
 
@@ -73,5 +86,15 @@ class Consensus_Net(nn.Module):
 		my_relu = nn.ReLU()
 		bt = [] 
 		for i,x_i in enumerate(x):
-			bt.append(my_relu(self.model(x_i)))
+
+			# belief_weights = self.model(x_step)
+
+			belief_weights = my_relu(self.model(x_i))
+
+			# minimum threshold
+			# eps = self.bw_threshold
+			eps = 0.02
+			belief_weights[torch.where(belief_weights < eps)] = 0
+
+			bt.append(belief_weights)
 		return bt 

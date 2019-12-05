@@ -30,6 +30,7 @@ def sim(param, env, controllers, initial_state, visualize):
 			if param.env_name is 'Consensus' and (isinstance(controller, LCP_Policy) or isinstance(controller,PPO)):
 				observation = env.unpack_observations(observation)
 
+			
 			action = controller.policy(observation) 
 			next_state, r, done, _ = env.step(action)
 			reward += r
@@ -68,7 +69,24 @@ def sim(param, env, controllers, initial_state, visualize):
 		sim_results = []		
 		sim_results.append(result)
 
-		if param.sim_render_on:
+		# plot state space
+		if param.env_name == 'SingleIntegrator':
+			fig,ax = plotter.make_fig()
+			ax.set_title('State Space')
+			ax.set_aspect('equal')
+
+			for agent in env.agents:
+				
+				line = ax.plot(result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)], 
+					result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1])
+				color = line[0].get_color()
+
+				plotter.plot_circle(result.states[1,env.agent_idx_to_state_idx(agent.i)],
+					result.states[1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
+
+		elif param.env_name == 'Consensus' and param.sim_render_on:
+			env.render()
+		elif param.sim_render_on:
 			env.render()
 	
 		# plot time varying states
@@ -101,7 +119,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		elif param.env_name == 'Consensus':
 			for i_config in range(1): #range(env.state_dim_per_agent):
 				fig,ax = plotter.make_fig()
-				ax.set_title(env.states_name[i_config])			
+				# ax.set_title(env.states_name[i_config])
 				for agent in env.agents:
 					if env.good_nodes[agent.i]:
 						color = 'blue'
@@ -152,18 +170,25 @@ def sim(param, env, controllers, initial_state, visualize):
 				fig,ax = plotter.plot(times[1:result.steps+1],ref_state[0:result.steps,i],title="ref " + env.states_name[i])
 
 		# extract belief topology
-		if param.env_name is 'Consensus' and controller is controllers['IL']:
+		if name in ['IL'] and param.env_name is 'Consensus':
 			for result in sim_results:
 				if result.name == 'IL':
 					break
 
 			fig,ax = plotter.make_fig()
 			belief_topology = util.extract_belief_topology(controller, result.observations)
+			label_on = True
+			if param.n_agents*param.n_agents > 10:
+				label_on = False
 			for i_agent in range(param.n_agents):
 				for j_agent in range(param.n_agents):
 					if not i_agent == j_agent and env.good_nodes[i_agent]:
-						plotter.plot(times[0:result.steps+1],belief_topology[:,i_agent,j_agent],
-							fig=fig,ax=ax,label="K:{}{}".format(i_agent,j_agent))
+						if label_on:
+							plotter.plot(times[0:result.steps+1],belief_topology[:,i_agent,j_agent],
+								fig=fig,ax=ax,label="K:{}{}".format(i_agent,j_agent))
+						else:
+							plotter.plot(times[0:result.steps+1],belief_topology[:,i_agent,j_agent],
+								fig=fig,ax=ax)
 
 
 	plotter.save_figs(param.plots_fn)

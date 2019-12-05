@@ -22,7 +22,12 @@ class LCP_Policy:
 		for agent in self.env.agents:
 			# observation_i = {s^j - s^i} \forall j in N^i
 			
-			idx = np.arange(0,len(observation[agent.i]),agent_memory)
+			idx = np.arange(agent_memory,len(observation[agent.i]),agent_memory)
+
+			# print(observation[agent.i])
+			# print(observation[agent.i][idx])
+			# exit()
+
 			a[agent.i] = sum(observation[agent.i][idx])*dt
 		return a
 
@@ -41,7 +46,16 @@ class WMSR_Policy:
 		for agent in self.env.agents: 
 
 			x_i = agent.x 
-			x_js = observation[agent.i][0:n_neighbors] + x_i 
+
+			x_js = np.zeros((n_neighbors))
+			count = 0 
+			for agent_j in self.env.agents:
+				if not agent_j.i == agent.i:
+					x_js[count] = observation[agent.i][agent_j.i][0]
+					count += 1
+			x_js = x_js + x_i
+
+
 			x_js_sorted = np.sort( np.array(x_js)) 
 
 			ng = sum(x_i<x_js)
@@ -58,7 +72,7 @@ class WMSR_Policy:
 					if x_j > x_i:
 						R.append(x_j)
 
-			if nl <= f:
+			if nl >= f:
 				# add f smallest values to R
 				for i in range(f):
 					R.append(x_js_sorted[i])
@@ -80,5 +94,14 @@ class WMSR_Policy:
 				a[agent.i] = summ/count
 			else:
 				a[agent.i] = 0.0 
-		return a
+
+			# print(observation[agent.i])
+			# print(x_i)
+			# print(x_js)
+			# print(ng)
+			# print(nl)
+			# print(R)
+			# exit()
+
+		return a*dt
 

@@ -37,7 +37,7 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
    * opposite side of the environment.
    */
 //   for (size_t i = 0; i < numAgents; ++i) {
-//     sim->addAgent(radius *
+//     sim->addAgent(size *
 //                   RVO::Vector2(std::cos(i * 2.0f * M_PI / numAgents),
 //                                std::sin(i * 2.0f * M_PI / numAgents)));
 //     goals.push_back(-sim->getAgentPosition(i));
@@ -138,8 +138,8 @@ void setPreferredVelocities(RVO::RVOSimulator *sim)
     /*
      * Perturb a little to avoid deadlocks due to perfect symmetry.
      */
-    float angle = std::rand() * 2.0f * M_PI / RAND_MAX;
-    float dist = std::rand() * 0.1f / RAND_MAX;
+    float angle = std::rand() * 0.01f * M_PI / RAND_MAX;
+    float dist = std::rand() * 0.01f / RAND_MAX;
 
     sim->setAgentPrefVelocity(i, sim->getAgentPrefVelocity(i) +
                               dist * RVO::Vector2(std::cos(angle), std::sin(angle)));
