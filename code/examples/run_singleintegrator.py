@@ -4,9 +4,10 @@ from run import run
 from systems.singleintegrator import SingleIntegrator
 
 # standard
-from torch import nn, tanh
+from torch import nn, tanh, relu
 import torch
-import numpy as np 
+import numpy as np
+from collections import namedtuple
 
 class SingleIntegratorParam(Param):
 	def __init__(self):
