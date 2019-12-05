@@ -23,7 +23,7 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 7
+		self.n_agents = 2
 		self.r_comm = 15
 		self.r_agent = 0.2
 		self.sim_dt = 0.1
@@ -55,7 +55,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 5000
+		self.il_n_epoch = 100
 		self.il_lr = 5e-3
 		self.il_n_data = 100000
 		self.il_log_interval = 1
