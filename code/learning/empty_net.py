@@ -36,7 +36,7 @@ class Empty_Net(nn.Module):
 
 		A = np.empty((len(x),self.action_dim))
 		for i,x_i in enumerate(x):
-			a_i = self([x_i])
+			a_i = self(torch.Tensor([x_i]))
 			A[i,:] = a_i.detach().numpy()
 		return A
 
