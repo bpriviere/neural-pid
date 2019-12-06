@@ -65,14 +65,14 @@ class DeepSet(nn.Module):
 		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
 		# print(x)
 		X = torch.zeros((len(x),self.rho_in_dim))
-		G = torch.zeros((len(x),self.rho_out_dim))
+		# G = torch.zeros((len(x),self.rho_out_dim))
 
-		G = x[:,0:2]
+		# G = x[:,0:2]
 		num_neighbors = int(x.size()[1]/4) - 1
 		for i in range(num_neighbors):
 			X += self.phi(x[:,4*(i+1):4*(i+2)])
 
-		return self.rho(X) + G
+		return self.rho(X)# + G
 
 
 class Phi(nn.Module):

@@ -23,8 +23,8 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 2
-		self.r_comm = 15
+		self.n_agents = 3
+		self.r_comm = 1
 		self.r_agent = 0.2
 		self.sim_dt = 0.1
 		# self.a_min = np.array([-2.0,-2.0]) # m/s
@@ -73,6 +73,12 @@ class SingleIntegratorParam(Param):
 			nn.Linear(h,h),
 			nn.Linear(h,h),
 			nn.Linear(h,m)])
+
+		self.il_psi_network_architecture = nn.ModuleList([
+			nn.Linear(m+m,h),
+			nn.Linear(h,h),
+			nn.Linear(h,m)])
+
 		self.il_network_activation = tanh 
 
 		# Sim
@@ -109,27 +115,31 @@ if __name__ == '__main__':
 	# 		s0 = np.array([2,0,0,0])
 
 	if True:
-		# s0 = np.zeros((env.n))
-		# r = 8.
-		# d_rad = 2*np.pi/env.n_agents
-		# for i in range(env.n_agents):
-		# 	idx = env.agent_idx_to_state_idx(i) + \
-		# 			np.arange(0,2)
-		# 	s0[idx] = np.array([r*np.cos(d_rad*i),r*np.sin(d_rad*i)])
-		import yaml
-		with open("/home/whoenig/projects/caltech/neural-pid/baseline/centralized-planner/examples/swap2.yaml") as map_file:
-			map_data = yaml.load(map_file)
-
-		s = []
-		g = []
-		for agent in map_data["agents"]:
-			s.extend(agent["start"])
-			s.extend([0,0])
-			g.extend(agent["goal"])
-			g.extend([0,0])
-
 		InitialState = namedtuple('InitialState', ['start', 'goal'])
-		s0 = InitialState._make((np.array(s), np.array(g)))
+
+		s0 = np.zeros((env.n))
+		r = 4.
+		d_rad = 2*np.pi/env.n_agents
+		for i in range(env.n_agents):
+			idx = env.agent_idx_to_state_idx(i) + \
+					np.arange(0,2)
+			s0[idx] = np.array([r*np.cos(d_rad*i),r*np.sin(d_rad*i)])
+		s0 = InitialState._make((s0, -s0))
+
+		# import yaml
+		# with open("../baseline/centralized-planner/examples/swap2.yaml") as map_file:
+		# 	map_data = yaml.load(map_file)
+
+		# s = []
+		# g = []
+		# for agent in map_data["agents"]:
+		# 	s.extend(agent["start"])
+		# 	s.extend([0,0])
+		# 	g.extend(agent["goal"])
+		# 	g.extend([0,0])
+
+		# InitialState = namedtuple('InitialState', ['start', 'goal'])
+		# s0 = InitialState._make((np.array(s), np.array(g)))
 
 	else:
 		s0 = env.reset()

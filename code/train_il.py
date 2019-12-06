@@ -27,6 +27,8 @@ def load_orca_dataset_action_loss(filename,neighborDist):
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
 	for t in range(data.shape[0]-1):
+		if t%4 != 0:
+			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
 			s_g = data[-1,i*4+1:i*4+5]  # goal state i 
