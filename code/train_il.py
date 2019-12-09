@@ -21,11 +21,14 @@ from learning.consensus_net import Consensus_Net
 
 def load_orca_dataset_action_loss(filename,neighborDist):
 	data = np.load(filename)
+	data = torch.from_numpy(data)
 	num_agents = int((data.shape[1] - 1) / 4)
 	dataset = []
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
 	for t in range(data.shape[0]-1):
+		if t%4 != 0:
+			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
 			s_g = data[-1,i*4+1:i*4+5]  # goal state i 
@@ -34,11 +37,14 @@ def load_orca_dataset_action_loss(filename,neighborDist):
 			for j in range(num_agents):
 				if i != j:
 					s_j = data[t,j*4+1:j*4+5] # state j
-					dist = np.linalg.norm(s_i[0:2] - s_j[0:2])
+					# dist = np.linalg.norm(s_i[0:2] - s_j[0:2])
+					dist = (s_i[0:2] - s_j[0:2]).norm()
 					if dist <= neighborDist:
 						relative_neighbors.append(s_j - s_i)
+						# print(dist, len(relative_neighbors))
+						# break
 			o = Observation._make((relative_goal,relative_neighbors))
-			a = data[t+1, i*4+3:i*4+5] # desired control is the velocity in the next timestep
+			a = data[t+1, i*4+3:i*4+5].numpy() # desired control is the velocity in the next timestep
 			oa_pair = Observation_Action_Pair._make((o,a))
 			dataset.append(oa_pair)
 	print('Dataset Size: ',len(dataset))
@@ -78,16 +84,36 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Fal
 	def make_loader(dataset):
 		batch_x = []
 		batch_y = []
-		loader = [] 
-		for step,data in enumerate(dataset):
+		loader = []
+		# break batches by observation size
+		num_batched = 0
+		num_neighbors = 0
+		while True:
+			print(num_neighbors)
+			for data in dataset:
 
-			batch_x.append(data.observation)
-			batch_y.append(data.action)
+				if len(data.observation.relative_neighbors) == num_neighbors:
+					obs_array = np.zeros(4+4*num_neighbors)
+					obs_array[0:4] = data.observation.relative_goal
+					for i in range(num_neighbors):
+						obs_array[(i+1)*4:(i+2)*4] = data.observation.relative_neighbors[i]
+					batch_x.append(obs_array)
+					batch_y.append(data.action)
+					num_batched += 1
 
-			if (step+1)%batch_size == 0 and step is not 0:
-				loader.append([batch_x,batch_y])
+					if (len(batch_x))%batch_size == 0:
+						print("add batch", len(batch_x))
+						loader.append([torch.Tensor(batch_x),batch_y])
+						batch_x = []
+						batch_y = []
+			if len(batch_x) > 0:
+				print("add batch", len(batch_x))
+				loader.append([torch.Tensor(batch_x),batch_y])
 				batch_x = []
 				batch_y = []
+			num_neighbors += 1
+			if num_batched == len(dataset):
+				break
 		return loader
 
 	if dataset is None:
@@ -184,7 +210,7 @@ def train(param,env,model,loader):
 		optimizer.step()        # apply gradients
 		
 		epoch_loss += float(loss)
-	return epoch_loss/step
+	return epoch_loss/(step+1)
 
 
 def test(param,env,model,loader):
@@ -206,7 +232,7 @@ def test(param,env,model,loader):
 
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
 		epoch_loss += float(loss)
-	return epoch_loss/step
+	return epoch_loss/(step+1)
 
 
 def train_il(param, env):

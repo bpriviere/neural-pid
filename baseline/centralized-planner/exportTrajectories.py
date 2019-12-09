@@ -69,13 +69,14 @@ if __name__ == "__main__":
   parser.add_argument("folder", type=str, help="input folder containing csv files")
   parser.add_argument("typesFile", help="types file for agent types (yaml)")
   parser.add_argument("agentsFile", help="agents file with agents (yaml)")
+  parser.add_argument("outputFile", help="output file (npy)")
   args = parser.parse_args()
 
   with open(args.typesFile) as file:
-    types = yaml.load(file)
+    types = yaml.load(file, Loader=yaml.SafeLoader)
 
   with open(args.agentsFile) as file:
-    agents = yaml.load(file)
+    agents = yaml.load(file, Loader=yaml.SafeLoader)
 
   agentTypes = dict()
   for agentType in types["agentTypes"]:
@@ -84,7 +85,10 @@ if __name__ == "__main__":
   result = 0.0
   for agent in agents["agents"]:
     name = agent["name"]
-    agentType = agentTypes[agent["type"]]
+    if "type" in agent:
+      agentType = agentTypes[agent["type"]]
+    else:
+      agentType = agentTypes["ground"]
     vmax = agentType["v_max"]
     amax = agentType["a_max"]
     stretchtime = findStretchtime(os.path.join(args.folder, name + ".csv"), vmax, amax)
@@ -112,9 +116,15 @@ if __name__ == "__main__":
       T = max(T, traj.duration)
       trajs.append(traj)
     # write sampled data
-    for t in np.arange(0, T, 0.25):
+    for t in np.arange(0, T, 0.1):
       file.write(str(t))
       for traj in trajs:
         e = traj.eval(t)
         file.write(",{},{},{},{}".format(e.pos[0], e.pos[1], e.vel[0], e.vel[1]))
       file.write("\n")
+
+  # load file and convert to binary
+  data = np.loadtxt("central.csv", delimiter=',', skiprows=1, dtype=np.float32)
+  # store in binary format
+  with open(args.outputFile, "wb") as f:
+    np.save(f, data, allow_pickle=False)

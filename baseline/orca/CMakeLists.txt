@@ -20,4 +20,5 @@ add_executable(orca
 target_link_libraries(orca
   RVO
   ${Boost_LIBRARIES}
+  yaml-cpp
 )

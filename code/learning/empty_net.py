@@ -29,6 +29,9 @@ class Empty_Net(nn.Module):
 		self.a_max = param.a_max
 		self.a_min = param.a_min
 
+		self.layers = param.il_psi_network_architecture
+		self.activation = param.il_network_activation
+
 	def policy(self,x):
 
 		# inputs observation from all agents...
@@ -36,14 +39,23 @@ class Empty_Net(nn.Module):
 
 		A = np.empty((len(x),self.action_dim))
 		for i,x_i in enumerate(x):
-			a_i = self([x_i])
+			a_i = self(torch.Tensor([x_i]))
 			A[i,:] = a_i.detach().numpy()
 		return A
 
 	def __call__(self,x):
 		# if no control authority lim in deepset implement here instead:
-		
-		x = torch.tanh(self.model.forward(x)) # x \in [-1,1]
+
+		rho = self.model.forward(x)
+		g = x[:,0:2]
+
+		x = torch.cat((rho, g),1)
+
+		for layer in self.layers[:-1]:
+			x = self.activation(layer(x))
+		x = self.layers[-1](x)
+
+		x = torch.tanh(x) # x \in [-1,1]
 		x = (x+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() #, x \in [amin,amax]
 		return x
 

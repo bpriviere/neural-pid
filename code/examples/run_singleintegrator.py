@@ -4,9 +4,10 @@ from run import run
 from systems.singleintegrator import SingleIntegrator
 
 # standard
-from torch import nn, tanh
+from torch import nn, tanh, relu
 import torch
-import numpy as np 
+import numpy as np
+from collections import namedtuple
 
 class SingleIntegratorParam(Param):
 	def __init__(self):
@@ -23,7 +24,7 @@ class SingleIntegratorParam(Param):
 
 		# orca param
 		self.n_agents = 3
-		self.r_comm = 2
+		self.r_comm = 1
 		self.r_agent = 0.2
 		# self.a_min = np.array([-2.0,-2.0]) # m/s
 		# self.a_max = np.array([2.0,2.0]) # m/s
@@ -54,7 +55,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 5000
+		self.il_n_epoch = 100
 		self.il_lr = 5e-3
 		self.il_n_data = 100000
 		self.il_log_interval = 1
@@ -72,6 +73,12 @@ class SingleIntegratorParam(Param):
 			nn.Linear(h,h),
 			nn.Linear(h,h),
 			nn.Linear(h,m)])
+
+		self.il_psi_network_architecture = nn.ModuleList([
+			nn.Linear(m+m,h),
+			nn.Linear(h,h),
+			nn.Linear(h,m)])
+
 		self.il_network_activation = tanh 
 
 		# Sim
@@ -108,13 +115,32 @@ if __name__ == '__main__':
 	# 		s0 = np.array([2,0,0,0])
 
 	if True:
+		InitialState = namedtuple('InitialState', ['start', 'goal'])
+
 		s0 = np.zeros((env.n))
-		r = 8.
+		r = 4.
 		d_rad = 2*np.pi/env.n_agents
 		for i in range(env.n_agents):
 			idx = env.agent_idx_to_state_idx(i) + \
 					np.arange(0,2)
 			s0[idx] = np.array([r*np.cos(d_rad*i),r*np.sin(d_rad*i)])
+		s0 = InitialState._make((s0, -s0))
+
+		# import yaml
+		# with open("../baseline/centralized-planner/examples/swap2.yaml") as map_file:
+		# 	map_data = yaml.load(map_file)
+
+		# s = []
+		# g = []
+		# for agent in map_data["agents"]:
+		# 	s.extend(agent["start"])
+		# 	s.extend([0,0])
+		# 	g.extend(agent["goal"])
+		# 	g.extend([0,0])
+
+		# InitialState = namedtuple('InitialState', ['start', 'goal'])
+		# s0 = InitialState._make((np.array(s), np.array(g)))
+
 	else:
 		s0 = env.reset()
 

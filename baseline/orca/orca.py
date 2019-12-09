@@ -5,16 +5,25 @@ import meshcat.geometry as g
 import meshcat.transformations as tf
 import time
 import argparse
+import yaml
+import os
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument("file")
+	parser.add_argument("map", help="input file containing map")
+	parser.add_argument("schedule")
 	parser.add_argument("--animate", action='store_true')
 	args = parser.parse_args()
 
-	data = np.load(args.file)
+	if os.path.splitext(args.schedule)[1] == ".npy":
+		data = np.load(args.schedule)
+	elif os.path.splitext(args.schedule)[1] == ".csv":
+		data = np.loadtxt(args.schedule, delimiter=',', skiprows=1, dtype=np.float32)
+	else:
+		raise Exception("Unknown file extension!")
 
-	# data = np.loadtxt(args.file, delimiter=',', skiprows=1, dtype=np.float32)
+	with open(args.map) as map_file:
+		map_data = yaml.load(map_file)
 
 	# print(data.dtype)
 
@@ -25,9 +34,29 @@ if __name__ == '__main__':
 	num_agents = int((data.shape[1] - 1) / 4)
 	print(num_agents)
 
-	fig, ax = plt.subplots()
+	fig, (ax0,ax1,ax2) = plt.subplots(1,3)
+	ax0.set_aspect('equal', adjustable='box')
 	for i in range(num_agents):
-		ax.plot(data[:,i*4+1], data[:,i*4+2])
+		ax0.plot(data[:,i*4+1], data[:,i*4+2])
+	for o in map_data["map"]["obstacles"]:
+		ax0.add_patch(plt.Rectangle(o, 1.0, 1.0))
+	ax0.set_xlim(0, map_data["map"]["dimensions"][0])
+	ax0.set_xlabel("x [m]")
+	ax0.set_ylim(0, map_data["map"]["dimensions"][1])
+	ax0.set_label("y [m]")
+	ax0.set_title("X/Y Plot")
+
+	ax1.set_title("Velocity")
+	for i in range(num_agents):
+		v = np.sqrt(data[:,i*4+3]**2 + data[:,i*4+4]**2)
+		ax1.plot(v)
+
+	ax2.set_title("Acceleration")
+	dt = np.diff(data[:,0])
+	for i in range(num_agents):
+		v = np.sqrt(data[:,i*4+3]**2 + data[:,i*4+4]**2)
+		a = np.diff(v) / dt
+		ax2.plot(a)
 	plt.show()
 
 	if args.animate:
@@ -36,7 +65,7 @@ if __name__ == '__main__':
 		vis.open()
 
 		for i in range(num_agents):
-			vis["agent"+str(i)].set_object(g.Sphere(1.5))
+			vis["agent"+str(i)].set_object(g.Sphere(0.2))
 
 		while True:
 			for row in data:

@@ -61,24 +61,18 @@ class DeepSet(nn.Module):
 		return RHO_OUT
 
 	def si_forward(self,x):
-		# x is a list of namedtuple with <relative_goal, relative_neighbors> where relative_neighbors is a list
+		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
+		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
+		# print(x)
 		X = torch.zeros((len(x),self.rho_in_dim))
-		G = torch.zeros((len(x),self.rho_out_dim))
-		
-		for step,x_i in enumerate(x):
-			relative_goal = np.array(x_i.relative_goal,ndmin=2).T
-			relative_goal = torch.from_numpy(relative_goal).float() 
+		# G = torch.zeros((len(x),self.rho_out_dim))
 
-			relative_neighbors = x_i.relative_neighbors
-			summ = torch.zeros((self.phi_out_dim))
-			for relative_neighbor in relative_neighbors:
-				relative_neighbor = torch.from_numpy(relative_neighbor).float()
-				summ += self.phi(relative_neighbor)
+		# G = x[:,0:2]
+		num_neighbors = int(x.size()[1]/4) - 1
+		for i in range(num_neighbors):
+			X += self.phi(x[:,4*(i+1):4*(i+2)])
 
-			X[step,:] = summ 
-			G[step,:] = torch.mm(self.K,relative_goal).T
-
-		return self.rho(X) + G
+		return self.rho(X)# + G
 
 
 class Phi(nn.Module):
