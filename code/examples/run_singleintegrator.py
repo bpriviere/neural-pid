@@ -22,10 +22,9 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 7
-		self.r_comm = 15
+		self.n_agents = 3
+		self.r_comm = 2
 		self.r_agent = 0.2
-		self.sim_dt = 0.1
 		# self.a_min = np.array([-2.0,-2.0]) # m/s
 		# self.a_max = np.array([2.0,2.0]) # m/s
 		self.a_max = .5 
@@ -33,7 +32,8 @@ class SingleIntegratorParam(Param):
 		
 		# other
 		self.sim_t0 = 0
-		self.sim_tf = 100
+		self.sim_tf = 40
+		self.sim_dt = .1		
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 
@@ -59,11 +59,11 @@ class SingleIntegratorParam(Param):
 		self.il_n_data = 100000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier','PID',
+		self.il_controller_class = 'Empty' # 'Empty','Barrier'
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
-		n,m,h = 4,2,64 # state dim, action dim, hidden layer
+		n,m,h = 4,2,128 # state dim, action dim, hidden layer
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(n,h),
 			nn.Linear(h,h),

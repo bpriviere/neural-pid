@@ -40,7 +40,7 @@ class Empty_Net(nn.Module):
 			A[i,:] = a_i.detach().numpy()
 		return A
 
-	def __call__(self,x):			
+	def __call__(self,x):
 		# if no control authority lim in deepset implement here instead:
 		
 		x = torch.tanh(self.model.forward(x)) # x \in [-1,1]
