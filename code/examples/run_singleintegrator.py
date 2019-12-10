@@ -24,7 +24,7 @@ class SingleIntegratorParam(Param):
 
 		# orca param
 		self.n_agents = 3
-		self.r_comm = 0.5
+		self.r_comm = 2 #0.5
 		self.r_agent = 0.2
 		self.sim_dt = 0.1
 		# self.a_min = np.array([-2.0,-2.0]) # m/s
@@ -34,7 +34,7 @@ class SingleIntegratorParam(Param):
 		
 		# other
 		self.sim_t0 = 0
-		self.sim_tf = 30
+		self.sim_tf = 50
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 
@@ -80,6 +80,8 @@ class SingleIntegratorParam(Param):
 			nn.Linear(h,m)])
 
 		self.il_network_activation = tanh 
+
+		self.max_neighbors = 2
 
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'

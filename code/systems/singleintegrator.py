@@ -43,6 +43,8 @@ class SingleIntegrator(Env):
 		self.n = self.state_dim_per_agent*self.n_agents
 		self.m = self.action_dim_per_agent*self.n_agents
 
+		self.max_neighbors = param.max_neighbors
+
 		# init agents
 		self.agents = []
 		for i in range(self.n_agents):
@@ -95,13 +97,15 @@ class SingleIntegrator(Env):
 					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
 						s_j = agent_j.s
 						relative_neighbors.append(torch.Tensor(s_j-s_i))
+			relative_neighbors.sort(key=lambda n: (torch.Tensor(p_i) - n[0:2]).norm())
 			observation_i = Observation._make((relative_goal,time_to_goal,relative_neighbors))
 
 			# convert to new format
-			obs_array = np.zeros(5+4*len(observation_i.relative_neighbors))
+			num_neighbors = min(self.max_neighbors, len(observation_i.relative_neighbors))
+			obs_array = np.zeros(5+4*num_neighbors)
 			obs_array[0:4] = observation_i.relative_goal
 			obs_array[4] = observation_i.time_to_goal
-			for i in range(len(observation_i.relative_neighbors)):
+			for i in range(num_neighbors):
 				obs_array[5+i*4:5+i*4+4] = observation_i.relative_neighbors[i]
 
 			observations.append(obs_array)
