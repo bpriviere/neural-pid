@@ -102,11 +102,11 @@ class SingleIntegrator(Env):
 
 			# convert to new format
 			num_neighbors = min(self.max_neighbors, len(observation_i.relative_neighbors))
-			obs_array = np.zeros(5+4*num_neighbors)
+			obs_array = np.zeros(4+4*num_neighbors)
 			obs_array[0:4] = observation_i.relative_goal
-			obs_array[4] = observation_i.time_to_goal
+			# obs_array[4] = observation_i.time_to_goal
 			for i in range(num_neighbors):
-				obs_array[5+i*4:5+i*4+4] = observation_i.relative_neighbors[i]
+				obs_array[4+i*4:4+i*4+4] = observation_i.relative_neighbors[i]
 
 			observations.append(obs_array)
 			# observations.append(observation_i)

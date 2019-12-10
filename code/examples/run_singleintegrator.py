@@ -75,13 +75,13 @@ class SingleIntegratorParam(Param):
 			nn.Linear(h,m)])
 
 		self.il_psi_network_architecture = nn.ModuleList([
-			nn.Linear(m+m+1,h),
+			nn.Linear(m+m,h),
 			nn.Linear(h,h),
 			nn.Linear(h,m)])
 
 		self.il_network_activation = tanh 
 
-		self.max_neighbors = 2
+		self.max_neighbors = 6
 
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
