@@ -73,7 +73,6 @@ class DeepSet(nn.Module):
 
 		return self.rho(X)# + G
 
-
 class Phi(nn.Module):
 
 	def __init__(self,layers,activation):

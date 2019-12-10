@@ -18,7 +18,7 @@ class Agent:
 		self.v = None
 		self.s_g = None
 
-class SingleIntegrator(Env):
+class DoubleIntegrator(Env):
 
 	def __init__(self, param):
 
@@ -26,9 +26,6 @@ class SingleIntegrator(Env):
 		self.times = param.sim_times
 		self.state = None
 		self.time_step = None
-
-		self.total_time = param.sim_times[-1]
-		self.dt = param.sim_times[1] - param.sim_times[0]
 
 		self.n_agents = param.n_agents
 		self.state_dim_per_agent = 4
@@ -38,12 +35,12 @@ class SingleIntegrator(Env):
 		# control lim
 		self.a_min = param.a_min
 		self.a_max = param.a_max
+		self.v_min = param.v_min
+		self.v_max = param.v_max
 
 		# default parameters [SI units]
 		self.n = self.state_dim_per_agent*self.n_agents
 		self.m = self.action_dim_per_agent*self.n_agents
-
-		self.max_neighbors = param.max_neighbors
 
 		# init agents
 		self.agents = []
@@ -83,14 +80,13 @@ class SingleIntegrator(Env):
 		return False
 
 	def observe(self):
-		Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors']) 
+		Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
 
 		observations = []
 		for agent_i in self.agents:
 			p_i = agent_i.p
 			s_i = agent_i.s
 			relative_goal = torch.Tensor(agent_i.s_g - s_i)
-			time_to_goal = self.total_time - self.time_step * self.dt
 			relative_neighbors = []
 			for agent_j in self.agents:
 				if agent_j.i != agent_i.i:
@@ -98,16 +94,14 @@ class SingleIntegrator(Env):
 					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
 						s_j = agent_j.s
 						relative_neighbors.append(torch.Tensor(s_j-s_i))
-			relative_neighbors.sort(key=lambda n: (torch.Tensor(p_i) - n[0:2]).norm())
-			observation_i = Observation._make((relative_goal,time_to_goal,relative_neighbors))
+			observation_i = Observation._make((relative_goal,relative_neighbors))
 
 			# convert to new format
-			num_neighbors = min(self.max_neighbors, len(observation_i.relative_neighbors))
-			obs_array = np.zeros(4+4*num_neighbors)
-			obs_array[0:4] = observation_i.relative_goal
-			# obs_array[4] = observation_i.time_to_goal
-			for i in range(num_neighbors):
-				obs_array[4+i*4:4+i*4+4] = observation_i.relative_neighbors[i]
+			obs_array = np.zeros(self.state_dim_per_agent*(1+len(observation_i.relative_neighbors)))
+			obs_array[0:self.state_dim_per_agent] = observation_i.relative_goal
+			for i in range(len(observation_i.relative_neighbors)):
+				idx = (i+1)*self.state_dim_per_agent + np.arange(0,self.state_dim_per_agent,dtype=int)
+				obs_array[idx ] = observation_i.relative_neighbors[i]
 
 			observations.append(obs_array)
 			# observations.append(observation_i)
@@ -144,14 +138,14 @@ class SingleIntegrator(Env):
 				initial_state[idx] = agent_i.s
 			self.s = initial_state
 		else:
-			print(initial_state)
+			# print(initial_state)
 			self.s = initial_state.start
 
 			# assign goal state 
 			for agent in self.agents:
 				idx = self.agent_idx_to_state_idx(agent.i) + \
 					np.arange(0,self.state_dim_per_agent)
-				print(idx)
+				# print(idx)
 				agent.s_g = initial_state.goal[idx]
 
 		self.update_agents(self.s)
@@ -194,9 +188,9 @@ class SingleIntegrator(Env):
 			p_idx = np.arange(idx,idx+2)
 			v_idx = np.arange(idx+2,idx+4)
 			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
-			
-			sp1[v_idx] = a[agent_i.i,:]
-			# sp1[v_idx] = np.clip(a[agent_i.i,:],self.a_max,self.a_min)
+			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,:]*dt 
+
+			sp1[v_idx] = np.clip(sp1[v_idx],self.v_min,self.v_max)
 
 		self.update_agents(sp1)
 		return sp1

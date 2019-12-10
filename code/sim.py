@@ -31,7 +31,7 @@ def sim(param, env, controllers, initial_state, visualize):
 				observation = env.unpack_observations(observation)
 
 			
-			action = controller.policy(observation) 
+			action = controller.policy(observation)
 			next_state, r, done, _ = env.step(action)
 			reward += r
 			
@@ -66,11 +66,11 @@ def sim(param, env, controllers, initial_state, visualize):
 		else:
 			observations = [] 
 			result = SimResult._make((controller.states, observations, controller.actions, controller.steps, name))
-		sim_results = []		
+		sim_results = []
 		sim_results.append(result)
 
 		# plot state space
-		if param.env_name == 'SingleIntegrator':
+		if param.env_name in ['SingleIntegrator','DoubleIntegrator'] :
 			fig,ax = plotter.make_fig()
 			ax.set_title('State Space')
 			ax.set_aspect('equal')
@@ -83,6 +83,9 @@ def sim(param, env, controllers, initial_state, visualize):
 
 				plotter.plot_circle(result.states[1,env.agent_idx_to_state_idx(agent.i)],
 					result.states[1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
+				plotter.plot_circle(result.states[-1,env.agent_idx_to_state_idx(agent.i)],
+					result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
+
 
 		elif param.env_name == 'Consensus' and param.sim_render_on:
 			env.render()
@@ -136,15 +139,28 @@ def sim(param, env, controllers, initial_state, visualize):
 					label='desired',
 					color='green')
 
-		elif param.env_name == 'SingleIntegrator':
+		elif param.env_name in ['SingleIntegrator','DoubleIntegrator']:
 			for i_config in range(env.state_dim_per_agent):
 				fig,ax = plotter.make_fig()
-				ax.set_title(env.states_name[i_config])			
+				ax.set_title(env.states_name[i_config])
 				for agent in env.agents:
 					for result in sim_results:
 						ax.plot(
 							times[0:result.steps],
 							result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+i_config],
+							label=result.name)
+
+
+		# plot time varying actions
+		if param.env_name in ['SingleIntegrator','DoubleIntegrator']:
+			for i_config in range(env.action_dim_per_agent):
+				fig,ax = plotter.make_fig()
+				ax.set_title(env.actions_name[i_config])
+				for agent in env.agents:
+					for result in sim_results:
+						ax.plot(
+							times[0:result.steps],
+							result.actions[0:result.steps,agent.i*env.action_dim_per_agent+i_config],
 							label=result.name)
 				
 		# extract gains
