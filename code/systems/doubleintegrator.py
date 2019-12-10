@@ -18,7 +18,7 @@ class Agent:
 		self.v = None
 		self.s_g = None
 
-class SingleIntegrator(Env):
+class DoubleIntegrator(Env):
 
 	def __init__(self, param):
 
@@ -35,6 +35,8 @@ class SingleIntegrator(Env):
 		# control lim
 		self.a_min = param.a_min
 		self.a_max = param.a_max
+		self.v_min = param.v_min
+		self.v_max = param.v_max
 
 		# default parameters [SI units]
 		self.n = self.state_dim_per_agent*self.n_agents
@@ -95,10 +97,11 @@ class SingleIntegrator(Env):
 			observation_i = Observation._make((relative_goal,relative_neighbors))
 
 			# convert to new format
-			obs_array = np.zeros(4+4*len(observation_i.relative_neighbors))
-			obs_array[0:4] = observation_i.relative_goal
+			obs_array = np.zeros(self.state_dim_per_agent*(1+len(observation_i.relative_neighbors)))
+			obs_array[0:self.state_dim_per_agent] = observation_i.relative_goal
 			for i in range(len(observation_i.relative_neighbors)):
-				obs_array[(i+1)*4:(i+2)*4] = observation_i.relative_neighbors[i]
+				idx = (i+1)*self.state_dim_per_agent + np.arange(0,self.state_dim_per_agent,dtype=int)
+				obs_array[idx ] = observation_i.relative_neighbors[i]
 
 			observations.append(obs_array)
 			# observations.append(observation_i)
@@ -135,14 +138,14 @@ class SingleIntegrator(Env):
 				initial_state[idx] = agent_i.s
 			self.s = initial_state
 		else:
-			print(initial_state)
+			# print(initial_state)
 			self.s = initial_state.start
 
 			# assign goal state 
 			for agent in self.agents:
 				idx = self.agent_idx_to_state_idx(agent.i) + \
 					np.arange(0,self.state_dim_per_agent)
-				print(idx)
+				# print(idx)
 				agent.s_g = initial_state.goal[idx]
 
 		self.update_agents(self.s)
@@ -185,9 +188,9 @@ class SingleIntegrator(Env):
 			p_idx = np.arange(idx,idx+2)
 			v_idx = np.arange(idx+2,idx+4)
 			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
-			
-			sp1[v_idx] = a[agent_i.i,:]
-			# sp1[v_idx] = np.clip(a[agent_i.i,:],self.a_max,self.a_min)
+			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,:]*dt 
+
+			sp1[v_idx] = np.clip(sp1[v_idx],self.v_min,self.v_max)
 
 		self.update_agents(sp1)
 		return sp1

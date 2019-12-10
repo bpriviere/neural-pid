@@ -1,7 +1,7 @@
 
 from param import Param
 from run import run
-from systems.singleintegrator import SingleIntegrator
+from systems.doubleintegrator import DoubleIntegrator
 from other_policy import CBF
 
 # standard
@@ -10,10 +10,10 @@ import torch
 import numpy as np
 from collections import namedtuple
 
-class SingleIntegratorParam(Param):
+class DoubleIntegratorParam(Param):
 	def __init__(self):
 		super().__init__()
-		self.env_name = 'SingleIntegrator'
+		self.env_name = 'DoubleIntegrator'
 		self.env_case = None
 
 		# flags
@@ -24,13 +24,15 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 3
-		self.r_comm = 4.0
+		self.n_agents = 10
+		self.r_comm = 10.0
 		self.r_agent = 0.2
 		# self.a_min = np.array([-2.0,-2.0]) # m/s
 		# self.a_max = np.array([2.0,2.0]) # m/s
-		self.a_max = 0.5 
+		self.a_max = 2
 		self.a_min = -1*self.a_max
+		self.v_max = 0.5
+		self.v_min = -1*self.v_max
 		
 		# other
 		self.sim_t0 = 0
@@ -43,7 +45,7 @@ class SingleIntegratorParam(Param):
 
 		# RL
 		# NO RL FOR THIS
-		# self.rl_train_model_fn = '../models/singleintegrator/rl_current.pt'
+		# self.rl_train_model_fn = '../models/doubleintegrator/rl_current.pt'
 		# self.rl_continuous_on = False
 		# self.rl_warm_start_on = False
 		# self.rl_module = 'PPO'
@@ -51,12 +53,12 @@ class SingleIntegratorParam(Param):
 		# self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
 
 		# IL
-		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
-		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
+		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
+		self.il_imitate_model_fn = '../models/doubleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 1000
+		self.il_n_epoch = 500
 		self.il_lr = 5e-3
 		self.il_n_data = 100000
 		self.il_log_interval = 1
@@ -83,41 +85,24 @@ class SingleIntegratorParam(Param):
 		self.il_network_activation = tanh 
 
 		# Sim
-		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
-		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
+		self.sim_rl_model_fn = '../models/doubleintegrator/rl_current.pt'
+		self.sim_il_model_fn = '../models/doubleintegrator/il_current.pt'
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
 		# Barrier function stuff
-		self.b_gamma = 1
+		self.b_gamma = 0.05 
 
 
 
 if __name__ == '__main__':
-	param = SingleIntegratorParam()
-	env = SingleIntegrator(param)
+	param = DoubleIntegratorParam()
+	env = DoubleIntegrator(param)
 
 	controllers = {
-		'IL':	torch.load(param.sim_il_model_fn),
+		# 'IL':	torch.load(param.sim_il_model_fn),
+		'CBF': CBF(param,env)
 		# 'RL': torch.load(param.sim_rl_model_fn)
 	}
-
-	# if True:
-	# 	if env.n_agents == 10:
-	# 		# orca 10 ring
-	# 		s0 = 0.8*np.array([50,0,0,0,40.4509,29.3893,0,0,15.4509,47.5528,0,0,-15.4509,47.5528,0,0,-40.4509,29.3893,0,0,-50,\
-	# 			6.12323e-15,0,0,-40.4509,-29.3893,0,0,-15.4509,-47.5528,0,0,15.4509,-47.5528,0,0,40.4509,-29.3893,0,0])
-	# 	elif env.n_agents == 20:
-	# 		# orca 20 ring
-	# 		s0 = 0.8*np.array([50,0,0,0,47.5528,15.4509,0,0,40.4509,29.3893,0,0,29.3893,40.4509,0,0,15.4509,47.5528,0,0,3.06162e-15,\
-	# 			50,0,0,-15.4509,47.5528,0,0,-29.3893,40.4509,0,0,-40.4509,29.3893,0,0,-47.5528,15.4509,0,0,-50,6.12323e-15,\
-	# 			0,0,-47.5528,-15.4509,0,0,-40.4509,-29.3893,0,0,-29.3893,-40.4509,0,0,-15.4509,-47.5528,0,0,-9.18485e-15,-50,\
-	# 			0,0,15.4509,-47.5528,0,0,29.3893,-40.4509,0,0,40.4509,-29.3893,0,0,47.5528,-15.4509,0,0])
-	# 	elif env.n_agents == 2:
-	# 		# orca 2 line 
-	# 		s0 = np.array([-4,0,0,0,4,0,0,0])
-	# 	elif env.n_agents == 1:
-	# 		# orca 1 
-	# 		s0 = np.array([2,0,0,0])
 
 	if True:
 		InitialState = namedtuple('InitialState', ['start', 'goal'])
