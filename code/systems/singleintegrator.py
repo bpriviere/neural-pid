@@ -27,6 +27,9 @@ class SingleIntegrator(Env):
 		self.state = None
 		self.time_step = None
 
+		self.total_time = param.sim_times[-1]
+		self.dt = param.sim_times[1] - param.sim_times[0]
+
 		self.n_agents = param.n_agents
 		self.state_dim_per_agent = 4
 		self.action_dim_per_agent = 2
@@ -77,13 +80,14 @@ class SingleIntegrator(Env):
 		return False
 
 	def observe(self):
-		Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
+		Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors']) 
 
 		observations = []
 		for agent_i in self.agents:
 			p_i = agent_i.p
 			s_i = agent_i.s
 			relative_goal = torch.Tensor(agent_i.s_g - s_i)
+			time_to_goal = self.total_time - self.time_step * self.dt
 			relative_neighbors = []
 			for agent_j in self.agents:
 				if agent_j.i != agent_i.i:
@@ -91,13 +95,14 @@ class SingleIntegrator(Env):
 					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
 						s_j = agent_j.s
 						relative_neighbors.append(torch.Tensor(s_j-s_i))
-			observation_i = Observation._make((relative_goal,relative_neighbors))
+			observation_i = Observation._make((relative_goal,time_to_goal,relative_neighbors))
 
 			# convert to new format
-			obs_array = np.zeros(4+4*len(observation_i.relative_neighbors))
+			obs_array = np.zeros(5+4*len(observation_i.relative_neighbors))
 			obs_array[0:4] = observation_i.relative_goal
+			obs_array[4] = observation_i.time_to_goal
 			for i in range(len(observation_i.relative_neighbors)):
-				obs_array[(i+1)*4:(i+2)*4] = observation_i.relative_neighbors[i]
+				obs_array[5+i*4:5+i*4+4] = observation_i.relative_neighbors[i]
 
 			observations.append(obs_array)
 			# observations.append(observation_i)

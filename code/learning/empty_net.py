@@ -48,8 +48,9 @@ class Empty_Net(nn.Module):
 
 		rho = self.model.forward(x)
 		g = x[:,0:2]
+		time_to_goal = x[:,4:5]
 
-		x = torch.cat((rho, g),1)
+		x = torch.cat((rho, g, time_to_goal),1)
 
 		for layer in self.layers[:-1]:
 			x = self.activation(layer(x))

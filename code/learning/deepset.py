@@ -66,11 +66,10 @@ class DeepSet(nn.Module):
 		# print(x)
 		X = torch.zeros((len(x),self.rho_in_dim))
 		# G = torch.zeros((len(x),self.rho_out_dim))
-
 		# G = x[:,0:2]
-		num_neighbors = int(x.size()[1]/4) - 1
+		num_neighbors = int((x.size()[1]-5)/4)
 		for i in range(num_neighbors):
-			X += self.phi(x[:,4*(i+1):4*(i+2)])
+			X += self.phi(x[:,5+i*4:5+i*4+4])
 
 		return self.rho(X)# + G
 

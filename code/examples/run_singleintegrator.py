@@ -24,7 +24,7 @@ class SingleIntegratorParam(Param):
 
 		# orca param
 		self.n_agents = 3
-		self.r_comm = 1
+		self.r_comm = 0.5
 		self.r_agent = 0.2
 		self.sim_dt = 0.1
 		# self.a_min = np.array([-2.0,-2.0]) # m/s
@@ -34,7 +34,7 @@ class SingleIntegratorParam(Param):
 		
 		# other
 		self.sim_t0 = 0
-		self.sim_tf = 100
+		self.sim_tf = 30
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 
@@ -55,7 +55,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 100
+		self.il_n_epoch = 500
 		self.il_lr = 5e-3
 		self.il_n_data = 100000
 		self.il_log_interval = 1
@@ -75,7 +75,7 @@ class SingleIntegratorParam(Param):
 			nn.Linear(h,m)])
 
 		self.il_psi_network_architecture = nn.ModuleList([
-			nn.Linear(m+m,h),
+			nn.Linear(m+m+1,h),
 			nn.Linear(h,h),
 			nn.Linear(h,m)])
 
