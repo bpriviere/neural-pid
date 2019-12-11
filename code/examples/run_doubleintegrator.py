@@ -31,6 +31,8 @@ class DoubleIntegratorParam(Param):
 		# self.a_max = np.array([2.0,2.0]) # m/s
 		self.a_max = 2
 		self.a_min = -1*self.a_max
+		self.phi_max = self.a_max
+		self.phi_min = -1*self.phi_max
 		self.v_max = 0.5
 		self.v_min = -1*self.v_max
 		self.r_safe = 2*self.r_agent

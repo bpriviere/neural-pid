@@ -32,6 +32,10 @@ class SingleIntegratorParam(Param):
 		self.a_min = -1*self.a_max
 		self.r_safe = 2*self.r_agent 
 		
+		# 
+		self.phi_max = self.a_max
+		self.phi_min = -1*self.a_max
+		
 		# sim 
 		self.sim_t0 = 0
 		self.sim_tf = 100
@@ -45,11 +49,11 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
-		self.il_batch_size = 5000
+		self.il_batch_size = 100
 		self.il_n_epoch = 5000
-		self.il_lr = 5e-3
-		self.il_n_data = 100000
-		self.il_log_interval = 1
+		self.il_lr = 5e-4
+		self.il_n_data = 5000
+		self.il_log_interval = 20
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier'
 		self.controller_learning_module = 'DeepSet' # 
@@ -88,6 +92,7 @@ class SingleIntegratorParam(Param):
 
 		# Barrier function stuff
 		self.b_gamma = 0.1
+		self.b_exph = 1 
 
 
 
@@ -132,9 +137,9 @@ if __name__ == '__main__':
 		# s0 = InitialState._make((s0, -s0))
 
 		import yaml
-		with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
+		# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
 		# with open("../baseline/centralized-planner/examples/empty-8-8-random-1_30_agents.yaml") as map_file:
-		# with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex0.yaml") as map_file:
+		with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex0.yaml") as map_file:
 			map_data = yaml.load(map_file)
 
 		s = []

@@ -215,7 +215,7 @@ def load_dataset(env, filename):
 
 def train(param,env,model,loader):
 
-	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr)
+	optimizer = torch.optim.AdamW(model.parameters(), lr=param.il_lr)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
 
@@ -310,8 +310,8 @@ def train_il(param, env):
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
-				# datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
-				datadir = glob.glob("../data/singleintegrator/test/*.npy")
+				datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
+				# datadir = glob.glob("../data/singleintegrator/test/*.npy")
 
 			dataset = []
 			for k,file in enumerate(datadir):
