@@ -8,7 +8,8 @@ import glob
 from collections import namedtuple
 
 # my package
-import plotter 
+import plotter
+from matplotlib.patches import Rectangle
 import utilities as util
 from other_policy import ZeroPolicy, LCP_Policy
 from learning.ppo_v2 import PPO
@@ -74,6 +75,9 @@ def sim(param, env, controllers, initial_state, visualize):
 			fig,ax = plotter.make_fig()
 			ax.set_title('State Space')
 			ax.set_aspect('equal')
+
+			for o in env.obstacles:
+				ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
 
 			for agent in env.agents:
 				

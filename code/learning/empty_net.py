@@ -19,6 +19,7 @@ class Empty_Net(nn.Module):
 		if learning_module is "DeepSet":
 			self.model = DeepSet(
 				param.il_phi_network_architecture,
+				param.il_phi_obs_network_architecture,
 				param.il_rho_network_architecture,
 				param.il_network_activation,
 				param.env_name
@@ -47,7 +48,7 @@ class Empty_Net(nn.Module):
 		# if no control authority lim in deepset implement here instead:
 
 		rho = self.model.forward(x)
-		g = x[:,0:2]
+		g = x[:,1:3]
 		# time_to_goal = x[:,4:5]
 
 		x = torch.cat((rho, g),1)

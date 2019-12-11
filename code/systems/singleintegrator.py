@@ -43,8 +43,6 @@ class SingleIntegrator(Env):
 		self.n = self.state_dim_per_agent*self.n_agents
 		self.m = self.action_dim_per_agent*self.n_agents
 
-		self.max_neighbors = param.max_neighbors
-
 		# init agents
 		self.agents = []
 		for i in range(self.n_agents):
@@ -68,9 +66,11 @@ class SingleIntegrator(Env):
 		self.param = param
 		self.max_reward = 0 
 
+		self.obstacles = []
+
 
 	def render(self):
-		pass		
+		pass
 
 	def step(self, a):
 		self.s = self.next_state(self.s, a)
@@ -83,7 +83,7 @@ class SingleIntegrator(Env):
 		return False
 
 	def observe(self):
-		Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors']) 
+		Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles'])
 
 		observations = []
 		for agent_i in self.agents:
@@ -99,21 +99,38 @@ class SingleIntegrator(Env):
 						s_j = agent_j.s
 						relative_neighbors.append(torch.Tensor(s_j-s_i))
 			relative_neighbors.sort(key=lambda n: (torch.Tensor(p_i) - n[0:2]).norm())
-			observation_i = Observation._make((relative_goal,time_to_goal,relative_neighbors))
+
+			relative_obstacles = []
+			for o in self.obstacles:
+				dist = np.linalg.norm(p_i-(np.array(o)+np.array([0.5,0.5])))
+				if dist <= self.param.r_obs_sense:
+					relative_obstacles.append(torch.Tensor(p_i-(np.array(o)+np.array([0.5,0.5]))))
+			relative_obstacles.sort(key=lambda o: (torch.Tensor(p_i) - o).norm())
+
+			observation_i = Observation._make((relative_goal,time_to_goal,relative_neighbors,relative_obstacles))
 
 			# convert to new format
-			num_neighbors = min(self.max_neighbors, len(observation_i.relative_neighbors))
-			obs_array = np.zeros(4+4*num_neighbors)
-			obs_array[0:4] = observation_i.relative_goal
+			num_neighbors = min(self.param.max_neighbors, len(observation_i.relative_neighbors))
+			num_obstacles = min(self.param.max_obstacles, len(observation_i.relative_obstacles))
+			obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
+			obs_array[0] = num_neighbors
+			idx = 1
+			obs_array[idx:idx+4] = observation_i.relative_goal
+			idx += 4
 			# obs_array[4] = observation_i.time_to_goal
 			for i in range(num_neighbors):
-				obs_array[4+i*4:4+i*4+4] = observation_i.relative_neighbors[i]
+				obs_array[idx:idx+4] = observation_i.relative_neighbors[i]
+				idx += 4
+			for i in range(num_obstacles):
+				obs_array[idx:idx+2] = observation_i.relative_obstacles[i]
+				idx += 2
 
 			observations.append(obs_array)
 			# observations.append(observation_i)
 		return observations
 
 	def reward(self):
+		# check with respect to other agents
 		minDist = np.Inf
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
@@ -127,6 +144,18 @@ class SingleIntegrator(Env):
 						minDist = dist
 		if minDist < 2*self.r_agent:
 			return -1
+		# check with respect to obstacles
+		minDist = np.Inf
+		for agent_i in self.agents:
+			idx = self.agent_idx_to_state_idx(agent_i.i)
+			pos_i = self.s[idx:idx+2]
+			for o in self.obstacles:
+				dist = np.linalg.norm(pos_i - (np.array(o)+np.array([0.5,0.5])))
+				if dist < minDist:
+					minDist = dist
+		if minDist < self.r_agent + 0.5:
+			return -1
+
 		return 0
 
 
