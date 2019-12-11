@@ -9,10 +9,11 @@ import numpy as np
 
 class DeepSet(nn.Module):
 
-	def __init__(self,phi_layers,rho_layers,activation,env_name):
+	def __init__(self,phi_layers,phi2_layers,rho_layers,activation,env_name):
 		super(DeepSet, self).__init__()
 		
 		self.phi = Phi(phi_layers,activation)
+		self.phi2 = Phi(phi2_layers,activation)
 		self.rho = Rho(rho_layers,activation)
 
 		print(self.phi)
@@ -22,8 +23,6 @@ class DeepSet(nn.Module):
 		self.phi_out_dim = phi_layers[-1].out_features
 		self.rho_in_dim = rho_layers[0].in_features
 		self.rho_out_dim = rho_layers[-1].out_features # action dim
-
-		self.K = torch.cat((torch.eye(self.rho_out_dim), torch.zeros((self.rho_out_dim,self.rho_out_dim))),1)
 
 		self.env_name = env_name
 
@@ -66,9 +65,15 @@ class DeepSet(nn.Module):
 		X = torch.zeros((len(x),self.rho_in_dim))
 		# G = torch.zeros((len(x),self.rho_out_dim))
 		# G = x[:,0:2]
-		num_neighbors = int((x.size()[1]-4)/4)
+		num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
+		num_obstacles = int((x.size()[1]-5 - 4*num_neighbors)/2)
 		for i in range(num_neighbors):
-			X += self.phi(x[:,4+i*4:4+i*4+4])
+			X += self.phi(x[:,5+i*4:5+i*4+4])
+		idx = 5+num_neighbors*4
+		# print(num_obstacles)
+		for i in range(num_obstacles):
+			# print(x[:,idx+i*2:idx+i*2+2])
+			X += self.phi2(x[:,idx+i*2:idx+i*2+2])
 
 		return self.rho(X)# + G
 

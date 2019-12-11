@@ -116,7 +116,7 @@ if __name__ == "__main__":
       T = max(T, traj.duration)
       trajs.append(traj)
     # write sampled data
-    for t in np.arange(0, T, 0.1):
+    for t in np.arange(0, T, 0.01):
       file.write(str(t))
       for traj in trajs:
         e = traj.eval(t)

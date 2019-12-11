@@ -5,6 +5,8 @@ import torch.utils.data as Data
 import numpy as np 
 import random 
 import glob
+import os
+import yaml
 
 from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
@@ -19,15 +21,24 @@ from learning.barrier_net import Barrier_Net
 from learning.nl_el_net import NL_EL_Net
 from learning.consensus_net import Consensus_Net
 
-def load_orca_dataset_action_loss(filename,neighborDist):
+def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	data = np.load(filename)
 	data = torch.from_numpy(data)
+
+	# load map
+	filename_map = os.path.splitext(filename)[0] + ".yaml"
+	with open(filename_map) as map_file:
+		map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
+	obstacles = []
+	for o in map_data["map"]["obstacles"]:
+		obstacles.append(torch.Tensor(o) + torch.Tensor([0.5,0.5]))
+
 	num_agents = int((data.shape[1] - 1) / 4)
 	dataset = []
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
-	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors']) 
+	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
-		if t%20 != 0:
+		if t%40 != 0:
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
@@ -45,10 +56,18 @@ def load_orca_dataset_action_loss(filename,neighborDist):
 						# print(dist, len(relative_neighbors))
 						# break
 			relative_neighbors.sort(key=lambda n: (s_i[0:2] - n[0:2]).norm())
-			o = Observation._make((relative_goal,time_to_goal,relative_neighbors))
+			relative_obstacles = []
+			for o in obstacles:
+				dist = (s_i[0:2] - o).norm()
+				if dist <= obstacleDist:
+					relative_obstacles.append(s_i[0:2] - o)
+			relative_obstacles.sort(key=lambda o: (s_i[0:2] - o).norm())
+
+			o = Observation._make((relative_goal,time_to_goal,relative_neighbors,relative_obstacles))
 			a = data[t+1, i*4+3:i*4+5].numpy() # desired control is the velocity in the next timestep
 			oa_pair = Observation_Action_Pair._make((o,a))
 			dataset.append(oa_pair)
+			# break
 	print('Dataset Size: ',len(dataset))
 	return dataset
 
@@ -81,46 +100,58 @@ def load_consensus_dataset(filename,n_neighbor,agent_memory):
 	print('Dataset Size: ', len(dataset))
 	return dataset
 
-def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=False,batch_size=None,max_neighbors=1000):
+def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=False,batch_size=None,max_neighbors=1000,max_obstacles=1000):
 
 	def make_loader(dataset):
-		batch_x = []
-		batch_y = []
+		# break by observation size
+		dataset_dict = dict()
+
+		for data in dataset:
+			num_neighbors = min(max_neighbors,len(data.observation.relative_neighbors))
+			num_obstacles = min(max_obstacles,len(data.observation.relative_obstacles))
+			key = (num_neighbors, num_obstacles)
+			if key in dataset_dict:
+				dataset_dict[key].append(data)
+			else:
+				dataset_dict[key] = [data]
+
+		# Create actual batches
 		loader = []
-		# break batches by observation size
-		num_batched = 0
-		# num_neighbors = 0
-		num_neighbors = 0
-		while True:
-			print(num_neighbors)
-			for data in dataset:
+		for key, dataset_per_key in dataset_dict.items():
+			num_neighbors, num_obstacles = key
+			batch_x = []
+			batch_y = []
+			for data in dataset_per_key:
+				obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
+				obs_array[0] = num_neighbors
+				idx = 1
+				obs_array[idx:idx+4] = data.observation.relative_goal
+				idx += 4
+				# obs_array[4] = data.observation.time_to_goal
+				for i in range(num_neighbors):
+					obs_array[idx:idx+4] = data.observation.relative_neighbors[i]
+					idx += 4
+				for i in range(num_obstacles):
+					obs_array[idx:idx+2] = data.observation.relative_obstacles[i]
+					idx += 2
+				batch_x.append(obs_array)
+				batch_y.append(data.action)
+				if (len(batch_x))%batch_size == 0:
+					print("add batch ", key, len(batch_x))
+					batch_y = torch.from_numpy(np.array(batch_y)).float()
+					loader.append([torch.Tensor(batch_x),batch_y])
+					batch_x = []
+					batch_y = []
 
-				if min(max_neighbors,len(data.observation.relative_neighbors)) == num_neighbors:
-					obs_array = np.zeros(4+4*min(num_neighbors,max_neighbors))
-					obs_array[0:4] = data.observation.relative_goal
-					# obs_array[4] = data.observation.time_to_goal
-					for i in range(min(num_neighbors,max_neighbors)):
-						idx = 4*(i+1)+np.arange(0,4,dtype=int)
-						obs_array[idx] = data.observation.relative_neighbors[i]
-					batch_x.append(obs_array)
-					batch_y.append(data.action)
-					num_batched += 1
-
-					if (len(batch_x))%batch_size == 0:
-						print("add batch", len(batch_x))
-						loader.append([torch.Tensor(batch_x),batch_y])
-						batch_x = []
-						batch_y = []
 			if len(batch_x) > 0:
-				print("add batch", len(batch_x))
+				print("add batch ", key, len(batch_x))
+				batch_y = torch.from_numpy(np.array(batch_y)).float()
 				loader.append([torch.Tensor(batch_x),batch_y])
 				batch_x = []
 				batch_y = []
-			num_neighbors += 1
-			if num_batched == len(dataset):
-				break
 
-		return loader[1:]
+		return loader
+
 
 	if dataset is None:
 		raise Exception('dataset not specified')
@@ -191,8 +222,8 @@ def train(param,env,model,loader):
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 
 		# convert b_y if necessary
-		if not isinstance(b_y, torch.Tensor):
-			b_y = torch.from_numpy(np.array(b_y)).float()
+		# if not isinstance(b_y, torch.Tensor):
+			# b_y = torch.from_numpy(np.array(b_y)).float()
 
 		prediction = model(b_x)     # input x and predict based on x
 		
@@ -279,7 +310,8 @@ def train_il(param, env):
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
-				datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
+				# datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
+				datadir = glob.glob("../data/singleintegrator/test/*.npy")
 
 			dataset = []
 			for k,file in enumerate(datadir):
@@ -287,7 +319,8 @@ def train_il(param, env):
 				if param.il_state_loss_on:
 					dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 				else:
-					dataset.extend(load_orca_dataset_action_loss(file,param.r_comm))
+					dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense))
+					# break
 				print(len(dataset))
 
 				if len(dataset) > param.il_n_data:
@@ -300,7 +333,8 @@ def train_il(param, env):
 				batch_size=param.il_batch_size,
 				test_train_ratio=param.il_test_train_ratio,
 				n_data=param.il_n_data,
-				max_neighbors=param.max_neighbors)
+				max_neighbors=param.max_neighbors,
+				max_obstacles=param.max_obstacles)
 
 		# consensus dataset 
 		elif "consensus" in param.il_load_dataset:

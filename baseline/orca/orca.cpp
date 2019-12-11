@@ -23,7 +23,7 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
 
   /* Specify the default parameters for agents that are subsequently added. */
   sim->setAgentDefaults(
-    /* neighborDist*/ 2.0f,
+    /* neighborDist*/ 1.0f,
     /* maxNeighbors*/ 30,
     /* timeHorizon*/ 10.0f,
     /* timeHorizonObst*/ 10.0f,
@@ -150,7 +150,7 @@ bool reachedGoal(RVO::RVOSimulator *sim)
 {
   /* Check if all agents have reached their goals. */
   for (size_t i = 0; i < sim->getNumAgents(); ++i) {
-    if (RVO::absSq(sim->getAgentPosition(i) - goals[i]) > sim->getAgentRadius(i) * sim->getAgentRadius(i)) {
+    if (RVO::absSq(sim->getAgentPosition(i) - goals[i]) > 0.05 * 0.05) { //sim->getAgentRadius(i) * sim->getAgentRadius(i)) {
       return false;
     }
   }
@@ -202,7 +202,7 @@ int main(int argc, char** argv)
   output << std::endl;
 
   /* Perform (and manipulate) the simulation. */
-  do {
+  for (size_t i = 0; i < 1000 && !reachedGoal(&sim); ++i) {
     // output current simulation result
     output << sim.getGlobalTime();
     for (size_t i = 0; i < sim.getNumAgents(); ++i) {
@@ -215,7 +215,6 @@ int main(int argc, char** argv)
     setPreferredVelocities(&sim);
     sim.doStep();
   }
-  while (!reachedGoal(&sim));
 
   // keep simulation running a bit longer
   for (size_t i = 0; i < 10; ++i) {

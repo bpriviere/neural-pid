@@ -20,4 +20,5 @@ add_executable(avo
 target_link_libraries(avo
   AVO
   ${Boost_LIBRARIES}
+  yaml-cpp
 )
