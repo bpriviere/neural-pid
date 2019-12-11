@@ -89,17 +89,19 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Fal
 		loader = []
 		# break batches by observation size
 		num_batched = 0
+		# num_neighbors = 0
 		num_neighbors = 0
 		while True:
 			print(num_neighbors)
 			for data in dataset:
 
 				if min(max_neighbors,len(data.observation.relative_neighbors)) == num_neighbors:
-					obs_array = np.zeros(5+4*min(num_neighbors,max_neighbors))
+					obs_array = np.zeros(4+4*min(num_neighbors,max_neighbors))
 					obs_array[0:4] = data.observation.relative_goal
-					obs_array[4] = data.observation.time_to_goal
+					# obs_array[4] = data.observation.time_to_goal
 					for i in range(min(num_neighbors,max_neighbors)):
-						obs_array[5+i*4:5+i*4+4] = data.observation.relative_neighbors[i]
+						idx = 4*(i+1)+np.arange(0,4,dtype=int)
+						obs_array[idx] = data.observation.relative_neighbors[i]
 					batch_x.append(obs_array)
 					batch_y.append(data.action)
 					num_batched += 1
@@ -117,7 +119,8 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Fal
 			num_neighbors += 1
 			if num_batched == len(dataset):
 				break
-		return loader
+
+		return loader[1:]
 
 	if dataset is None:
 		raise Exception('dataset not specified')
