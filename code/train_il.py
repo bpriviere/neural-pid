@@ -33,17 +33,27 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	for o in map_data["map"]["obstacles"]:
 		obstacles.append(torch.Tensor(o) + torch.Tensor([0.5,0.5]))
 
+	for x in range(map_data["map"]["dimensions"][0]):
+		obstacles.append(torch.Tensor([x,-1]) + torch.Tensor([0.5,0.5]))
+		obstacles.append(torch.Tensor([x,map_data["map"]["dimensions"][1]]) + torch.Tensor([0.5,0.5]))
+	for y in range(map_data["map"]["dimensions"][0]):
+		obstacles.append(torch.Tensor([-1,y]) + torch.Tensor([0.5,0.5]))
+		obstacles.append(torch.Tensor([map_data["map"]["dimensions"][0],y]) + torch.Tensor([0.5,0.5]))
+
+
 	num_agents = int((data.shape[1] - 1) / 4)
 	dataset = []
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
-		if t%40 != 0:
+		if t%20 != 0:
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
 			s_g = data[-1,i*4+1:i*4+5]  # goal state i 
 			relative_goal = s_g - s_i   # relative goal 
+			if relative_goal[0] < 1e-3 and relative_goal[1] < 1e-3:
+				continue
 			time_to_goal = data[-1,0] - data[t,0]
 			relative_neighbors = []
 			for j in range(num_agents):
@@ -213,7 +223,7 @@ def load_dataset(env, filename):
 
 def train(param,env,model,loader):
 
-	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr)
+	optimizer = torch.optim.AdamW(model.parameters(), lr=param.il_lr)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
 
@@ -308,8 +318,8 @@ def train_il(param, env):
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
-				# datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
-				datadir = glob.glob("../data/singleintegrator/test/*.npy")
+				datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
+				# datadir = glob.glob("../data/singleintegrator/test/*.npy")
 
 			dataset = []
 			for k,file in enumerate(datadir):
