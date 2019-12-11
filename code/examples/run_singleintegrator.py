@@ -24,7 +24,7 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 3
+		self.n_agents = 2
 		self.r_comm = 2 #0.5
 		self.r_obs_sense = 2.0
 		self.r_agent = 0.2
@@ -35,6 +35,7 @@ class SingleIntegratorParam(Param):
 		# sim 
 		self.sim_t0 = 0
 		self.sim_tf = 100
+		self.sim_dt = 0.1
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -50,7 +51,7 @@ class SingleIntegratorParam(Param):
 		self.il_n_data = 100000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
+		self.il_controller_class = 'Empty' # 'Empty','Barrier'
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
@@ -127,7 +128,7 @@ if __name__ == '__main__':
 		# 	idx = env.agent_idx_to_state_idx(i) + \
 		# 			np.arange(0,2)
 			# s0[idx] = np.array([r*np.cos(d_rad*i),r*np.sin(d_rad*i)])
-			+ 0.001*np.random.random(size=(1,2))
+			# + 0.001*np.random.random(size=(1,2))
 		# s0 = InitialState._make((s0, -s0))
 
 		import yaml
