@@ -9,15 +9,11 @@ import numpy as np
 
 class DeepSet(nn.Module):
 
-	def __init__(self,phi_layers,phi2_layers,rho_layers,activation,env_name):
+	def __init__(self,phi_layers,rho_layers,activation,env_name):
 		super(DeepSet, self).__init__()
 		
 		self.phi = Phi(phi_layers,activation)
-		self.phi2 = Phi(phi2_layers,activation)
 		self.rho = Rho(rho_layers,activation)
-
-		print(self.phi)
-		print(self.rho)
 
 		self.phi_in_dim = phi_layers[0].in_features # state dim 
 		self.phi_out_dim = phi_layers[-1].out_features
@@ -59,23 +55,12 @@ class DeepSet(nn.Module):
 		return RHO_OUT
 
 	def si_forward(self,x):
-		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
-		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
 		# print(x)
 		X = torch.zeros((len(x),self.rho_in_dim))
-		# G = torch.zeros((len(x),self.rho_out_dim))
-		# G = x[:,0:2]
-		num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-		num_obstacles = int((x.size()[1]-5 - 4*num_neighbors)/2)
-		for i in range(num_neighbors):
-			X += self.phi(x[:,5+i*4:5+i*4+4])
-		idx = 5+num_neighbors*4
-		# print(num_obstacles)
-		for i in range(num_obstacles):
-			# print(x[:,idx+i*2:idx+i*2+2])
-			X += self.phi2(x[:,idx+i*2:idx+i*2+2])
-
-		return self.rho(X)# + G
+		num_elements = int(x.size()[1] / self.phi_in_dim)
+		for i in range(num_elements):
+			X += self.phi(x[:,i*self.phi_in_dim:(i+1)*self.phi_in_dim])
+		return self.rho(X)
 
 class Phi(nn.Module):
 

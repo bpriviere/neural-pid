@@ -25,8 +25,8 @@ class SingleIntegratorParam(Param):
 
 		# orca param
 		self.n_agents = 2
-		self.r_comm = 2 #0.5
-		self.r_obs_sense = 2.0
+		self.r_comm = 1.0 #0.5
+		self.r_obs_sense = 1.0
 		self.r_agent = 0.2
 		self.a_max = 0.5 
 		self.a_min = -1*self.a_max
@@ -61,26 +61,32 @@ class SingleIntegratorParam(Param):
 		# learning hyperparameters
 		n,m,h = 4,2,128 # state dim, action dim, hidden layer
 		self.il_phi_network_architecture = nn.ModuleList([
-			nn.Linear(n,h),
+			nn.Linear(4,h),
 			nn.Linear(h,h),
-			nn.Linear(h,h)])
+			nn.Linear(h,16)])
 
 		self.il_phi_obs_network_architecture = nn.ModuleList([
 			nn.Linear(2,h),
 			nn.Linear(h,h),
-			nn.Linear(h,h)])
+			nn.Linear(h,16)])
 
 		self.il_rho_network_architecture = nn.ModuleList([
+			nn.Linear(16,h),
 			nn.Linear(h,h),
+			nn.Linear(h,16)])
+
+		self.il_rho_obs_network_architecture = nn.ModuleList([
+			nn.Linear(16,h),
 			nn.Linear(h,h),
-			nn.Linear(h,m)])
+			nn.Linear(h,16)])
 
 		self.il_psi_network_architecture = nn.ModuleList([
-			nn.Linear(m+m,h),
+			nn.Linear(16+16+2,h),
+			nn.Linear(h,h),
 			nn.Linear(h,h),
 			nn.Linear(h,m)])
 
-		self.il_network_activation = tanh 
+		self.il_network_activation = relu
 
 		self.max_neighbors = 3
 		self.max_obstacles = 3
@@ -154,6 +160,12 @@ if __name__ == '__main__':
 		s0 = InitialState._make((np.array(s), np.array(g)))
 
 		env.obstacles = map_data["map"]["obstacles"]
+		for x in range(map_data["map"]["dimensions"][0]):
+			env.obstacles.append([x,-1])
+			env.obstacles.append([x,map_data["map"]["dimensions"][1]])
+		for y in range(map_data["map"]["dimensions"][0]):
+			env.obstacles.append([-1,y])
+			env.obstacles.append([map_data["map"]["dimensions"][0],y])
 
 	else:
 		s0 = env.reset()
