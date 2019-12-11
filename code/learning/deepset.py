@@ -31,7 +31,7 @@ class DeepSet(nn.Module):
 
 		if self.env_name == 'Consensus':
 			return self.consensus_forward(x)
-		elif self.env_name == 'SingleIntegrator':
+		elif self.env_name in ['SingleIntegrator','DoubleIntegrator']:
 			return self.si_forward(x)
 
 	def consensus_forward(self,x):
@@ -43,7 +43,7 @@ class DeepSet(nn.Module):
 		for step_rnh, rnh in enumerate(x):
 
 			if step_rnh == 0:
-				self_history = np.array(rnh, ndmin=1)					
+				self_history = np.array(rnh, ndmin=1)
 				self_history = torch.from_numpy(self_history).float()
 			else:
 				rnh = np.array(rnh, ndmin=1)
@@ -53,7 +53,6 @@ class DeepSet(nn.Module):
 		# print(self_history.shape)
 		# print(summ.shape)
 		# print(torch.cat((self_history,summ)))
-
 		# exit()
 
 		RHO_IN = torch.cat((self_history,summ))

@@ -112,7 +112,8 @@ class CBF:
 
 	def __init__(self,param,env):
 		self.env = env
-		self.Ds = 2.75*param.r_agent
+		self.param = param
+		self.Ds = param.r_safe
 		self.alpha = param.a_max 
 		self.state_dim_per_agent = env.state_dim_per_agent
 		self.action_dim_per_agent = env.action_dim_per_agent
@@ -123,6 +124,8 @@ class CBF:
 
 		A = np.zeros((len(observations),self.action_dim_per_agent))
 		
+		print('t: ', self.env.times[self.env.time_step])
+		
 		for agent_i in self.env.agents:
 
 			observation = observations[agent_i.i]
@@ -131,86 +134,82 @@ class CBF:
 			n_neighbor = int(len(relative_neighbors)/self.state_dim_per_agent)
 
 			# calculate nominal controller
-			a_nom = 0.01*relative_goal[0:2] # + 0.1 * relative_goal[2:] # [pgx - pix, pgy - piy]
+			a_nom = self.param.cbf_kp*relative_goal[0:2] + self.param.cbf_kv*relative_goal[2:] # [pgx - pix, pgy - piy]
 			scale = self.alpha/np.max(np.abs(a_nom))
-			if scale > 1:
+			if scale < 1:
 				a_nom = scale*a_nom 
 
 			# print()
-			print('t: ', self.env.times[self.env.time_step])
-			print('n_neighbor:',n_neighbor)
-			print('i: ', agent_i.i)	
+			# print('n_neighbor:',n_neighbor)
+			# print('i: ', agent_i.i)	
 			# print('observation: ', observation)
-			print('relative_goal: ', relative_goal)
+			# print('relative_goal: ', relative_goal)
+			# print('vi: ', relative_goal[2:])
 			# print('relative_neighbors: ', relative_neighbors)
-			print('sg: ', agent_i.s_g)
+			# print('sg: ', agent_i.s_g)
 			# print('agent_i.p: ', agent_i.p)
-			print('a_nom: ', a_nom)
+			# print('a_nom: ', a_nom)
 			# print()
 			# exit()
 
+
+			# CVX
+			a_i = cp.Variable(self.action_dim_per_agent)
+			v_i = -1*relative_goal[2:]
+			dt = self.param.sim_dt
+			constraints = [] 
+
 			if not n_neighbor == 0:
-
-				# calculate safety controller
-				# print('relative_goal: ', relative_goal)
-				# print('relative_neighbors: ', relative_neighbors)
-
-				# CVX
-				a_i = cp.Variable(self.action_dim_per_agent)
-				constraints = [] 
-
 				for j in range(n_neighbor):
 					rn_idx = self.state_dim_per_agent*j+np.arange(0,self.state_dim_per_agent,dtype=int)
 					
-					delta_p_ij = -1*relative_neighbors[rn_idx[0:2]]
-					delta_v_ij = -1*relative_neighbors[rn_idx[2:]]
+					p_ij = -1*relative_neighbors[rn_idx[0:2]]
+					v_ij = -1*relative_neighbors[rn_idx[2:]]
 
-					A_ij = -delta_p_ij.T
-					b_ij = 1/2*self.get_b_ij(delta_p_ij,delta_v_ij)
+					A_ij = -p_ij.T
+					b_ij = 1/2*self.get_b_ij(p_ij,v_ij)
 					
 					constraints.append(A_ij@a_i <= b_ij) 
 
-				constraints.append(norm_inf(a_i) <= self.alpha) 
-				obj = cp.Minimize( cp.sum_squares( a_i - a_nom))
-				prob = cp.Problem( obj, constraints)
+			# acceleration and velocity limits 
+			constraints.append(norm_inf(a_i) <= self.alpha) 
+			constraints.append(norm_inf(v_i+a_i*dt) <= self.param.v_max)
 
-				print('Solving...')
+			obj = cp.Minimize( cp.sum_squares( a_i - a_nom))
+			prob = cp.Problem( obj, constraints)
 
-				try:
-					prob.solve(verbose=True, solver = cp.GUROBI)
-					# prob.solve(verbose=True)
+			# print('Solving...')
 
-					if prob.status in ["optimal"]:
-						a_i = np.array(a_i.value)
-					else:
-						# do nothing 
-						# a_i = 0*a_nom
+			try:
+				prob.solve(verbose=False, solver = cp.GUROBI)
+				# prob.solve(verbose=True)
 
-						# brake
-						# a_i = self.alpha*relative_goal[2:]
-
-						# backup 
-						a_i = -self.alpha*relative_goal[2:]	
-
-				except Exception as e:
-					print(e)
+				if prob.status in ["optimal"]:
+					a_i = np.array(a_i.value)
+				else:
 					# do nothing 
 					# a_i = 0*a_nom
-					
+
 					# brake
-					# a_i = self.alpha*relative_goal[2:]
+					# a_i = -self.alpha*relative_goal[0:2]
 
 					# backup 
-					a_i = -self.alpha*relative_goal[2:]
-					
+					a_i = -self.alpha*v_i/np.linalg.norm(v_i)
 
+
+			except Exception as e:
+				print(e)
+				# do nothing 
+				# a_i = 0*a_nom
 				
-							
-			else:
-				a_i = a_nom 
+				# brake
+				# a_i = -self.alpha*relative_goal[0:2]
 
-			# A[agent_i.i,:] = a_i + 0.1*np.random.normal(size=(1,2))
-			A[agent_i.i,:] = a_i 
+				# backup 
+				a_i = -self.alpha*v_i/np.linalg.norm(v_i)
+
+			A[agent_i.i,:] = a_i + self.param.cbf_noise*np.random.normal(size=(1,2))
+			# A[agent_i.i,:] = a_i 
 
 		# exit()
 		# print('A: ',A)
@@ -221,7 +220,9 @@ class CBF:
 			+ np.matmul(dv.T, dp)/np.linalg.norm(dp)
 		return h_ij
 
+
 	def get_b_ij(self,dp,dv):
+		# this is linear coefficient in Ax <= b equation (not barrier function)
 		h_ij = self.get_h_ij(dp,dv)
 		delta_vTp = np.matmul(dv.T, dp)
 		b_ij = self.gamma * np.power(h_ij,3) * np.linalg.norm(dp) \
@@ -229,7 +230,6 @@ class CBF:
 			+ (2*self.alpha*delta_vTp) \
 			/ np.sqrt(4*self.alpha*(np.linalg.norm(dp)-self.Ds)) \
 			+ np.power(np.linalg.norm(dv),2)
-
 		return b_ij 
 
 	def get_neighborhood_dist(self):

@@ -24,30 +24,20 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 3
-		self.r_comm = 2 #0.5
+		self.n_agents = 10
+		self.r_comm = 0.5
 		self.r_agent = 0.2
-		# self.a_min = np.array([-2.0,-2.0]) # m/s
-		# self.a_max = np.array([2.0,2.0]) # m/s
 		self.a_max = 0.5 
 		self.a_min = -1*self.a_max
+		self.r_safe = 2*self.r_agent 
 		
-		# other
+		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 50
+		self.sim_tf = 100
+		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-
 		self.plots_fn = 'plots.pdf'
-
-		# RL
-		# NO RL FOR THIS
-		# self.rl_train_model_fn = '../models/singleintegrator/rl_current.pt'
-		# self.rl_continuous_on = False
-		# self.rl_warm_start_on = False
-		# self.rl_module = 'PPO'
-		# self.rl_num_actions = 5 
-		# self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
 
 		# IL
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
@@ -55,12 +45,12 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 500
+		self.il_n_epoch = 5000
 		self.il_lr = 5e-3
 		self.il_n_data = 100000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier'
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
@@ -89,7 +79,7 @@ class SingleIntegratorParam(Param):
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
 		# Barrier function stuff
-		self.b_gamma = 1
+		self.b_gamma = 0.1
 
 
 
@@ -130,7 +120,7 @@ if __name__ == '__main__':
 			idx = env.agent_idx_to_state_idx(i) + \
 					np.arange(0,2)
 			s0[idx] = np.array([r*np.cos(d_rad*i),r*np.sin(d_rad*i)]) \
-			+ 0.001*np.random.random(size=(1,2))
+			+ 0.0001*np.random.random(size=(1,2))
 		s0 = InitialState._make((s0, -s0))
 
 		# import yaml

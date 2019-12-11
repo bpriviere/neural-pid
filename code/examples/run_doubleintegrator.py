@@ -24,8 +24,8 @@ class DoubleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 10
-		self.r_comm = 10.0
+		self.n_agents = 7
+		self.r_comm = 2.0
 		self.r_agent = 0.2
 		# self.a_min = np.array([-2.0,-2.0]) # m/s
 		# self.a_max = np.array([2.0,2.0]) # m/s
@@ -33,6 +33,8 @@ class DoubleIntegratorParam(Param):
 		self.a_min = -1*self.a_max
 		self.v_max = 0.5
 		self.v_min = -1*self.v_max
+		self.r_safe = 2*self.r_agent
+		self.max_neighbors = 10
 		
 		# other
 		self.sim_t0 = 0
@@ -40,17 +42,12 @@ class DoubleIntegratorParam(Param):
 		self.sim_dt = .1
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
-
 		self.plots_fn = 'plots.pdf'
 
-		# RL
-		# NO RL FOR THIS
-		# self.rl_train_model_fn = '../models/doubleintegrator/rl_current.pt'
-		# self.rl_continuous_on = False
-		# self.rl_warm_start_on = False
-		# self.rl_module = 'PPO'
-		# self.rl_num_actions = 5 
-		# self.rl_discrete_action_space = np.linspace(self.a_min, self.a_max, self.rl_num_actions)
+		# cbf 
+		self.cbf_kp = 0.1
+		self.cbf_kv = 0.5
+		self.cbf_noise = 0.075
 
 		# IL
 		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
@@ -90,7 +87,7 @@ class DoubleIntegratorParam(Param):
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
 		# Barrier function stuff
-		self.b_gamma = 0.05 
+		self.b_gamma = 0.05 # 0.05 
 
 
 

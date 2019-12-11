@@ -44,7 +44,7 @@ class Barrier_Net(nn.Module):
 		self.activation = param.il_network_activation
 		self.a_max = param.a_max
 		self.a_min = param.a_min 
-		self.Ds = 2*param.r_agent
+		self.Ds = param.r_safe
 		self.b_gamma = param.b_gamma 
 
 	def policy(self,x):
@@ -67,23 +67,48 @@ class Barrier_Net(nn.Module):
 		x = self.layers[-1](x)
 		return x
 
+
+	# def __call__(self,x):
+
+	# 	empty_action = self.empty(x)
+	# 	barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
+
+	# 	nd = len(x) # number of data 
+	# 	nn = int(len(x[0])/(self.state_dim_per_agent)-1) # number of neighbors in this batch 
+
+	# 	P_ij = np.zeros((nd,nn*2))
+	# 	V_ij = np.zeros((nd,nn*2))
+
+	# 	for j in range(nn):
+	# 		col_idx = j*4 + np.arange(0,2,dtype=int)
+	# 		P_ij[:,col_idx] = x[:,col_idx + 4]
+	# 		V_ij[:,col_idx] = x[:,col_idx + 6]
+
+	# 	print(P_ij[0,:])
+	# 	print(V_ij[0,:])
+	# 	print(x[0,:])
+	# 	exit()
+
+	# 	H = 
+
+
+
 	def __call__(self,x):
 
 		empty_action = self.empty(x)
 		barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
+		nn = int(len(x[0])/(self.state_dim_per_agent)-1) # number of neighbors in this batch 
 
-		for i,observation_i in enumerate(x):
-			n_n = int(len(observation_i)/(self.state_dim_per_agent)-1)
-
-			for j in range(n_n):
+		for i, observation_i in enumerate(x):	
+			for j in range(nn):
 				# j+1 to skip relative goal entries 
 				idx = self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
 				relative_neighbor = observation_i[idx]
 				p_ij = -1*relative_neighbor[0:2]
 				v_ij = -1*relative_neighbor[2:]
-				barrier_action[i,:] += self.get_b_ij(p_ij,v_ij)
+				barrier_action[i,:] += self.get_b_ij(p_ij,v_ij)*p_ij
 
-		# scale actions 
+		# # scale actions 
 		action = empty_action + barrier_action 
 		action = torch.tanh(action) # action \in [-1,1]
 		action = (action+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() # action \in [amin,amax]
@@ -101,11 +126,17 @@ class Barrier_Net(nn.Module):
 		dv = v^i - v^j
 		"""
 		h_ij = self.get_h_ij(dp,dv)
-		# return self.b_gamma/(np.power(h_ij,3))
-		return 1/h_ij
+		return self.b_gamma/np.power(h_ij,0.75)
 
+
+	# def get_h_ij(self,dp,dv):
+	# 	h_ij = np.sqrt(4*self.a_max*(np.linalg.norm(dp) - self.Ds)) \
+	# 		+ np.matmul(dv.T, dp)/np.linalg.norm(dp)
+	# 	return h_ij
 
 	def get_h_ij(self,dp,dv):
-		h_ij = np.sqrt(4*self.a_max*(np.linalg.norm(dp) - self.Ds)) \
-			+ np.matmul(dv.T, dp)/np.linalg.norm(dp)
+		h_ij = np.linalg.norm(dp) - self.Ds
 		return h_ij
+
+
+

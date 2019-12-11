@@ -83,8 +83,9 @@ def sim(param, env, controllers, initial_state, visualize):
 
 				plotter.plot_circle(result.states[1,env.agent_idx_to_state_idx(agent.i)],
 					result.states[1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
-				plotter.plot_circle(result.states[-1,env.agent_idx_to_state_idx(agent.i)],
-					result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
+				plotter.plot_square(result.states[-1,env.agent_idx_to_state_idx(agent.i)],
+					result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],2*param.r_agent,fig=fig,ax=ax,color=color)
+				plotter.plot_square(agent.s_g[0],agent.s_g[1],2*param.r_agent,angle=45,fig=fig,ax=ax,color=color)
 
 
 		elif param.env_name == 'Consensus' and param.sim_render_on:
