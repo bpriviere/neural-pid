@@ -190,7 +190,9 @@ class DoubleIntegrator(Env):
 			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
 			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,:]*dt 
 
-			sp1[v_idx] = np.clip(sp1[v_idx],self.v_min,self.v_max)
+			# scale velocity 
+
+			# sp1[v_idx] = np.clip(sp1[v_idx],self.v_min,self.v_max)
 
 		self.update_agents(sp1)
 		return sp1

@@ -83,6 +83,29 @@ def plot_circle(x,y,r,fig=None,ax=None,title=None,label=None,color=None):
 
 	ax.add_artist(circle)
 	return fig,ax
+
+def plot_square(x,y,r,angle=None,fig=None,ax=None,title=None,label=None,color=None):
+	if fig is None or ax is None:
+		fig, ax = plt.subplots()
+
+	if False:
+		zorder=3
+		rect = patches.Rectangle((x,y),height=r,width=r,zorder = zorder)
+	else:
+		if angle is not None: 
+			rect = patches.Rectangle((x-r/2,y-r/2),height=r,width=r,angle=angle)
+		else:
+			rect = patches.Rectangle((x-r/2,y-r/2),height=r,width=r)
+
+	if color is not None:
+		rect.set_color(color)
+	if label is not None:
+		rect.set_label(label)
+	if title is not None:
+		ax.set_title(title)
+
+	ax.add_artist(rect)
+	return fig,ax	
 	
 
 def plot_ss(env,states):
