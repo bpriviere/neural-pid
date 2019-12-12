@@ -90,12 +90,12 @@ def plot_square(x,y,r,angle=None,fig=None,ax=None,title=None,label=None,color=No
 
 	if False:
 		zorder=3
-		rect = patches.Rectangle((x,y),height=r,width=r,zorder = zorder)
+		rect = patches.Rectangle((x,y),height=2*r,width=2*r,zorder = zorder)
 	else:
 		if angle is not None: 
-			rect = patches.Rectangle((x-r/2,y-r/2),height=r,width=r,angle=angle)
+			rect = patches.Rectangle((x,y-r),height=2*r,width=2*r,angle=angle)
 		else:
-			rect = patches.Rectangle((x-r/2,y-r/2),height=r,width=r)
+			rect = patches.Rectangle((x-r/np.sqrt(2),y-r/np.sqrt(2)),height=2*r,width=2*r)
 
 	if color is not None:
 		rect.set_color(color)

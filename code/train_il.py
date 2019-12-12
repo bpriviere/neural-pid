@@ -33,7 +33,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	for o in map_data["map"]["obstacles"]:
 		obstacles.append(torch.Tensor(o) + torch.Tensor([0.5,0.5]))
 
-	for x in range(map_data["map"]["dimensions"][0]):
+	for x in range(-1,map_data["map"]["dimensions"][0]+1):
 		obstacles.append(torch.Tensor([x,-1]) + torch.Tensor([0.5,0.5]))
 		obstacles.append(torch.Tensor([x,map_data["map"]["dimensions"][1]]) + torch.Tensor([0.5,0.5]))
 	for y in range(map_data["map"]["dimensions"][0]):
@@ -225,7 +225,7 @@ def load_dataset(env, filename):
 
 def train(param,env,model,loader):
 
-	optimizer = torch.optim.AdamW(model.parameters(), lr=param.il_lr)
+	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
 
