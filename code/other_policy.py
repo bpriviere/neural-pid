@@ -210,8 +210,8 @@ class CBF:
 				# backup 
 				a_i = -self.alpha*v_i/np.linalg.norm(v_i)
 
-			A[agent_i.i,:] = a_i + self.param.cbf_noise*np.random.normal(size=(1,2))
-			# A[agent_i.i,:] = a_i 
+			# A[agent_i.i,:] = a_i + self.param.cbf_noise*np.random.normal(size=(1,2))
+			A[agent_i.i,:] = a_i 
 
 		# exit()
 		# print('A: ',A)

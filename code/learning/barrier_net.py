@@ -101,20 +101,31 @@ class Barrier_Net(nn.Module):
 		for i, observation_i in enumerate(x):	
 
 			# v_i = observation_i[2]
+			# print('i: ', i)
 
+			# print('Neighbors')
 			for j in range(nn):
 				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
 				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
 				relative_neighbor = observation_i[idx]
 				p_ij = -1*relative_neighbor[0:2]
 				v_ij = -1*relative_neighbor[2:]
-				barrier_action[i,:] += self.get_robot_barrier(p_ij,v_ij)
+				a_ij = self.get_robot_barrier(p_ij,v_ij)
+				barrier_action[i,:] += a_ij
 
+				# print('j: ', j)
+				# print('a_ij: ', a_ij)
+
+			# print('Obstacles')
 			for j in range(no):
 				# pass 
 				idx = 1 + self.state_dim_per_agent*(nn+1)+np.arange(0,2,dtype=int)
 				p_ij = observation_i[idx]
-				barrier_action[i,:] += self.get_obstacle_barrier(p_ij)
+				a_ij = self.get_obstacle_barrier(p_ij)
+				barrier_action[i,:] += a_ij
+
+				# print('j: ', j)
+				# print('a_ij: ', a_ij)
 
 		# scale actions 
 		action = empty_action + barrier_action 
@@ -139,19 +150,27 @@ class Barrier_Net(nn.Module):
 			return self.b_gamma/np.power(h_ij,self.b_exph)*dp 
 		else:
 			return self.b_gamma/np.power(-1*h_ij,self.b_exph)*-1*dp 
+		
+		# return self.b_gamma/np.power(h_ij,self.b_exph)*dp
 
 	def get_obstacle_barrier(self,dp):
 
 		h_ij = self.get_min_dist(dp)
+
+		# if h_ij < 0 :
+		# 	exit()
+
 		# h_ij = min_dist - self.D_obstacle
 		if h_ij > 0:
 			return self.b_gamma/np.power(h_ij,self.b_exph)*dp 
 		else:
 			return self.b_gamma/np.power(-1*h_ij,self.b_exph)*-1*dp 
 
+		# return self.b_gamma/np.power(h_ij,self.b_exph)*dp
+
 	def get_min_dist(self,dp):
 
-		if False:
+		if True:
 			# TEMP 
 			d2 = np.linalg.norm(dp) - self.D_obstacle
 

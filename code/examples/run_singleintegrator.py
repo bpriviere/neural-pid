@@ -26,15 +26,26 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 10
+		self.n_agents = 4
 		self.r_comm = 1.0 #0.5
 		self.r_obs_sense = 1.0
 		self.r_agent = 0.2
 		self.r_obstacle = 0.5
-		self.a_max = 0.5 
+		self.a_max = 0.5
 		self.a_min = -1*self.a_max
 		self.D_robot = 2*self.r_agent 
 		self.D_obstacle = self.r_agent + self.r_obstacle
+
+		self.max_neighbors = 10
+		self.max_obstacles = 10
+
+		# Barrier function stuff
+		self.b_gamma = 1.0
+		self.b_exph = 10.
+		# cbf 
+		self.cbf_kp = 0.2
+		self.cbf_kv = 1.5
+		self.cbf_noise = 0.075
 		
 		# 
 		self.phi_max = self.a_max
@@ -53,11 +64,11 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
-		self.il_batch_size = 1000
+		self.il_batch_size = 5000
 		self.il_n_epoch = 5000
-		self.il_lr = 5e-4
+		self.il_lr = 5e-3
 		self.il_wd = 0.001
-		self.il_n_data = 5000
+		self.il_n_data = 100000
 		self.il_log_interval = 20
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
@@ -93,31 +104,14 @@ class SingleIntegratorParam(Param):
 
 		self.il_network_activation = relu
 
-		self.max_neighbors = 3
-		self.max_obstacles = 3
-
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
-		# Barrier function stuff
-		self.b_gamma = 1.0
-		self.b_exph = 3.0
-		# cbf 
-		self.cbf_kp = 0.2
-		self.cbf_kv = 1.5
-		self.cbf_noise = 0.075		
-
 
 
 if __name__ == '__main__':
-
-	controllers = {
-		# 'IL':	torch.load(param.sim_il_model_fn),
-		'APF': APF(param,env)
-		# 'RL': torch.load(param.sim_rl_model_fn)
-	}
 
 	args = parse_args()
 
@@ -127,6 +121,9 @@ if __name__ == '__main__':
 	if set_ic_on:
 
 		if ring_ex_on:
+
+			param = SingleIntegratorParam()
+			env = SingleIntegrator(param)			
 
 			InitialState = namedtuple('InitialState', ['start', 'goal'])
 
@@ -144,17 +141,22 @@ if __name__ == '__main__':
 
 			import yaml
 			ex = 2
-			with open(args.instance) as map_file:
-				map_data = yaml.load(map_file)
-			# test 2 example 
-			# param.n_agents = 2 
-			# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
+			
+			if args.instance:
+				with open(args.instance) as map_file:
+					map_data = yaml.load(map_file)
+			else:
+				# test 2 example 
+				# param.n_agents = 2 
+				# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
 
-			# test empty 
-			# with open("../baseline/centralized-planner/examples/empty-8-8-random-{}_30_agents.yaml".format(ex)) as map_file:
+				# test empty 
+				# with open("../baseline/centralized-planner/examples/empty-8-8-random-{}_30_agents.yaml".format(ex)) as map_file:
 
-			# test map 
-			# with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex{}.yaml".format(ex)) as map_file:
+				# test map 
+				with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex{}.yaml".format(ex)) as map_file:
+					map_data = yaml.load(map_file)
+
 			s = []
 			g = []
 			for agent in map_data["agents"]:
@@ -167,7 +169,7 @@ if __name__ == '__main__':
 			s0 = InitialState._make((np.array(s), np.array(g)))
 
 			param = SingleIntegratorParam()
-			param.n_agents = len(map_data["agents"])
+			# param.n_agents = len(map_data["agents"])
 			env = SingleIntegrator(param)
 
 			env.obstacles = map_data["map"]["obstacles"]
@@ -177,11 +179,13 @@ if __name__ == '__main__':
 			for y in range(map_data["map"]["dimensions"][0]):
 				env.obstacles.append([-1,y])
 				env.obstacles.append([map_data["map"]["dimensions"][0],y])
+
 	else:
 		s0 = env.reset()
 
 	controllers = {
 		'IL':	torch.load(param.sim_il_model_fn),
+		# 'APF': APF(param,env)
 		# 'RL': torch.load(param.sim_rl_model_fn)
 	}
 
