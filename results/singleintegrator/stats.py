@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 import yaml
 
+
 def stats(map_filename, schedule_filename):
 	data = np.load(schedule_filename)
 
@@ -19,7 +20,7 @@ def stats(map_filename, schedule_filename):
 			goal_time = data[lastIdx,0]
 			num_agents_reached_goal += 1
 		else:
-			print("Warning: Agent {} did not reach its goal! Last Dist: {}".format(i, distances[-1]))
+			# print("Warning: Agent {} did not reach its goal! Last Dist: {}".format(i, distances[-1]))
 			goal_time = float('inf')
 		goal_times.append(goal_time)
 	goal_times = np.array(goal_times)
@@ -42,12 +43,23 @@ def stats(map_filename, schedule_filename):
 	# min_dist = float('inf')
 	num_agent_agent_collisions = 0
 	for i in range(num_agents):
+		pos_i = data[:,(i*4+1):(i*4+3)]
 		for j in range(i+1, num_agents):
-			pos_i = data[:,(i*4+1):(i*4+3)]
 			pos_j = data[:,(j*4+1):(j*4+3)]
 			distances = np.linalg.norm(pos_i - pos_j, axis=1)
 			num_agent_agent_collisions += np.count_nonzero(distances < 0.4)
 			# min_dist = min(min_dist, np.min(distances))
+
+	num_agent_obstacle_collisions = 0
+	# TODO: this just assumes obstacles to be circle (with r = 0.5)
+	#       for computational efficiency
+
+	for i in range(num_agents):
+		pos_i = data[:,(i*4+1):(i*4+3)]
+		for o in map_data["map"]["obstacles"]:
+			distances = np.linalg.norm(pos_i - (np.array(o) + np.array([0.5,0.5])), axis=1)
+			num_agent_obstacle_collisions += np.count_nonzero(distances < 0.5+0.2)
+
 
 	result = dict()
 	# result["min_dist"] = min_dist
@@ -55,7 +67,10 @@ def stats(map_filename, schedule_filename):
 	result["makespan"] = makespan
 	result["control_effort"] = control_effort
 	result["num_agents_reached_goal"] = num_agents_reached_goal
+	result["percent_agents_reached_goal"] = num_agents_reached_goal / num_agents * 100
 	result["num_agent_agent_collisions"] = num_agent_agent_collisions
+	result["num_agent_obstacle_collisions"] = num_agent_obstacle_collisions
+	result["num_collisions"] = num_agent_agent_collisions + num_agent_obstacle_collisions
 
 	return result
 

@@ -36,24 +36,13 @@ class SingleIntegratorParam(Param):
 		self.D_robot = 2*self.r_agent 
 		self.D_obstacle = self.r_agent + self.r_obstacle
 
-		self.max_neighbors = 10
-		self.max_obstacles = 10
-
-		# Barrier function stuff
-		self.b_gamma = 1.0
-		self.b_exph = 10.
-		# cbf 
-		self.cbf_kp = 0.2
-		self.cbf_kv = 1.5
-		self.cbf_noise = 0.075
-		
 		# 
 		self.phi_max = self.a_max
 		self.phi_min = -1*self.a_max
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 50
+		self.sim_tf = 100
 		self.sim_dt = 0.1
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -65,7 +54,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 5000
+		self.il_n_epoch = 20
 		self.il_lr = 5e-3
 		self.il_wd = 0.001
 		self.il_n_data = 100000
@@ -104,19 +93,34 @@ class SingleIntegratorParam(Param):
 
 		self.il_network_activation = relu
 
+		self.max_neighbors = 3
+		self.max_obstacles = 4
+
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
+		# Barrier function stuff
+		self.b_gamma = 0.1
+		self.b_exph = 1
+		# cbf 
+		self.cbf_kp = 0.2
+		self.cbf_kv = 1.5
+		self.cbf_noise = 0.075		
 
 
 if __name__ == '__main__':
 
 	args = parse_args()
+	if args.il:
+		param = SingleIntegratorParam()
+		env = SingleIntegrator(param)
+		run(param, env, None, None, args)
+		exit()
 
 	set_ic_on = True 
-	ring_ex_on = False
+	ring_ex_on = True
 
 	if set_ic_on:
 
@@ -169,7 +173,7 @@ if __name__ == '__main__':
 			s0 = InitialState._make((np.array(s), np.array(g)))
 
 			param = SingleIntegratorParam()
-			# param.n_agents = len(map_data["agents"])
+			param.n_agents = len(map_data["agents"])
 			env = SingleIntegrator(param)
 
 			env.obstacles = map_data["map"]["obstacles"]
@@ -185,8 +189,6 @@ if __name__ == '__main__':
 
 	controllers = {
 		'IL':	torch.load(param.sim_il_model_fn),
-		# 'APF': APF(param,env)
-		# 'RL': torch.load(param.sim_rl_model_fn)
 	}
 
 	if args.batch:

@@ -259,7 +259,7 @@ class APF:
 	# control barrier function 
 	def policy(self,observations):
 		
-		print('t: ', self.env.times[self.env.time_step])
+		# print('t: ', self.env.times[self.env.time_step])
 
 		ni = len(observations) # number of agents 
 		A = np.empty((ni,self.action_dim_per_agent))

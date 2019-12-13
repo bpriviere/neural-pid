@@ -22,7 +22,7 @@ def run_sim(param, env, controller, initial_state):
 	reward = 0 
 
 	env.reset(initial_state)
-	states[0] = np.copy(env.state)
+	states[0] = np.copy(env.s)
 	for step, time in enumerate(param.sim_times[:-1]):
 		print('t: {}/{}'.format(time,param.sim_times[-1]))
 
