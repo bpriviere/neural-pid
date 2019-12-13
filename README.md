@@ -13,6 +13,11 @@ Project that explores learning a motion planner and PID controller with time-var
 sudo pip3 install torch==1.2.0+cpu torchvision==0.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 sudo pip3 install gym
 sudo pip3 install meshcat
+sudo pip3 install pyyaml
+sudo pip3 install cvxpy
+sudo pip3 install autograd
+sudo pip3 install hnswlib
+sudo pip3 install rowan
 ```
 
 ## Execute

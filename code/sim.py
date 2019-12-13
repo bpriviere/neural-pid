@@ -25,6 +25,9 @@ def sim(param, env, controllers, initial_state, visualize):
 		env.reset(initial_state)
 		states[0] = np.copy(env.state)
 		for step, time in enumerate(times[:-1]):
+
+			print('t = {}/{}'.format(time,times[-1]))
+
 			state = states[step]
 			observation = env.observe()
 

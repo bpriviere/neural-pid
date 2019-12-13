@@ -70,18 +70,7 @@ class Barrier_Net(nn.Module):
 		return A
 
 	def empty(self,x):
-		# rho = self.model.forward(x)
-		# g = x[:,0:2]
-		# x = torch.cat((rho, g),1)
-		# for layer in self.layers[:-1]:
-		# 	x = self.activation(layer(x))
-		# x = self.layers[-1](x)
 
-		# x = torch.tanh(x) # x \in [-1,1]
-		# x = (x+1.)/2.*torch.tensor((self.phi_max-self.phi_min)).float()+torch.tensor((self.phi_min)).float() #, x \in [amin,amax]
-		# return x
-
-		# empty new now 
 		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
 		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
 
@@ -153,8 +142,8 @@ class Barrier_Net(nn.Module):
 
 	def get_obstacle_barrier(self,dp):
 
-		min_dist = self.get_min_dist(dp)
-		h_ij = min_dist - self.D_obstacle
+		h_ij = self.get_min_dist(dp)
+		# h_ij = min_dist - self.D_obstacle
 		if h_ij > 0:
 			return self.b_gamma/np.power(h_ij,self.b_exph)*dp 
 		else:
@@ -162,10 +151,12 @@ class Barrier_Net(nn.Module):
 
 	def get_min_dist(self,dp):
 
-		if True:
-			d = np.linalg.norm(dp)
+		if False:
+			# TEMP 
+			d2 = np.linalg.norm(dp) - self.D_obstacle
 
 		else: 
+
 			def line(p1, p2):
 				A = (p1[1] - p2[1])
 				B = (p2[0] - p1[0])
@@ -183,31 +174,42 @@ class Barrier_Net(nn.Module):
 				else:
 					return np.array([False,False])
 
-			# line = [[p1x,p1y],[p2x,p2y]]
+			# dp = pi - pj 
+			# shift coordinate st pj = [0,0] (center of square obstacle)
+			# line_to_agent: line from pj to pi
+			# obstacle boundaries: [0,0] +- r_obstacle*[1,1] 
+			# d1 is the length from center of square to the intersection point on the square
+			# d2 is the length from the agent boundary to the d1
+			# norm p is the length from the center of the agent to the center of the obstacle 
+
 			dp = dp.numpy()
-			line_to_obstacle = line([0,dp[0]],[0,dp[1]])
+			line_to_agent = line([0,0],[dp[0],dp[1]])
 
 			square_lines = []
 			square_lines.append(line(
-				[dp[0]-self.r_obstacle,dp[1]-self.r_obstacle],
-				[dp[0]-self.r_obstacle,dp[1]+self.r_obstacle]))
+				[0-self.r_obstacle,0-self.r_obstacle],
+				[0-self.r_obstacle,0+self.r_obstacle]))
 			square_lines.append(line(
-				[dp[0]-self.r_obstacle,dp[1]+self.r_obstacle],
-				[dp[0]+self.r_obstacle,dp[1]+self.r_obstacle]))
+				[0-self.r_obstacle,0+self.r_obstacle],
+				[0+self.r_obstacle,0+self.r_obstacle]))
 			square_lines.append(line(
-				[dp[0]+self.r_obstacle,dp[1]+self.r_obstacle],
-				[dp[0]+self.r_obstacle,dp[1]-self.r_obstacle]))
+				[0+self.r_obstacle,0+self.r_obstacle],
+				[0+self.r_obstacle,0-self.r_obstacle]))
 			square_lines.append(line(
-				[dp[0]+self.r_obstacle,dp[1]-self.r_obstacle],
-				[dp[0]-self.r_obstacle,dp[1]-self.r_obstacle]))
+				[0+self.r_obstacle,0-self.r_obstacle],
+				[0-self.r_obstacle,0-self.r_obstacle]))
 
+			d1 = np.inf 
 			for square_line in square_lines:
-				r = intersection(line_to_obstacle,square_line)
-				# print('r: ', r)
-				if not r.all():
-					d = np.linalg.norm(r)
-					break
-		return d 
+				r = intersection(line_to_agent,square_line)
+				norm_r = np.linalg.norm(r)
+
+				if r.any() and norm_r < d1:
+					d1 = norm_r 
+
+			d2 = np.linalg.norm(dp) - d1 - self.r_agent
+
+		return d2
 
 
 
