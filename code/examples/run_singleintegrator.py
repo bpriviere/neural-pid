@@ -1,6 +1,7 @@
 
 from param import Param
-from run import run
+from run import run, parse_args
+from sim import run_sim
 from systems.singleintegrator import SingleIntegrator
 from other_policy import CBF
 
@@ -9,6 +10,7 @@ from torch import nn, tanh, relu
 import torch
 import numpy as np
 from collections import namedtuple
+import os
 
 class SingleIntegratorParam(Param):
 	def __init__(self):
@@ -98,13 +100,6 @@ class SingleIntegratorParam(Param):
 
 
 if __name__ == '__main__':
-	param = SingleIntegratorParam()
-	env = SingleIntegrator(param)
-
-	controllers = {
-		'IL':	torch.load(param.sim_il_model_fn),
-		# 'RL': torch.load(param.sim_rl_model_fn)
-	}
 
 	# if True:
 	# 	if env.n_agents == 10:
@@ -124,6 +119,8 @@ if __name__ == '__main__':
 	# 		# orca 1 
 	# 		s0 = np.array([2,0,0,0])
 
+	args = parse_args()
+
 	if True:
 		InitialState = namedtuple('InitialState', ['start', 'goal'])
 
@@ -138,10 +135,11 @@ if __name__ == '__main__':
 		# s0 = InitialState._make((s0, -s0))
 
 		import yaml
-		with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
+		with open(args.instance) as map_file:
+		# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
 		# with open("../baseline/centralized-planner/examples/empty-8-8-random-1_30_agents.yaml") as map_file:
 		# with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex5.yaml") as map_file:
-			map_data = yaml.load(map_file)
+			map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 
 		s = []
 		g = []
@@ -154,6 +152,10 @@ if __name__ == '__main__':
 		InitialState = namedtuple('InitialState', ['start', 'goal'])
 		s0 = InitialState._make((np.array(s), np.array(g)))
 
+		param = SingleIntegratorParam()
+		param.n_agents = len(map_data["agents"])
+		env = SingleIntegrator(param)
+
 		env.obstacles = map_data["map"]["obstacles"]
 		for x in range(map_data["map"]["dimensions"][0]):
 			env.obstacles.append([x,-1])
@@ -162,7 +164,25 @@ if __name__ == '__main__':
 			env.obstacles.append([-1,y])
 			env.obstacles.append([map_data["map"]["dimensions"][0],y])
 
+
+
 	else:
 		s0 = env.reset()
 
-	run(param, env, controllers, s0)
+	controllers = {
+		'IL':	torch.load(param.sim_il_model_fn),
+		# 'RL': torch.load(param.sim_rl_model_fn)
+	}
+
+	if args.batch:
+		for name, controller in controllers.items():
+			print("Running simulation with " + name)
+			states, observations, actions, step = run_sim(param, env, controller, s0)
+			result = np.hstack((param.sim_times.reshape(-1,1), states))
+			# store in binary format
+			basename = os.path.splitext(os.path.basename(args.instance))[0]
+			output_file = "../results/singleintegrator/{}/{}.npy".format(name, basename)
+			with open(output_file, "wb") as f:
+				np.save(f, result, allow_pickle=False)
+	else:
+		run(param, env, controllers, s0, args)
