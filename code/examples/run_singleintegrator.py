@@ -42,8 +42,8 @@ class SingleIntegratorParam(Param):
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 50
-		self.sim_dt = 0.1
+		self.sim_tf = 100
+		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -57,7 +57,7 @@ class SingleIntegratorParam(Param):
 		self.il_n_epoch = 5000
 		self.il_lr = 5e-4
 		self.il_wd = 0.001
-		self.il_n_data = 5000
+		self.il_n_data = 100000
 		self.il_log_interval = 20
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
@@ -94,7 +94,7 @@ class SingleIntegratorParam(Param):
 		self.il_network_activation = relu
 
 		self.max_neighbors = 3
-		self.max_obstacles = 3
+		self.max_obstacles = 4
 
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
@@ -102,8 +102,8 @@ class SingleIntegratorParam(Param):
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
 		# Barrier function stuff
-		self.b_gamma = 1.0
-		self.b_exph = 3.0
+		self.b_gamma = 0.1
+		self.b_exph = 1
 		# cbf 
 		self.cbf_kp = 0.2
 		self.cbf_kv = 1.5
@@ -113,13 +113,12 @@ class SingleIntegratorParam(Param):
 
 if __name__ == '__main__':
 
-	controllers = {
-		# 'IL':	torch.load(param.sim_il_model_fn),
-		'APF': APF(param,env)
-		# 'RL': torch.load(param.sim_rl_model_fn)
-	}
-
 	args = parse_args()
+	if args.il:
+		param = SingleIntegratorParam()
+		env = SingleIntegrator(param)
+		run(param, env, None, None, args)
+		exit()
 
 	set_ic_on = True 
 	ring_ex_on = False
@@ -145,7 +144,7 @@ if __name__ == '__main__':
 			import yaml
 			ex = 2
 			with open(args.instance) as map_file:
-				map_data = yaml.load(map_file)
+				map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 			# test 2 example 
 			# param.n_agents = 2 
 			# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
@@ -182,6 +181,7 @@ if __name__ == '__main__':
 
 	controllers = {
 		'IL':	torch.load(param.sim_il_model_fn),
+		# 'APF': APF(param,env),
 		# 'RL': torch.load(param.sim_rl_model_fn)
 	}
 
