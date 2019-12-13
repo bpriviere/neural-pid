@@ -28,7 +28,7 @@ class SingleIntegratorParam(Param):
 		# orca param
 		self.n_agents = 10
 		self.r_comm = 1.0 #0.5
-		self.r_obs_sense = 1.0
+		self.r_obs_sense = 2.0
 		self.r_agent = 0.2
 		self.r_obstacle = 0.5
 		self.a_max = 0.5 
@@ -43,7 +43,7 @@ class SingleIntegratorParam(Param):
 		# sim 
 		self.sim_t0 = 0
 		self.sim_tf = 100
-		self.sim_dt = 0.05
+		self.sim_dt = 0.1
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -53,18 +53,18 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
-		self.il_batch_size = 1000
+		self.il_batch_size = 5000
 		self.il_n_epoch = 5000
-		self.il_lr = 5e-4
+		self.il_lr = 5e-3
 		self.il_wd = 0.001
 		self.il_n_data = 100000
-		self.il_log_interval = 20
+		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
-		n,m,h,l,p = 4,2,64,64,64 # state dim, action dim, hidden layer
+		n,m,h,l,p = 4,2,128,16,16 # state dim, action dim, hidden layer
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(4,h),
 			nn.Linear(h,h),
