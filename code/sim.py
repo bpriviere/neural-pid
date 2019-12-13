@@ -14,43 +14,39 @@ import utilities as util
 from other_policy import ZeroPolicy, LCP_Policy
 from learning.ppo_v2 import PPO
 
+
+def run_sim(param, env, controller, initial_state):
+	states = np.zeros((len(param.sim_times), env.n))
+	actions = np.zeros((len(param.sim_times)-1,env.m))
+	observations = [] 
+	reward = 0 
+
+	env.reset(initial_state)
+	states[0] = np.copy(env.state)
+	for step, time in enumerate(param.sim_times[:-1]):
+		state = states[step]
+		observation = env.observe()
+
+		if param.env_name is 'Consensus' and (isinstance(controller, LCP_Policy) or isinstance(controller,PPO)):
+			observation = env.unpack_observations(observation)
+
+		action = controller.policy(observation)
+		next_state, r, done, _ = env.step(action)
+		reward += r
+		
+		states[step + 1] = next_state
+		actions[step] = action.flatten()
+		observations.append(observation)
+
+		if done:
+			break
+
+	print('reward: ',reward)
+	env.close()
+	return states, observations, actions, step
+
+
 def sim(param, env, controllers, initial_state, visualize):
-
-	def run_sim(controller, initial_state):
-		states = np.zeros((len(times), env.n))
-		actions = np.zeros((len(times)-1,env.m))
-		observations = [] 
-		reward = 0 
-
-		env.reset(initial_state)
-		states[0] = np.copy(env.state)
-		for step, time in enumerate(times[:-1]):
-
-			print('t = {}/{}'.format(time,times[-1]))
-
-			state = states[step]
-			observation = env.observe()
-
-			if param.env_name is 'Consensus' and (isinstance(controller, LCP_Policy) or isinstance(controller,PPO)):
-				observation = env.unpack_observations(observation)
-
-			
-			action = controller.policy(observation)
-			next_state, r, done, _ = env.step(action)
-			reward += r
-			
-			states[step + 1] = next_state
-			actions[step] = action.flatten()
-			observations.append(observation)
-
-			if done:
-				break
-
-		print('reward: ',reward)
-		env.close()
-		return states, observations, actions, step
-
-	# -------------------------------------------
 
 	# environment
 	times = param.sim_times
@@ -66,7 +62,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		print("Running simulation with " + name)
 		print("Initial State: ", initial_state)
 		if hasattr(controller, 'policy'):
-			result = SimResult._make(run_sim(controller, initial_state) + (name, ))
+			result = SimResult._make(run_sim(param, env, controller, initial_state) + (name, ))
 		else:
 			observations = [] 
 			result = SimResult._make((controller.states, observations, controller.actions, controller.steps, name))

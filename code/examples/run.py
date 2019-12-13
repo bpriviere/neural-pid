@@ -10,14 +10,23 @@ from sim import sim
 from planning.rrt import rrt
 from planning.scp import scp
 
-def run(param, env, controllers, initial_state = None):
+
+def parse_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument("--rl", action='store_true')
-	parser.add_argument("--il", action='store_true')
+	parser.add_argument("--rl", action='store_true', help="Run Reinforcement Learning")
+	parser.add_argument("--il", action='store_true', help="Run Imitation Learning")
 	parser.add_argument("--rrt", action='store_true')
 	parser.add_argument("--scp", action='store_true')
 	parser.add_argument("--animate", action='store_true')
+	parser.add_argument("-i", "--instance", help="File instance to run simulation on")
+	parser.add_argument("--batch", action='store_true', help="use batch (npy) output instead of interactive (pdf) output")
 	args = parser.parse_args()
+	return args
+
+
+def run(param, env, controllers, initial_state = None, args = None):
+	if args is None:
+		args = parse_args()
 
 	if args.rl:
 		train_rl(param, env)
