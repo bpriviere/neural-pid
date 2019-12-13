@@ -33,7 +33,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	for o in map_data["map"]["obstacles"]:
 		obstacles.append(torch.Tensor(o) + torch.Tensor([0.5,0.5]))
 
-	for x in range(map_data["map"]["dimensions"][0]):
+	for x in range(-1,map_data["map"]["dimensions"][0]+1):
 		obstacles.append(torch.Tensor([x,-1]) + torch.Tensor([0.5,0.5]))
 		obstacles.append(torch.Tensor([x,map_data["map"]["dimensions"][1]]) + torch.Tensor([0.5,0.5]))
 	for y in range(map_data["map"]["dimensions"][0]):
@@ -152,6 +152,7 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Fal
 					loader.append([torch.Tensor(batch_x),batch_y])
 					batch_x = []
 					batch_y = []
+
 			if len(batch_x) > 0:
 				print("add batch ", key, len(batch_x))
 				batch_y = torch.from_numpy(np.array(batch_y)).float()
@@ -160,6 +161,7 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Fal
 				batch_y = []
 
 		return loader
+
 
 	if dataset is None:
 		raise Exception('dataset not specified')
@@ -223,7 +225,7 @@ def load_dataset(env, filename):
 
 def train(param,env,model,loader):
 
-	optimizer = torch.optim.AdamW(model.parameters(), lr=param.il_lr)
+	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
 
