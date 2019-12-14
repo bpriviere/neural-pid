@@ -52,7 +52,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
 			s_g = data[-1,i*4+1:i*4+5]  # goal state i 
 			relative_goal = s_g - s_i   # relative goal 
-			if relative_goal[0] < 1e-3 and relative_goal[1] < 1e-3:
+			if np.allclose(relative_goal, np.zeros(4)):
 				continue
 			time_to_goal = data[-1,0] - data[t,0]
 			relative_neighbors = []

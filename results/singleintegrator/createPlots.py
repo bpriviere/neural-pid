@@ -6,7 +6,7 @@ import yaml
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle
 from matplotlib.backends.backend_pdf import PdfPages
 plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
@@ -106,7 +106,12 @@ if __name__ == '__main__':
 			data = np.load("{}/{}.npy".format(r["solver"], instance))
 			num_agents = len(map_data["agents"])
 			for i in range(num_agents):
-				ax.plot(data[:,1+i*4], data[:,1+i*4+1])
+				line = ax.plot(data[:,1+i*4], data[:,1+i*4+1])
+				color = line[0].get_color()
+				start = np.array(map_data["agents"][i]["start"])
+				goal = np.array(map_data["agents"][i]["goal"])
+				ax.add_patch(Circle(start + np.array([0.5,0.5]), 0.2, alpha=0.5, color=color))
+				ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))
 
 			pp.savefig(fig)
 			plt.close(fig)
