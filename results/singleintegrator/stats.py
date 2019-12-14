@@ -15,7 +15,7 @@ def stats(map_filename, schedule_filename):
 	for i, agent in enumerate(map_data["agents"]):
 		goal = np.array([0.5,0.5]) + np.array(agent["goal"])
 		distances = np.linalg.norm(data[:,(i*4+1):(i*4+3)] - goal, axis=1)
-		lastIdx = np.max(np.argwhere(distances > 0.05))
+		lastIdx = np.max(np.argwhere(distances > 0.2))
 		if lastIdx < data.shape[0] - 1:
 			goal_time = data[lastIdx,0]
 			num_agents_reached_goal += 1

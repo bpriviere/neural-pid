@@ -2,9 +2,11 @@ import glob
 import os
 import stats
 import numpy as np
+import yaml
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
 plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
@@ -20,7 +22,9 @@ def add_scatter(pp, results, key, title):
 		for r in results:
 			solvers.add(r["solver"])
 
-	for solver in solvers:
+	width = 0.8 / len(solvers)
+
+	for k, solver in enumerate(solvers):
 		idx = 0
 		x = []
 		y = []
@@ -30,7 +34,11 @@ def add_scatter(pp, results, key, title):
 					x.append(idx)
 					y.append(r[key])
 			idx += 1
-		ax.scatter(x,y,label=solver)
+		# ax.scatter(x,y,label=solver)
+		ax.bar(np.array(x)+k*width, y, width, label=solver)
+
+	ax.set_xticks(np.arange(len(result_by_instance)))
+	# ax.set_xticklabels([instance for instance, _ in result_by_instance.items()])
 
 	plt.legend()
 
@@ -58,7 +66,7 @@ if __name__ == '__main__':
 	for file in glob.glob("**/*.npy", recursive=True):
 		solver = os.path.dirname(file)
 		instance = os.path.splitext(os.path.basename(file))[0]
-		map_filename = "../../baseline/centralized-planner/examples/{}.yaml".format(instance)
+		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)
 		result["solver"] = solver
 		if instance in result_by_instance:
@@ -82,7 +90,27 @@ if __name__ == '__main__':
 		add_bar_chart(pp, results, "percent_agents_reached_goal", instance + " (% reached goal)")
 		add_bar_chart(pp, results, "num_collisions", instance + " (# collisions)")
 
+		map_filename = "../../baseline/centralized-planner/examples/{}.yaml".format(instance)
+		with open(map_filename) as map_file:
+			map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
+
+		for r in results:
+			print("state space" + r["solver"])
+			fig, ax = plt.subplots()
+			ax.set_title("State Space " + r["solver"])
+			ax.set_aspect('equal')
+
+			for o in map_data["map"]["obstacles"]:
+				ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
+
+			data = np.load("{}/{}.npy".format(r["solver"], instance))
+			num_agents = len(map_data["agents"])
+			for i in range(num_agents):
+				ax.plot(data[:,1+i*4], data[:,1+i*4+1])
+
+			pp.savefig(fig)
+			plt.close(fig)
+
+
+
 	pp.close()
-
-
-
