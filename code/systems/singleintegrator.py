@@ -98,14 +98,15 @@ class SingleIntegrator(Env):
 					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
 						s_j = agent_j.s
 						relative_neighbors.append(torch.Tensor(s_j-s_i))
-			relative_neighbors.sort(key=lambda n: (torch.Tensor(p_i) - n[0:2]).norm())
+			relative_neighbors.sort(key=lambda n: n[0:2].norm())
 
 			relative_obstacles = []
 			for o in self.obstacles:
-				dist = np.linalg.norm(p_i-(np.array(o)+np.array([0.5,0.5])))
+				o = np.array(o) + np.array([0.5,0.5])
+				dist = np.linalg.norm(o-p_i)
 				if dist <= self.param.r_obs_sense:
-					relative_obstacles.append(torch.Tensor(p_i-(np.array(o)+np.array([0.5,0.5]))))
-			relative_obstacles.sort(key=lambda o: (torch.Tensor(p_i) - o).norm())
+					relative_obstacles.append(torch.Tensor(o-p_i))
+			relative_obstacles.sort(key=lambda o: o.norm() )
 
 			observation_i = Observation._make((relative_goal,time_to_goal,relative_neighbors,relative_obstacles))
 

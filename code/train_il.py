@@ -46,7 +46,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
-		if t%20 != 0:
+		if t%100 != 0:
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
@@ -65,13 +65,13 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 						relative_neighbors.append(s_j - s_i)
 						# print(dist, len(relative_neighbors))
 						# break
-			relative_neighbors.sort(key=lambda n: (s_i[0:2] - n[0:2]).norm())
+			relative_neighbors.sort(key=lambda n: n[0:2].norm())
 			relative_obstacles = []
 			for o in obstacles:
 				dist = (s_i[0:2] - o).norm()
 				if dist <= obstacleDist:
 					relative_obstacles.append(s_i[0:2] - o)
-			relative_obstacles.sort(key=lambda o: (s_i[0:2] - o).norm())
+			relative_obstacles.sort(key=lambda o: o.norm())
 
 			o = Observation._make((relative_goal,time_to_goal,relative_neighbors,relative_obstacles))
 			a = data[t+1, i*4+3:i*4+5].numpy() # desired control is the velocity in the next timestep

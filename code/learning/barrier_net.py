@@ -57,6 +57,7 @@ class Barrier_Net(nn.Module):
 		self.b_exph = param.b_exph
 		self.phi_min = param.phi_min
 		self.phi_max = param.phi_max
+		self.a_noise = param.a_noise
 
 	def policy(self,x):
 
@@ -92,6 +93,12 @@ class Barrier_Net(nn.Module):
 
 	def __call__(self,x):
 
+		
+
+		# temp
+		# nd = 2
+		# x = x[0:nd,:]
+
 		empty_action = self.empty(x)
 		barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
 		nd = x.shape[0] # number of data points in batch 
@@ -101,55 +108,91 @@ class Barrier_Net(nn.Module):
 		# v_i = observation_i[2]
 		# print('i: ', i)
 
+		# print('x: ', x)
 		# print('Neighbors')
 		for j in range(nn):
 			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-
-			# print(x)
-			# print(x.shape)
-
 			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
 			relative_neighbor = x[:,idx].numpy()
-			P_i = -1*relative_neighbor[:,0:2]
-			V_i = -1*relative_neighbor[:,2:]
-
-			A_i = self.get_robot_barrier_2(P_i,V_i)
+			P_i = -1*relative_neighbor[:,0:2] # pi - pj
+			A_i = self.get_robot_barrier_2(P_i)
 			barrier_action += torch.from_numpy(A_i).float()
 
 			# print('j: ', j)
-			# print('a_ij: ', a_ij)
+			# print('P_i: ', P_i)
+			# print('A_i: ', A_i)
 
 		# print('Obstacles')
 		for j in range(no):
-			# pass 
-			idx = 1 + self.state_dim_per_agent*(nn+1)+np.arange(0,2,dtype=int)
-			P_i = x[:,idx].numpy() # in nd x state_dim_per_agent
+			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
+			P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
 			A_i = self.get_obstacle_barrier_2(P_i)
 			barrier_action += torch.from_numpy(A_i).float()
 
-			# print('j: ', j)
-			# print('a_ij: ', a_ij)
+		# 	print('j: ', j)
+		# 	print('P_i: ', P_i)
+		# 	print('A_i: ', A_i)
+
+		# print('barrier_action: ', barrier_action)
+
+		# exit()
 
 		# scale actions 
 		action = empty_action + barrier_action 
+		action = action + torch.from_numpy(0.05 * np.random.normal(size=action.shape)).float()
 		action = torch.tanh(action) # action \in [-1,1]
 		action = (action+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() # action \in [amin,amax]
 		return action 
 
-
-	def get_robot_barrier_2(self,P,V):
+	def get_robot_barrier_2(self,P):
 		H = np.linalg.norm(P,axis=1) - self.D_robot
 		H = np.reshape(H,(len(H),1))
 		H = np.tile(H,(1,np.shape(P)[1]))
-		return self.b_gamma*np.multiply(np.power(H,-1*self.b_exph),P)
+
+		normP = np.linalg.norm(P,axis=1)
+		normP = np.reshape(normP,(len(normP),1))
+		normP = np.tile(normP,(1,np.shape(P)[1]))
+
+		# print('H: ', H)
+		# print('normP: ', normP)
+
+		return self.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.b_exph)),P)
 
 
 	def get_obstacle_barrier_2(self,P):
 		H = np.linalg.norm(P,axis=1) - self.D_obstacle
 		H = np.reshape(H,(len(H),1))
 		H = np.tile(H,(1,np.shape(P)[1]))
-		return self.b_gamma*np.multiply(np.power(H,-1*self.b_exph),P)
+
+		normP = np.linalg.norm(P,axis=1)
+		normP = np.reshape(normP,(len(normP),1))
+		normP = np.tile(normP,(1,np.shape(P)[1]))
+		return self.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.b_exph)),P)
 		
+	def get_robot_barrier(self,dp,dv):
+		norm_p = np.linalg.norm(dp)
+		h_ij = norm_p - self.D_robot
+		return self.b_gamma/np.power(h_ij,self.b_exph)*dp/norm_p
+
+	def get_obstacle_barrier(self,dp):
+		norm_p = np.linalg.norm(dp)
+		h_ij = norm_p - self.D_obstacle
+		return self.b_gamma/np.power(h_ij,self.b_exph)*dp/norm_p
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	# def __call__(self,x):
 
@@ -194,25 +237,7 @@ class Barrier_Net(nn.Module):
 	# 	action = (action+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() # action \in [amin,amax]
 	# 	return action 
 
-	# def get_robot_barrier(self,dp,dv):
-		
-	# 	"""
-	# 	this is a barrier function (works like artificial potential function) 
 
-	# 	dp = p^i - p^j
-	# 	dv = v^i - v^j
-	# 	"""
-		
-	# 	# h_ij = np.sqrt(4*self.a_max*(np.linalg.norm(dp) - self.Ds)) \
-	# 	# 	+ np.matmul(dv.T, dp)/np.linalg.norm(dp)
-
-	# 	h_ij = np.linalg.norm(dp) - self.D_robot
-	# 	if h_ij > 0:
-	# 		return self.b_gamma/np.power(h_ij,self.b_exph)*dp 
-	# 	else:
-	# 		return self.b_gamma/np.power(-1*h_ij,self.b_exph)*-1*dp 
-		
-		# return self.b_gamma/np.power(h_ij,self.b_exph)*dp
 
 	# def get_obstacle_barrier(self,dp):
 

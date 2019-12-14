@@ -152,8 +152,8 @@ def sim(param, env, controllers, initial_state, visualize):
 				for agent in env.agents:
 					for result in sim_results:
 						ax.plot(
-							times[0:result.steps],
-							result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+i_config],
+							times[1:result.steps],
+							result.states[1:result.steps,env.agent_idx_to_state_idx(agent.i)+i_config],
 							label=result.name)
 
 
@@ -165,8 +165,8 @@ def sim(param, env, controllers, initial_state, visualize):
 				for agent in env.agents:
 					for result in sim_results:
 						ax.plot(
-							times[0:result.steps],
-							result.actions[0:result.steps,agent.i*env.action_dim_per_agent+i_config],
+							times[1:result.steps],
+							result.actions[1:result.steps,agent.i*env.action_dim_per_agent+i_config],
 							label=result.name)
 				
 		# extract gains
