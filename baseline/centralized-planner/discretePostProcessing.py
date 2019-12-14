@@ -15,6 +15,7 @@ if __name__ == "__main__":
   for agent_name in data["schedule"]:
     agent = data["schedule"][agent_name]
     path = []
+    i = 0
     for i in range(0, len(agent)-1):
       path.append({
         'x': agent[i]['x'],
@@ -28,6 +29,12 @@ if __name__ == "__main__":
       'x': agent[-1]['x'],
       'y': agent[-1]['y'],
       't': (i+1)*2})
+    if len(agent) == 1:
+      path.append({
+        'x': agent[-1]['x'],
+        'y': agent[-1]['y'],
+        't': 1})
+
     data["schedule"][agent_name] = path
 
   with open(args.output, 'w') as output_file:

@@ -24,6 +24,8 @@ def upperBound(traj, vmax, amax):
   stretchtime = 1.0
   while True:
     v,a = findMaxDynamicLimits(traj)
+    if v == 0 and a == 0:
+      return stretchtime
     if v <= vmax and a <= amax:
       # print(v,a)
       return stretchtime
@@ -35,8 +37,9 @@ def lowerBound(traj, vmax, amax):
   stretchtime = 1.0
   while True:
     v,a = findMaxDynamicLimits(traj)
+    if v == 0 and a == 0:
+      return stretchtime
     if v >= vmax and a >= amax:
-      # print(v,a)
       return stretchtime
     traj.stretchtime(0.5)
     stretchtime = stretchtime * 0.5
