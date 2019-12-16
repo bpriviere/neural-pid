@@ -26,7 +26,9 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	data = torch.from_numpy(data)
 
 	# load map
-	filename_map = os.path.splitext(filename)[0] + ".yaml"
+	instance = os.path.splitext(os.path.basename(filename))[0]
+
+	filename_map = "{}/../instances/{}.yaml".format(os.path.dirname(filename), instance)
 	with open(filename_map) as map_file:
 		map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 	obstacles = []
@@ -46,7 +48,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
-		if t%100 != 0:
+		if t%10 != 0:
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
@@ -60,7 +62,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 				if i != j:
 					s_j = data[t,j*4+1:j*4+5] # state j
 					# dist = np.linalg.norm(s_i[0:2] - s_j[0:2])
-					dist = (s_i[0:2] - s_j[0:2]).norm()
+					dist = (s_j[0:2] - s_i[0:2]).norm()
 					if dist <= neighborDist:
 						relative_neighbors.append(s_j - s_i)
 						# print(dist, len(relative_neighbors))
@@ -68,9 +70,9 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 			relative_neighbors.sort(key=lambda n: n[0:2].norm())
 			relative_obstacles = []
 			for o in obstacles:
-				dist = (s_i[0:2] - o).norm()
+				dist = (o - s_i[0:2]).norm()
 				if dist <= obstacleDist:
-					relative_obstacles.append(s_i[0:2] - o)
+					relative_obstacles.append(o - s_i[0:2])
 			relative_obstacles.sort(key=lambda o: o.norm())
 
 			o = Observation._make((relative_goal,time_to_goal,relative_neighbors,relative_obstacles))
@@ -79,6 +81,37 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 			dataset.append(oa_pair)
 			# break
 	print('Dataset Size: ',len(dataset))
+
+	# import plotter
+	# from matplotlib.patches import Rectangle
+	# robot = 0
+	# for item in dataset:
+	# 	fig,ax = plotter.make_fig()
+	# 	ax.set_title('State')
+	# 	ax.set_aspect('equal')
+
+	# 	ax.set_xlim([-1,10])
+	# 	ax.set_ylim([-1,10])
+
+	# 	# plot all obstacles
+	# 	for o in obstacles:
+	# 		ax.add_patch(Rectangle(o - torch.Tensor([0.5,0.5]), 1.0, 1.0, facecolor='gray', alpha=0.5))
+
+	# 	# plot current position
+	# 	s_g = data[-1,robot*4+1:robot*4+5]
+	# 	robot_pos = s_g - item.observation.relative_goal
+	# 	plotter.plot_circle(robot_pos[0], robot_pos[1],0.2,fig=fig,ax=ax)
+
+	# 	# plot current observation
+	# 	for i, obs in enumerate(item.observation.relative_obstacles):
+	# 		pos = obs + robot_pos[0:2] - torch.Tensor([0.5,0.5])
+	# 		ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+	# 		if i >= 1:
+	# 			break
+
+	# plotter.save_figs(filename + ".pdf")
+	# plotter.open_figs(filename + ".pdf")
+
 	return dataset
 
 def load_consensus_dataset(filename,n_neighbor,agent_memory):
@@ -320,11 +353,15 @@ def train_il(param, env):
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
-				datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
+				# datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
 				# datadir = glob.glob("../data/singleintegrator/test/*.npy")
+				datadir = glob.glob("../data/singleintegrator/central/*.npy")
 
 			dataset = []
-			for k,file in enumerate(datadir):
+			for k,file in enumerate(sorted(datadir)):
+				# if k%20 != 0:
+				# if "empty" in file:
+					# continue
 				print(file)
 				if param.il_state_loss_on:
 					dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
