@@ -37,7 +37,7 @@ def randAgents1(map_size, num_agents, num_groups, num_obstacles):
     # assign obstacles
     for agentIdx in range(0, num_obstacles):
         location = locations[0]
-        obstacles.append(list(location))
+        obstacles.append(location)
         del locations[0]
 
     locationsE = copy.deepcopy(locations) #list(locations)
@@ -74,7 +74,7 @@ def writeFile(obstacles, map_size, groups, file_name):
     data = dict()
     data["map"] = dict()
     data["map"]["dimensions"] = map_size
-    data["map"]["obstacles"] = list(obstacles)
+    data["map"]["obstacles"] = [list(o) for o in obstacles]
     data["agents"] = []
     i = 0
     for group in groups:
