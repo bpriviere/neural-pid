@@ -34,6 +34,13 @@ class SingleIntegrator(Env):
 		self.state_dim_per_agent = 4
 		self.action_dim_per_agent = 2
 		self.r_agent = param.r_agent
+		self.r_obstacle = param.r_obstacle
+		self.r_obs_sense = param.r_obs_sense
+		self.r_comm = param.r_comm 
+
+		# barrier stuff 
+		self.b_gamma = param.b_gamma
+		self.b_exph = param.b_exph
 
 		# control lim
 		self.a_min = param.a_min
@@ -59,8 +66,8 @@ class SingleIntegrator(Env):
 			'y-Velocity [m/s]',
 			]
 		self.actions_name = [
-			'x-Acceleration [m/s^2]',
-			'y-Acceleration [m/s^2]'
+			'x-Velocity [m/s^2]',
+			'y-Velocity [m/s^2]'
 			]
 
 		self.param = param

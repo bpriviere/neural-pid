@@ -108,6 +108,28 @@ def plot_square(x,y,r,angle=None,fig=None,ax=None,title=None,label=None,color=No
 	return fig,ax	
 	
 
+def plot_barrier_fnc(env):
+	
+	def make_barrier_plot(rsafe,rsense,title=None):
+		fig,ax = make_fig()
+		d = np.linspace(1.001*rsafe,1.1*rsense,100)
+		h = d - rsafe
+		b = np.multiply(d < rsense, env.b_gamma*np.power(h,-1*env.b_exph))
+		ax.plot(d,b)
+		ax.axvline(rsafe,color='red')
+		ax.axvline(rsense,color='orange')
+		ax.set_title(title)
+		ax.set_yscale('log')
+
+	rsafe_agents = env.r_agent*2
+	rsense_agents = env.r_comm 
+	rsafe_obstacles = env.r_agent + env.r_obstacle
+	rsense_obstacles = env.r_obs_sense
+
+	make_barrier_plot(rsafe_agents, rsense_agents, title='Agent Barrier')
+	make_barrier_plot(rsafe_obstacles, rsense_obstacles, title='Obstacle Barrier')
+
+
 def plot_ss(env,states):
 	fig,ax = env.render()
 	ax.plot(states[:,0],states[:,1],linestyle='dashed')
@@ -115,8 +137,5 @@ def plot_ss(env,states):
 
 # def debug_plot_batch(batch):
 	# batch = [o_lst,c_lst,r_lst,op_lst,p_lst,d_lst,s_lst,sp_lst]
-
-	
-
 
 

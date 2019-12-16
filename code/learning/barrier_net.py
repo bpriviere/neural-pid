@@ -10,7 +10,7 @@ import numpy as np
 
 # my package
 from learning.deepset import DeepSet
-
+from utilities import torch_tile
 
 # standard package
 import gym
@@ -58,6 +58,7 @@ class Barrier_Net(nn.Module):
 		self.phi_min = param.phi_min
 		self.phi_max = param.phi_max
 		self.a_noise = param.a_noise
+		self.circle_obstacles_on = param.circle_obstacles_on
 
 	def policy(self,x):
 
@@ -93,8 +94,6 @@ class Barrier_Net(nn.Module):
 
 	def __call__(self,x):
 
-		
-
 		# temp
 		# nd = 2
 		# x = x[0:nd,:]
@@ -125,23 +124,48 @@ class Barrier_Net(nn.Module):
 		# print('Obstacles')
 		for j in range(no):
 			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
-			P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-			A_i = self.get_obstacle_barrier_2(P_i)
+			if self.circle_obstacles_on: 
+				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
+				A_i = self.get_obstacle_barrier_2(P_i)
+			else:
+				# not implemented yet 
+				A_i = torch.zeros((len(x),self.action_dim_per_agent))
 			barrier_action += torch.from_numpy(A_i).float()
 
 		# 	print('j: ', j)
 		# 	print('P_i: ', P_i)
 		# 	print('A_i: ', A_i)
-
 		# print('barrier_action: ', barrier_action)
 
-		# exit()
 
-		# scale actions 
+		# make final action 
 		action = empty_action + barrier_action 
-		action = action + torch.from_numpy(0.05 * np.random.normal(size=action.shape)).float()
-		action = torch.tanh(action) # action \in [-1,1]
-		action = (action+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() # action \in [amin,amax]
+
+		# add noise 
+		action = action + torch.from_numpy(self.a_noise * np.random.normal(size=action.shape)).float()
+		
+		# scale actions 
+		if False:
+			action = torch.tanh(action) # action \in [-1,1]
+			action = (action+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() # action \in [amin,amax]
+		else:
+
+			# print('action:', action)
+			# print('action.shape: ', action.shape)
+			# print('action.norm(p=2,dim=1): ', action.norm(p=2,dim=1))
+
+			inv_alpha = action.norm(p=float('inf'),dim=1)/self.a_max 
+			# inv_alpha = torch.max(action,1)[0]/self.a_max
+			inv_alpha = torch.clamp(inv_alpha,min=1)
+			inv_alpha = inv_alpha.unsqueeze(0).T
+			inv_alpha = torch_tile(inv_alpha,1,2)
+			action = action*inv_alpha.pow_(-1)
+
+
+			# print('action:', action)
+			# print('action.shape: ', action.shape)
+			# print('action.norm(p=2,dim=1): ', action.norm(p=2,dim=1))
+
 		return action 
 
 	def get_robot_barrier_2(self,P):
@@ -176,21 +200,66 @@ class Barrier_Net(nn.Module):
 
 	def get_obstacle_barrier(self,dp):
 		norm_p = np.linalg.norm(dp)
-		h_ij = norm_p - self.D_obstacle
+
+		if self.circle_obstacles_on:
+			h_ij = norm_p - self.D_obstacle
+
+		else:
+
+			# dp = pi - pj 
+			# shift coordinate st pj = [0,0] (center of square obstacle)
+			# line_to_agent: line from pj to pi
+			# obstacle boundaries: [0,0] +- r_obstacle*[1,1] 
+			# d1 is the length from center of square to the intersection point on the square
+			# d2 is the length from the agent boundary to the d1
+			# norm p is the length from the center of the agent to the center of the obstacle 
+
+			def line(p1, p2):
+				A = (p1[1] - p2[1])
+				B = (p2[0] - p1[0])
+				C = (p1[0]*p2[1] - p2[0]*p1[1])
+				return A, B, -C
+
+			def intersection(L1, L2):
+				D  = L1[0] * L2[1] - L1[1] * L2[0]
+				Dx = L1[2] * L2[1] - L1[1] * L2[2]
+				Dy = L1[0] * L2[2] - L1[2] * L2[0]
+				if D != 0:
+					x = Dx / D
+					y = Dy / D
+					return np.array([x,y])
+				else:
+					return np.array([False,False])
+
+			dp = dp.numpy()
+			line_to_agent = line([0,0],[dp[0],dp[1]])
+
+			square_lines = []
+			square_lines.append(line(
+				[0-self.r_obstacle,0-self.r_obstacle],
+				[0-self.r_obstacle,0+self.r_obstacle]))
+			square_lines.append(line(
+				[0-self.r_obstacle,0+self.r_obstacle],
+				[0+self.r_obstacle,0+self.r_obstacle]))
+			square_lines.append(line(
+				[0+self.r_obstacle,0+self.r_obstacle],
+				[0+self.r_obstacle,0-self.r_obstacle]))
+			square_lines.append(line(
+				[0+self.r_obstacle,0-self.r_obstacle],
+				[0-self.r_obstacle,0-self.r_obstacle]))
+
+			d_square_to_intersection = np.inf 
+			for square_line in square_lines:
+				r = intersection(line_to_agent,square_line)
+				norm_r = np.linalg.norm(r)
+
+				if r.any() and norm_r < d_square_to_intersection:
+					d_square_to_intersection = norm_r 
+
+			h_ij = np.linalg.norm(dp) - d_square_to_intersection - self.r_agent
+
+
 		return self.b_gamma/np.power(h_ij,self.b_exph)*dp/norm_p
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

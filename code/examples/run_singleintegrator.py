@@ -4,6 +4,7 @@ from run import run, parse_args
 from sim import run_sim
 from systems.singleintegrator import SingleIntegrator
 from other_policy import APF
+import plotter 
 
 # standard
 from torch import nn, tanh, relu
@@ -35,6 +36,17 @@ class SingleIntegratorParam(Param):
 		self.a_min = -1*self.a_max
 		self.D_robot = 1.1*(self.r_agent+self.r_agent)
 		self.D_obstacle = 1.1*(self.r_agent + self.r_obstacle)
+		self.circle_obstacles_on = True # square obstacles batch not implemented 		
+
+		self.max_neighbors = 5
+		self.max_obstacles = 5
+		# Barrier function stuff
+		self.b_gamma = 0.01 # 0.1
+		self.b_exph = 1.0 # 1.0
+		# cbf 
+		self.cbf_kp = 0.2
+		self.cbf_kv = 1.5
+		self.a_noise = 0.002
 
 		# 
 		self.phi_max = self.a_max
@@ -42,7 +54,7 @@ class SingleIntegratorParam(Param):
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
+		self.sim_tf = 25
 		self.sim_dt = 0.1
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -55,9 +67,9 @@ class SingleIntegratorParam(Param):
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
 		self.il_n_epoch = 5000
-		self.il_lr = 5e-3
+		self.il_lr = 1e-3
 		self.il_wd = 0*0.01
-		self.il_n_data = 100000
+		self.il_n_data = 10000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
@@ -93,22 +105,10 @@ class SingleIntegratorParam(Param):
 
 		self.il_network_activation = relu
 
-		self.max_neighbors = 3
-		self.max_obstacles = 3
-
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
-
-		# Barrier function stuff
-		self.b_gamma = 0.1
-		self.b_exph = 1.0
-		# cbf 
-		self.cbf_kp = 0.2
-		self.cbf_kv = 1.5
-		self.cbf_noise = 0.075
-		self.a_noise = 0.075
 
 
 if __name__ == '__main__':
@@ -122,6 +122,15 @@ if __name__ == '__main__':
 
 	set_ic_on = True 
 	ring_ex_on = False
+
+
+	# TEMP
+	# param = SingleIntegratorParam()
+	# env = SingleIntegrator(param)			
+	# plotter.plot_barrier_fnc(env)
+	# plotter.save_figs(param.plots_fn)
+	# plotter.open_figs(param.plots_fn)
+	# exit()	
 
 	if set_ic_on:
 
@@ -145,14 +154,13 @@ if __name__ == '__main__':
 		else:
 
 			import yaml
-			ex = 2
+			ex = 9 # 4 is hard 
 			
 			if args.instance:
 				with open(args.instance) as map_file:
 					map_data = yaml.load(map_file)
 			else:
 				# test 2 example 
-				# param.n_agents = 2 
 				# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
 
 				# test empty 
@@ -160,6 +168,8 @@ if __name__ == '__main__':
 
 				# test map 
 				with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex{}.yaml".format(ex)) as map_file:
+				
+
 					map_data = yaml.load(map_file)
 
 			s = []
