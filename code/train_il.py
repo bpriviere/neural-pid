@@ -12,6 +12,7 @@ from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
 from torch.distributions import Categorical
 from collections import namedtuple
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from learning.pid_net import PID_Net
 from learning.pid_wref_net import PID_wRef_Net
@@ -20,6 +21,7 @@ from learning.empty_net import Empty_Net
 from learning.barrier_net import Barrier_Net
 from learning.nl_el_net import NL_EL_Net
 from learning.consensus_net import Consensus_Net
+
 
 def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	data = np.load(filename)
@@ -223,9 +225,9 @@ def load_dataset(env, filename):
 	# 		torch.tensor(data[0:-2,1+env.n:1+env.n+env.m]).float()
 
 
-def train(param,env,model,loader):
+def train(param,env,model,optimizer,loader):
 
-	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
+	
 	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 	epoch_loss = 0
 
@@ -320,7 +322,7 @@ def train_il(param, env):
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
-				datadir = glob.glob("../data/singleintegrator/centralplanner/*.npy")
+				datadir = glob.glob("../data/singleintegrator/central/*.npy")
 				# datadir = glob.glob("../data/singleintegrator/test/*.npy")
 
 			dataset = []
@@ -427,9 +429,14 @@ def train_il(param, env):
 
 	# training 
 	best_test_loss = Inf
+	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
+	scheduler = ReduceLROnPlateau(optimizer, 'min')
 	for epoch in range(1,param.il_n_epoch+1):
-		train_epoch_loss = train(param,env,model,loader_train)
+		
+		train_epoch_loss = train(param,env,model,optimizer,loader_train)
 		test_epoch_loss = test(param,env,model,loader_test)
+		scheduler.step(test_epoch_loss)
+
 		if epoch%param.il_log_interval==0:
 			print('epoch: ', epoch)
 			print('   Train Epoch Loss: ', train_epoch_loss)

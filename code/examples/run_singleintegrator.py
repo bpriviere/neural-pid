@@ -27,8 +27,8 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 4
-		self.r_comm = 1.5 #0.5
+		self.n_agents = 1
+		self.r_comm = 0.5 #0.5
 		self.r_obs_sense = 2.0
 		self.r_agent = 0.2
 		self.r_obstacle = 0.5
@@ -162,14 +162,10 @@ if __name__ == '__main__':
 			else:
 				# test 2 example 
 				# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
-
 				# test empty 
 				# with open("../baseline/centralized-planner/examples/empty-8-8-random-{}_30_agents.yaml".format(ex)) as map_file:
-
 				# test map 
 				with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex{}.yaml".format(ex)) as map_file:
-				
-
 					map_data = yaml.load(map_file)
 
 			s = []
