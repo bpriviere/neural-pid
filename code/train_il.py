@@ -23,7 +23,7 @@ from learning.nl_el_net import NL_EL_Net
 from learning.consensus_net import Consensus_Net
 
 
-def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
+def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacles):
 	data = np.load(filename)
 	data = torch.from_numpy(data)
 
@@ -50,7 +50,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
-		if t%2 != 0:
+		if t%10 != 0:
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
@@ -58,6 +58,10 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 			relative_goal = s_g - s_i   # relative goal 
 			if np.allclose(relative_goal, np.zeros(4)):
 				continue
+			# conditional normalization of relative goal
+			dist = relative_goal.norm()
+			if dist > obstacleDist:
+				relative_goal = relative_goal / dist * obstacleDist
 			time_to_goal = data[-1,0] - data[t,0]
 			relative_neighbors = []
 			for j in range(num_agents):
@@ -108,7 +112,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	# 	for i, obs in enumerate(item.observation.relative_obstacles):
 	# 		pos = obs + robot_pos[0:2] - torch.Tensor([0.5,0.5])
 	# 		ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
-	# 		if i >= 1:
+	# 		if i >= max_obstacles-1:
 	# 			break
 
 	# plotter.save_figs(filename + ".pdf")
@@ -449,7 +453,7 @@ def train_il(param, env):
 					if param.il_state_loss_on:
 						train_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 					else:
-						train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense))
+						train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense, param.max_obstacles))
 						# break
 					print(len(train_dataset))
 
@@ -460,7 +464,7 @@ def train_il(param, env):
 					if param.il_state_loss_on:
 						test_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 					else:
-						test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense))
+						test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense, param.max_obstacles))
 						# break
 					print(len(test_dataset))					
 

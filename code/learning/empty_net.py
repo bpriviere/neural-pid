@@ -62,8 +62,8 @@ class Empty_Net(nn.Module):
 		# print("rho_neighbors", rho_neighbors)
 		rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
 		g = x[:,1:3]
+		# g_norm = g.norm(dim=1,keepdim=True)
 		# time_to_goal = x[:,4:5]
-
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)
 
 		for layer in self.layers[:-1]:

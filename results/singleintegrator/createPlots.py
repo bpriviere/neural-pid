@@ -90,7 +90,7 @@ if __name__ == '__main__':
 		add_bar_chart(pp, results, "percent_agents_reached_goal", instance + " (% reached goal)")
 		add_bar_chart(pp, results, "num_collisions", instance + " (# collisions)")
 
-		map_filename = "../../baseline/centralized-planner/examples/{}.yaml".format(instance)
+		map_filename = "instances/{}.yaml".format(instance)
 		with open(map_filename) as map_file:
 			map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 
