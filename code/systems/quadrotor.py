@@ -58,14 +58,18 @@ class Quadrotor(Env):
 		self.a_max = param.a_max
 
 		# initial conditions
+		self.s_min = np.array( \
+					[-10, -10, -10, \
+					  -4, -4, -4, \
+					  -1.001, -1.001, -1.001, -1.001,
+					  -50, -50, -50])
+		self.s_max = -self.s_min
 		if param.env_case is 'SmallAngle':
-			self.s_min = np.array( \
-						[-10, -10, -10, \
-						  -4, -4, -4, \
-						  -1.001, -1.001, -1.001, -1.001,
-						  -50, -50, -50])
-			self.s_max = -self.s_min
-			self.rpy_limit = np.array([60, 60, 60])
+			self.rpy_limit = np.array([10, 10, 10])
+			self.limits = np.array([0.5,0.5,0.5,0.1,0.1,0.1, 0, 0, 0, 0, 1.2, 1.2, 1.2])
+		elif param.env_case is 'AnyAngle':
+			self.rpy_limit = None
+			self.limits = np.array([0.5,0.5,0.5,1,1,1, 0, 0, 0, 0, 12, 12, 12])
 		else:
 			raise Exception('param.env_case invalid ' + param.env_case)
 
@@ -166,14 +170,18 @@ class Quadrotor(Env):
 		if initial_state is None:
 			self.s = np.empty(self.n)
 			# position and velocity
-			limits = np.array([0.5,0.5,0.5,1,1,1, 0, 0, 0, 0, 12, 12, 12])
-			self.s[0:6] = np.random.uniform(-limits[0:6], limits[0:6], 6)
+			self.s[0:6] = np.random.uniform(-self.limits[0:6], self.limits[0:6], 6)
 			# rotation
-			rpy = np.radians(np.random.uniform(-self.rpy_limit, self.rpy_limit, 3))
-			q = rowan.from_euler(rpy[0], rpy[1], rpy[2], 'xyz')
+			if self.rpy_limit is None:
+				q = rowan.random.random_sample()
+			else:
+				rpy = np.radians(np.random.uniform(-self.rpy_limit, self.rpy_limit, 3))
+				q = rowan.from_euler(rpy[0], rpy[1], rpy[2], 'xyz')
+			if q[0] < 0:
+				q = -q
 			self.s[6:10] = q
 			# angular velocity
-			self.s[10:13] = np.random.uniform(-limits[10:13], limits[10:13], 3)
+			self.s[10:13] = np.random.uniform(-self.limits[10:13], self.limits[10:13], 3)
 		else:
 			self.s = initial_state
 		self.time_step = 0

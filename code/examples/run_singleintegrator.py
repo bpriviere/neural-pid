@@ -27,9 +27,9 @@ class SingleIntegratorParam(Param):
 		self.sim_render_on = False		
 
 		# orca param
-		self.n_agents = 1
-		self.r_comm = 0.5 #0.5
-		self.r_obs_sense = 2.0
+		self.n_agents = 4
+		self.r_comm = 3.0 #0.5
+		self.r_obs_sense = 1.5
 		self.r_agent = 0.2
 		self.r_obstacle = 0.5
 		self.a_max = 0.5
@@ -38,8 +38,8 @@ class SingleIntegratorParam(Param):
 		self.D_obstacle = 1.1*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented 		
 
-		self.max_neighbors = 5
-		self.max_obstacles = 5
+		self.max_neighbors = 0
+		self.max_obstacles = 7
 		# Barrier function stuff
 		self.b_gamma = 0.01 # 0.1
 		self.b_exph = 1.0 # 1.0
@@ -54,7 +54,7 @@ class SingleIntegratorParam(Param):
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 25
+		self.sim_tf = 30
 		self.sim_dt = 0.1
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -66,17 +66,17 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 5000
-		self.il_lr = 1e-3
-		self.il_wd = 0*0.01
-		self.il_n_data = 10000
+		self.il_n_epoch = 500
+		self.il_lr = 1e-4
+		self.il_wd = 0.0001
+		self.il_n_data = 100000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
+		self.il_controller_class = 'Empty' # 'Empty','Barrier'
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
-		n,m,h,l,p = 4,2,128,16,16 # state dim, action dim, hidden layer
+		n,m,h,l,p = 4,2,64,16,16 # state dim, action dim, hidden layer
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(4,h),
 			nn.Linear(h,h),

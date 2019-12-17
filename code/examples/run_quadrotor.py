@@ -66,7 +66,7 @@ class QuadrotorParam(Param):
 		self.rl_warm_start_fn = '../models/quadrotor/rl_continuous_v3.pt'
 		self.rl_module = 'DDPG'
 		self.rl_lr_schedule = np.arange(0,10)
-
+		self.rl_batch_size = 2000
 		# common param
 		self.rl_gamma = 0.999
 		self.rl_K = 10
@@ -94,7 +94,6 @@ class QuadrotorParam(Param):
 
 		else:
 			# ppo param s
-			self.rl_lr = 5e-3
 			self.rl_lmbda = 0.95
 			self.rl_eps_clip = 0.2
 			self.rl_discrete_action_space = [
@@ -122,11 +121,11 @@ class QuadrotorParam(Param):
 		self.il_imitate_model_fn = '../models/quadrotor/rl_current.pt'
 
 		# Sim
-		self.sim_rl_model_fn = '../models/quadrotor/rl_current.pt' # rl_current
+		self.sim_rl_model_fn = '../models/quadrotor/rl_discrete.pt' # rl_current
 		self.sim_il_model_fn = '../models/quadrotor/il_current.pt'
 
 		self.sim_t0 = 0
-		self.sim_tf = 3
+		self.sim_tf = 5
 		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -237,6 +236,247 @@ class FirmwareController:
 		return motorForce
 		# return np.array([0.0085, 0.0085, 0.0085, 0.0085]) * 9.80
 
+#   // For euler angles Z(q)^-1 is:
+#   //           [1  0       -sin(p)     ]
+#   // Z(q)^-1 = [0  cos(r)  cos(p)sin(r)]
+#   //           [0 -sin(r)  cos(p)cos(r)]
+def Zinv(q):
+	return np.array([
+		[1, 0, -np.sin(q[1])],
+		[0, np.cos(q[0]), np.cos(q[1]) * np.sin(q[0])],
+		[0, -np.sin(q[0]), np.cos(q[1]) * np.cos(q[0])]])
+
+
+class SJCController:
+	"""
+	Controller proposed in 
+	
+	Daniel Morgan, Giri P Subramanian, Soon-Jo Chung, Fred Y Hadaegh
+	Swarm assignment and trajectory optimization using variable-swarm, distributed auction assignment and sequential convex programming 
+	IJRR 2016
+	"""
+	def __init__(self, J, mass, a_min, a_max):
+		self.mass = mass
+		self.J = J
+		self.a_min = a_min
+		self.a_max = a_max
+
+		# desired state
+		self.p_d = np.array([0,0,0])
+		self.v_d = np.array([0,0,0])
+		self.a_d = np.array([0,0,0 + 9.81])
+		self.R_d = rowan.to_matrix([1, 0, 0, 0])
+		self.omega_d = np.array([0,0,0])
+
+		# Gains
+		self.Kpos_P = np.array([10,10,5])
+		self.Kpos_D = np.array([5,5,2.5])
+
+		self.lambda_att = np.array([20,20,8])
+		self.K_att = np.array([0.003, 0.003, 0.003])
+
+		# state
+		self.omega_r_last = None
+		self.q_d_last = None
+
+		self.q = []
+		self.qr = []
+		self.omega = []
+		self.omegar = []
+
+	def policy(self, state):
+		# current state
+		p = state[0:3]
+		v = state[3:6]
+		q = state[6:10]
+		omega = state[10:13]
+		R = rowan.to_matrix(q)
+
+		# position controller
+		pos_e = self.p_d - p
+		vel_e = self.v_d - v
+		F_d = self.mass * (self.a_d + self.Kpos_D * vel_e + self.Kpos_P * pos_e)
+		print(F_d)
+
+		thrust = np.linalg.norm(F_d)
+		yaw = 0
+		q_d = np.array([
+			np.arcsin((F_d[0] * np.sin(yaw) - F_d[1] * np.cos(yaw)) / thrust),
+			np.arctan((F_d[0] * np.cos(yaw) + F_d[1] * np.sin(yaw)) / F_d[2]),
+			yaw])
+
+		if self.q_d_last is not None:
+			q_d_dot = (q_d - self.q_d_last) / 0.01
+		else:
+			q_d_dot = np.zeros(3)
+		self.q_d_last = q_d
+
+		# attitude controller
+		q = rowan.to_euler(q, 'xyz')
+
+		omega_r = Zinv(q) @ (q_d_dot +self.lambda_att * (q_d -q))
+		if self.omega_r_last is not None:
+			omega_r_dot = (omega_r - self.omega_r_last) / 0.01
+		else:
+			omega_r_dot = np.zeros(3)
+		self.omega_r_last = omega_r
+
+		torque = self.J * omega_r_dot \
+				- np.cross(self.J * omega, omega_r) \
+				- self.K_att * (omega - omega_r)
+
+		# power distribution
+		thrust_to_torque = 0.006
+		arm_length = 0.046
+		thrustpart = 0.25 * thrust
+		yawpart = -0.25 * torque[2] / thrust_to_torque
+
+		arm = 0.707106781 * arm_length
+		rollpart = 0.25 / arm * torque[0]
+		pitchpart = 0.25 / arm * torque[1]
+
+		motorForce = np.array([
+			thrustpart - rollpart - pitchpart + yawpart,
+			thrustpart - rollpart + pitchpart - yawpart,
+			thrustpart + rollpart + pitchpart + yawpart,
+			thrustpart + rollpart - pitchpart - yawpart
+		])
+		motorForce = np.clip(motorForce, self.a_min, self.a_max)
+
+		# logging
+		self.qr.append(np.degrees(q_d))
+		self.q.append(np.degrees(q))
+		self.omegar.append(omega_r)
+		self.omega.append(omega)
+
+		return motorForce
+
+def veemap(A):
+	return np.array([A[2,1], -A[0,2], A[1,0]])
+
+class XichenController:
+	"""
+	Controller proposed in "Nonlinear Control of Autonomous Flying Cars with Wings and
+	Distributed Electric Propulsion", CDC 2018
+	"""
+	def __init__(self, J, mass, a_min, a_max):
+		self.mass = mass
+		self.J = J
+		self.a_min = a_min
+		self.a_max = a_max
+
+		# desired state
+		self.p_d = np.array([0,0,0])
+		self.v_d = np.array([0,0,0])
+		self.a_d = np.array([0,0,0 + 9.81])
+		self.R_d = rowan.to_matrix([1, 0, 0, 0])
+		self.omega_d = np.array([0,0,0])
+
+		# Gains
+		self.Kpos_P = np.array([10,10,5])
+		self.Kpos_D = np.array([5,5,2.5])
+
+		self.lambda_a = np.array([20,20,8])
+		self.K_att = np.array([0.003, 0.003, 0.003])
+		self.kq = 0
+
+		# state
+		self.omega_r_last = None
+
+		self.q = []
+		self.qr = []
+		self.omega = []
+		self.omegar = []
+
+	def policy(self, state):
+		# current state
+		p = state[0:3]
+		v = state[3:6]
+		q = state[6:10]
+		omega = state[10:13]
+		R = rowan.to_matrix(q)
+
+		# position controller
+		# p_tilde = p - self.p_d
+		# v_tilde = v - self.v_d
+		# v_r = self.v_d - self.lambda_p * p_tilde
+		# v_r_dot = self.a_d - self.lambda_p * v_tilde
+		# s_v = v - v_r
+		# f_r = self.mass * v_r_dot \
+		# 	- self.Kv * s_v \
+		# 	- self.Kp * p_tilde
+
+		# thrust = np.linalg.norm(f_r)
+
+		# qr = mkvec(
+  #       asinf((F_d.x * sinf(yaw) - F_d.y * cosf(yaw)) / control->thrustSI),
+  #       atanf((F_d.x * cosf(yaw) + F_d.y * sinf(yaw)) / F_d.z),
+  #       desiredYaw);
+
+		# position controller
+		pos_e = self.p_d - p
+		vel_e = self.v_d - v
+		F_d = self.mass * (self.a_d + self.Kpos_D * vel_e + self.Kpos_P * pos_e)
+		print(F_d)
+
+		thrust = np.linalg.norm(F_d)
+		yaw = 0
+		rpy_d = np.array([
+			np.arcsin((F_d[0] * np.sin(yaw) - F_d[1] * np.cos(yaw)) / thrust),
+			np.arctan((F_d[0] * np.cos(yaw) + F_d[1] * np.sin(yaw)) / F_d[2]),
+			yaw])
+		R_d = rowan.to_matrix(rowan.from_euler(*rpy_d))
+		print(rpy_d)
+		print(R_d)
+
+		# attitude controller
+
+		# rotation error
+		Rtilde = self.R_d.T @ R
+		qtilde_0 = 1/2 * np.sqrt(1 + np.trace(Rtilde))
+		qtilde_v = 1 / (4 * qtilde_0) * veemap(Rtilde - Rtilde.T)
+
+		omega_r = Rtilde.T @ self.omega_d - 2 * self.lambda_a * qtilde_v
+		print(omega_r)
+
+		if self.omega_r_last is not None:
+			omega_r_dot = (omega_r - self.omega_r_last) / 0.01
+		else:
+			omega_r_dot = np.zeros(3)
+		self.omega_r_last = omega_r
+
+		s_omega = omega - omega_r
+		torque = self.J * omega_r_dot \
+				- np.cross(self.J * omega, omega_r) \
+				- self.K_att * s_omega \
+				- self.kq * qtilde_v
+
+		# power distribution
+		thrust_to_torque = 0.006
+		arm_length = 0.046
+		thrustpart = 0.25 * thrust
+		yawpart = -0.25 * torque[2] / thrust_to_torque
+
+		arm = 0.707106781 * arm_length
+		rollpart = 0.25 / arm * torque[0]
+		pitchpart = 0.25 / arm * torque[1]
+
+		motorForce = np.array([
+			thrustpart - rollpart - pitchpart + yawpart,
+			thrustpart - rollpart + pitchpart - yawpart,
+			thrustpart + rollpart + pitchpart + yawpart,
+			thrustpart + rollpart - pitchpart - yawpart
+		])
+		motorForce = np.clip(motorForce, self.a_min, self.a_max)
+
+		# logging
+		self.qr.append(np.degrees(rpy_d))
+		self.q.append(np.degrees(rowan.to_euler(q, 'xyz')))
+		self.omegar.append(omega_r)
+		self.omega.append(omega)
+
+		return motorForce
+
 class FilePolicy:
 	def __init__(self, filename):
 		data = np.loadtxt(filename, delimiter=',', ndmin=2)
@@ -253,25 +493,28 @@ if __name__ == '__main__':
 	controllers = {
 		# 'RL':	torch.load(param.sim_rl_model_fn),
 		'FW':	FirmwareController(param.a_min, param.a_max),
+		# 'FW SJC':	SJCController(param.mass, param.J, param.a_min, param.a_max),
 		# 'RRT':	FilePolicy(param.rrt_fn),
-		# 'SCP':	FilePolicy(param.scp_fn),
+		# 'SCP':	FilePolicy("/home/whoenig/projects/caltech/neural-pid/models/quadrotor/dataset_rl/scp_1.csv"),
 	}
 
-	run(param, env, controllers)
+	x0 = None #controllers['SCP'].states[0]
 
-	# q = np.array(controllers['FW'].q)
-	# qr = np.array(controllers['FW'].qr)
-	# omega = np.array(controllers['FW'].omega)
-	# omegar = np.array(controllers['FW'].omegar)
+	run(param, env, controllers, x0)
+
+	q = np.array(controllers['FW SJC'].q)
+	qr = np.array(controllers['FW SJC'].qr)
+	omega = np.array(controllers['FW SJC'].omega)
+	omegar = np.array(controllers['FW SJC'].omegar)
 
 
-	# fig, ax = plt.subplots(2, 3)
-	# for i in range(3):
-	# 	ax[0][i].plot(omega[:,i],label='omega' + str(i))
-	# 	ax[0][i].plot(omegar[:,i], label='omegar' + str(i))
-	# 	ax[0][i].legend()
-	# 	ax[1][i].plot(q[:,i],label='q' + str(i))
-	# 	ax[1][i].plot(qr[:,i], label='qr' + str(i))
-	# 	ax[1][i].legend()
+	fig, ax = plt.subplots(2, 3)
+	for i in range(3):
+		ax[0][i].plot(omega[:,i],label='omega' + str(i))
+		ax[0][i].plot(omegar[:,i], label='omegar' + str(i))
+		ax[0][i].legend()
+		ax[1][i].plot(q[:,i],label='q' + str(i))
+		ax[1][i].plot(qr[:,i], label='qr' + str(i))
+		ax[1][i].legend()
 
-	# plt.show()
+	plt.show()
