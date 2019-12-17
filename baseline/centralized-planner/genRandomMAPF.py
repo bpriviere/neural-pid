@@ -99,7 +99,7 @@ if __name__ == "__main__":
     for num_agents in [1]:
     # for num_agents in range(15, 21):
     # for num_agents in [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
-        for i in range(0, 10):
+        for i in range(257,258):
           groups, obstacles = randAgents1(map_size, num_agents, num_agents, num_obstacles)
           writeFile(obstacles, map_size, groups, "map_{0}by{1}_obst{2}_agents{3}_ex{4:04}.yaml".format(
               map_size[0],

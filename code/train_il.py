@@ -50,7 +50,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist):
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
-		if t%10 != 0:
+		if t%2 != 0:
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
@@ -145,9 +145,15 @@ def load_consensus_dataset(filename,n_neighbor,agent_memory):
 	print('Dataset Size: ', len(dataset))
 	return dataset
 
-def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=False,batch_size=None,max_neighbors=1000,max_obstacles=1000):
+def make_loader(
+	dataset=None,
+	n_data=None,
+	shuffle=False,
+	batch_size=None,
+	max_neighbors=1000,
+	max_obstacles=1000):
 
-	def make_loader(dataset):
+	def batch_loader(dataset):
 		# break by observation size
 		dataset_dict = dict()
 
@@ -207,16 +213,89 @@ def make_orca_loaders(dataset=None,n_data=None,test_train_ratio=None,shuffle=Fal
 	if n_data is not None and n_data < len(dataset):
 		dataset = dataset[0:n_data]
 
-	if test_train_ratio is not None:
-		cutoff = int(test_train_ratio*len(dataset))
-		train_dataset = dataset[0:cutoff]
-		test_dataset = dataset[cutoff:]
-	else:
-		raise Exception('test train ratio not specified')
+	loader = batch_loader(dataset)
+	return loader
 
-	loader_train = make_loader(train_dataset)
-	loader_test = make_loader(test_dataset)
-	return loader_train,loader_test	
+
+# def make_orca_loaders(
+# 	dataset=None,
+# 	n_data=None,
+# 	test_train_ratio=None,
+# 	shuffle=False,
+# 	batch_size=None,
+# 	max_neighbors=1000,
+# 	max_obstacles=1000):
+
+# 	def make_loader(dataset):
+# 		# break by observation size
+# 		dataset_dict = dict()
+
+# 		for data in dataset:
+# 			num_neighbors = min(max_neighbors,len(data.observation.relative_neighbors))
+# 			num_obstacles = min(max_obstacles,len(data.observation.relative_obstacles))
+# 			key = (num_neighbors, num_obstacles)
+# 			if key in dataset_dict:
+# 				dataset_dict[key].append(data)
+# 			else:
+# 				dataset_dict[key] = [data]
+
+# 		# Create actual batches
+# 		loader = []
+# 		for key, dataset_per_key in dataset_dict.items():
+# 			num_neighbors, num_obstacles = key
+# 			batch_x = []
+# 			batch_y = []
+# 			for data in dataset_per_key:
+# 				obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
+# 				obs_array[0] = num_neighbors
+# 				idx = 1
+# 				obs_array[idx:idx+4] = data.observation.relative_goal
+# 				idx += 4
+# 				# obs_array[4] = data.observation.time_to_goal
+# 				for i in range(num_neighbors):
+# 					obs_array[idx:idx+4] = data.observation.relative_neighbors[i]
+# 					idx += 4
+# 				for i in range(num_obstacles):
+# 					obs_array[idx:idx+2] = data.observation.relative_obstacles[i]
+# 					idx += 2
+# 				batch_x.append(obs_array)
+# 				batch_y.append(data.action)
+# 				if (len(batch_x))%batch_size == 0:
+# 					print("add batch ", key, len(batch_x))
+# 					batch_y = torch.from_numpy(np.array(batch_y)).float()
+# 					loader.append([torch.Tensor(batch_x),batch_y])
+# 					batch_x = []
+# 					batch_y = []
+
+# 			if len(batch_x) > 0:
+# 				print("add batch ", key, len(batch_x))
+# 				batch_y = torch.from_numpy(np.array(batch_y)).float()
+# 				loader.append([torch.Tensor(batch_x),batch_y])
+# 				batch_x = []
+# 				batch_y = []
+
+# 		return loader
+
+
+# 	if dataset is None:
+# 		raise Exception('dataset not specified')
+	
+# 	if shuffle:
+# 		random.shuffle(dataset)
+
+# 	if n_data is not None and n_data < len(dataset):
+# 		dataset = dataset[0:n_data]
+
+# 	if test_train_ratio is not None:
+# 		cutoff = int(test_train_ratio*len(dataset))
+# 		train_dataset = dataset[0:cutoff]
+# 		test_dataset = dataset[cutoff:]
+# 	else:
+# 		raise Exception('test train ratio not specified')
+
+# 	loader_train = make_loader(train_dataset)
+# 	loader_test = make_loader(test_dataset)
+# 	return loader_train,loader_test	
 
 def make_dataset(param, env):
 	model = torch.load(param.il_imitate_model_fn)
@@ -357,28 +436,51 @@ def train_il(param, env):
 			elif "centralplanner" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/central/*.npy")
 
-			dataset = []
+			train_dataset = []
+			test_dataset = [] 
+			training = True 
 			for k,file in enumerate(sorted(datadir)):
 				# if k%20 != 0:
 				# if "empty" in file:
 					# continue
 				print(file)
-				if param.il_state_loss_on:
-					dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+
+				if training:
+					if param.il_state_loss_on:
+						train_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+					else:
+						train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense))
+						# break
+					print(len(train_dataset))
+
+					if len(train_dataset) > param.il_n_data*param.il_test_train_ratio:
+						training = False
+
 				else:
-					dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense))
-					# break
-				print(len(dataset))
+					if param.il_state_loss_on:
+						test_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+					else:
+						test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense))
+						# break
+					print(len(test_dataset))					
 
-				if len(dataset) > param.il_n_data:
-					break
+					if len(test_dataset) > param.il_n_data*(1-param.il_test_train_ratio):
+						break
 
-			print('Total Dataset Size: ',len(dataset))
-			loader_train,loader_test = make_orca_loaders(
-				dataset=dataset,
+			print('Total Training Dataset Size: ',len(train_dataset))
+			print('Total Testing Dataset Size: ',len(test_dataset))
+			loader_train = make_loader(
+				dataset=train_dataset,
 				shuffle=True,
 				batch_size=param.il_batch_size,
-				test_train_ratio=param.il_test_train_ratio,
+				n_data=param.il_n_data,
+				max_neighbors=param.max_neighbors,
+				max_obstacles=param.max_obstacles)
+
+			loader_test = make_loader(
+				dataset=test_dataset,
+				shuffle=True,
+				batch_size=param.il_batch_size,
 				n_data=param.il_n_data,
 				max_neighbors=param.max_neighbors,
 				max_obstacles=param.max_obstacles)

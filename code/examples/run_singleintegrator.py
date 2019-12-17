@@ -28,21 +28,21 @@ class SingleIntegratorParam(Param):
 
 		# orca param
 		self.n_agents = 4
-		self.r_comm = 3.0 #0.5
-		self.r_obs_sense = 1.5
+		self.r_comm = 2.0 #0.5
+		self.r_obs_sense = 20.0
 		self.r_agent = 0.2
 		self.r_obstacle = 0.5
 		self.a_max = 0.5
 		self.a_min = -1*self.a_max
 		self.D_robot = 1.1*(self.r_agent+self.r_agent)
 		self.D_obstacle = 1.1*(self.r_agent + self.r_obstacle)
-		self.circle_obstacles_on = True # square obstacles batch not implemented 		
+		self.circle_obstacles_on = True # square obstacles batch not implemented 
 
-		self.max_neighbors = 0
-		self.max_obstacles = 7
+		self.max_neighbors = 5
+		self.max_obstacles = 50
 		# Barrier function stuff
-		self.b_gamma = 0.01 # 0.1
-		self.b_exph = 1.0 # 1.0
+		self.b_gamma = 0.005 # 0.1
+		self.b_exph = 2.0 # 1.0
 		# cbf 
 		self.cbf_kp = 0.2
 		self.cbf_kv = 1.5
@@ -55,7 +55,7 @@ class SingleIntegratorParam(Param):
 		# sim 
 		self.sim_t0 = 0
 		self.sim_tf = 30
-		self.sim_dt = 0.1
+		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -66,7 +66,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.8
 		self.il_batch_size = 5000
-		self.il_n_epoch = 500
+		self.il_n_epoch = 5000
 		self.il_lr = 1e-4
 		self.il_wd = 0.0001
 		self.il_n_data = 100000
@@ -76,7 +76,7 @@ class SingleIntegratorParam(Param):
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
-		n,m,h,l,p = 4,2,64,16,16 # state dim, action dim, hidden layer
+		n,m,h,l,p = 4,2,128,128,128 # state dim, action dim, hidden layer
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(4,h),
 			nn.Linear(h,h),
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 		run(param, env, None, None, args)
 		exit()
 
-	set_ic_on = True 
+	set_ic_on = True
 	ring_ex_on = False
 
 
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 	# plotter.plot_barrier_fnc(env)
 	# plotter.save_figs(param.plots_fn)
 	# plotter.open_figs(param.plots_fn)
-	# exit()	
+	# exit()
 
 	if set_ic_on:
 
@@ -154,18 +154,17 @@ if __name__ == '__main__':
 		else:
 
 			import yaml
-			ex = 9 # 4 is hard 
+			ex = '0045' # 4 is hard 
 			
 			if args.instance:
 				with open(args.instance) as map_file:
 					map_data = yaml.load(map_file)
 			else:
-				# test 2 example 
-				# with open("../baseline/centralized-planner/examples/test_2_agents.yaml") as map_file:
-				# test empty 
-				# with open("../baseline/centralized-planner/examples/empty-8-8-random-{}_30_agents.yaml".format(ex)) as map_file:
 				# test map 
-				with open("../baseline/centralized-planner/examples/map_8by8_obst12_agents10_ex{}.yaml".format(ex)) as map_file:
+				with open("../data/singleintegrator/instances/map_8by8_obst12_agents1_ex{}.yaml".format(ex)) as map_file:
+
+				# test map test dataset
+
 					map_data = yaml.load(map_file)
 
 			s = []
