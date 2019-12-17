@@ -14,7 +14,7 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
 
-  for file in sorted(glob.glob("instances/*.yaml")):
+  for file in sorted(glob.glob("instances/*agents10*.yaml")):
     basename = os.path.splitext(os.path.basename(file))[0]
     print(basename)
     if args.central:

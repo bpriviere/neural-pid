@@ -38,11 +38,11 @@ class SingleIntegratorParam(Param):
 		self.D_obstacle = 1.1*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented 		
 
-		self.max_neighbors = 0
-		self.max_obstacles = 7 #3
+		self.max_neighbors = 5
+		self.max_obstacles = 5
 		# Barrier function stuff
 		self.b_gamma = 0.01 # 0.1
-		self.b_exph = 1.0 # 1.0
+		self.b_exph = 3.0 # 1.0
 		# cbf 
 		self.cbf_kp = 0.2
 		self.cbf_kv = 1.5
@@ -68,15 +68,15 @@ class SingleIntegratorParam(Param):
 		self.il_batch_size = 5000
 		self.il_n_epoch = 5000
 		self.il_lr = 1e-4
-		self.il_wd = 0.0001
-		self.il_n_data = 100000
+		self.il_wd = 0*0.0001
+		self.il_n_data = 10000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier'
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier'
 		self.controller_learning_module = 'DeepSet' # 
 
 		# learning hyperparameters
-		n,m,h,l,p = 4,2,128,128,128 # state dim, action dim, hidden layer
+		n,m,h,l,p = 4,2,256,256,256 # state dim, action dim, hidden layer
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(4,h),
 			nn.Linear(h,h),
@@ -209,3 +209,4 @@ if __name__ == '__main__':
 				np.save(f, result, allow_pickle=False)
 	else:
 		run(param, env, controllers, s0, args)
+

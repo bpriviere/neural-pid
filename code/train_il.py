@@ -340,7 +340,7 @@ def train_il(param, env):
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
-				datadir = glob.glob("../data/singleintegrator/central/*.npy")
+				datadir = glob.glob("../data/singleintegrator/central/*agents10*")
 
 			train_dataset = []
 			test_dataset = [] 
