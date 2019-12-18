@@ -210,8 +210,8 @@ class CBF:
 				# backup 
 				a_i = -self.alpha*v_i/np.linalg.norm(v_i)
 
-			# A[agent_i.i,:] = a_i + self.param.cbf_noise*np.random.normal(size=(1,2))
-			A[agent_i.i,:] = a_i 
+			A[agent_i.i,:] = a_i + self.param.cbf_noise*np.random.normal(size=(1,2))
+			# A[agent_i.i,:] = a_i 
 
 		# exit()
 		# print('A: ',A)
@@ -246,6 +246,7 @@ class APF:
 		self.env = env
 		self.param = param
 		self.D_robot = param.D_robot
+		self.D_obstacle = param.D_obstacle
 		self.alpha = param.a_max 
 		self.state_dim_per_agent = env.state_dim_per_agent
 		self.action_dim_per_agent = env.action_dim_per_agent
@@ -293,13 +294,21 @@ class APF:
 			for j in range(no):
 				# pass 
 				idx = 1 + self.state_dim_per_agent*(nn+1)+np.arange(0,2,dtype=int)
-				p_ij = observation_i[idx]
+				p_ij = -1*observation_i[idx]
 				a_barrier += self.get_obstacle_barrier(p_ij)
 
-			# add and scale
+			# add 
 			a_i = a_barrier + a_nom 
-			a_i = np.tanh(a_i) # action \in [-1,1]
-			a_i = (a_i+1.)/2.*(self.a_max-self.a_min)+self.a_min # action \in [amin,amax]
+
+			# scale: 
+			if False:
+				a_i = np.tanh(a_i) # action \in [-1,1]
+				a_i = (a_i+1.)/2.*(self.a_max-self.a_min)+self.a_min # action \in [amin,amax]
+
+			else:
+				alpha = self.a_max / max(np.abs(a_i)) 
+				if alpha < 1:
+					a_i = a_i*alpha 
 
 			# A[i,:] = a_i + self.param.cbf_noise*np.random.normal(size=(1,2))
 			A[i,:] = a_i 
@@ -337,7 +346,7 @@ class APF:
 
 	def get_min_dist(self,dp):
 
-		if False:
+		if True:
 			# TEMP 
 			d2 = np.linalg.norm(dp) - self.D_obstacle
 
