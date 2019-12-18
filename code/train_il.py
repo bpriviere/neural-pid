@@ -201,12 +201,14 @@ def make_loader(
 			# store all the data for this nn/no-pair in a file
 			batch_x = np.array(batch_x)
 			batch_y = np.array(batch_y)
-			with open("batch_{}_nn{}_no{}.npy".format(name,num_neighbors, num_obstacles), "wb") as f:
-				np.save(f, np.hstack((batch_x, batch_y)), allow_pickle=False)
+			print(name, num_neighbors, num_obstacles, batch_x.shape[0])
+			# with open("batch_{}_nn{}_no{}.npy".format(name,num_neighbors, num_obstacles), "wb") as f:
+			# 	np.save(f, np.hstack((batch_x, batch_y)), allow_pickle=False)
 
 			# split data by batch size
 			for idx in np.arange(0, batch_x.shape[0], batch_size):
 				last_idx = min(idx + batch_size, batch_x.shape[0])
+				# print("Batch of size ", last_idx - idx)
 				x_data = torch.from_numpy(batch_x[idx:last_idx]).float()
 				y_data = torch.from_numpy(batch_y[idx:last_idx]).float()
 				loader.append([x_data, y_data])
