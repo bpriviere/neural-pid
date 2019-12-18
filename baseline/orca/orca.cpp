@@ -19,7 +19,7 @@ std::vector<RVO::Vector2> goals;
 void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
 {
   /* Specify the global time step of the simulation. */
-  sim->setTimeStep(0.1f);
+  sim->setTimeStep(0.05f);
 
   /* Specify the default parameters for agents that are subsequently added. */
   sim->setAgentDefaults(
@@ -113,6 +113,41 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
       obstacle.push_back(RVO::Vector2(x+1, y+1));
       obstacle.push_back(RVO::Vector2(x, y+1));
 
+      sim->addObstacle(obstacle);
+    }
+
+    int dimx = config["map"]["dimensions"][0].as<int>();
+    int dimy = config["map"]["dimensions"][1].as<int>();
+    {
+      std::vector<RVO::Vector2> obstacle;
+      obstacle.push_back(RVO::Vector2(-1, -1));
+      obstacle.push_back(RVO::Vector2(0, -1));
+      obstacle.push_back(RVO::Vector2(0, dimy));
+      obstacle.push_back(RVO::Vector2(-1, dimy));
+      sim->addObstacle(obstacle);
+    }
+    {
+      std::vector<RVO::Vector2> obstacle;
+      obstacle.push_back(RVO::Vector2(dimx, -1));
+      obstacle.push_back(RVO::Vector2(dimx+1, -1));
+      obstacle.push_back(RVO::Vector2(dimx+1, dimy));
+      obstacle.push_back(RVO::Vector2(dimx, dimy));
+      sim->addObstacle(obstacle);
+    }
+    {
+      std::vector<RVO::Vector2> obstacle;
+      obstacle.push_back(RVO::Vector2(0, -1));
+      obstacle.push_back(RVO::Vector2(dimx+1, -1));
+      obstacle.push_back(RVO::Vector2(dimx+1, 0));
+      obstacle.push_back(RVO::Vector2(0, 0));
+      sim->addObstacle(obstacle);
+    }
+    {
+      std::vector<RVO::Vector2> obstacle;
+      obstacle.push_back(RVO::Vector2(0, dimy));
+      obstacle.push_back(RVO::Vector2(dimx+1, dimy));
+      obstacle.push_back(RVO::Vector2(dimx+1, dimy+1));
+      obstacle.push_back(RVO::Vector2(0, dimy+1));
       sim->addObstacle(obstacle);
     }
 

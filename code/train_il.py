@@ -54,14 +54,18 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacl
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
-			s_g = data[-1,i*4+1:i*4+5]  # goal state i 
+			# s_g = data[-1,i*4+1:i*4+5]  # goal state i 
+			s_g = torch.Tensor(map_data["agents"][i]["goal"] + [0,0]) + torch.Tensor([0.5,0.5,0,0])
+			# print(s_g, data[-1,i*4+1:i*4+5])
 			relative_goal = s_g - s_i   # relative goal 
 			if np.allclose(relative_goal, np.zeros(4)):
 				continue
+
 			# conditional normalization of relative goal
-			dist = relative_goal.norm()
+			dist = relative_goal[0:2].norm()
 			if dist > obstacleDist:
-				relative_goal = relative_goal / dist * obstacleDist
+				relative_goal[0:2] = relative_goal[0:2] / dist * obstacleDist
+
 			time_to_goal = data[-1,0] - data[t,0]
 			relative_neighbors = []
 			for j in range(num_agents):
@@ -155,7 +159,8 @@ def make_loader(
 	shuffle=False,
 	batch_size=None,
 	max_neighbors=1000,
-	max_obstacles=1000):
+	max_obstacles=1000,
+	name=None):
 
 	def batch_loader(dataset):
 		# break by observation size
@@ -172,6 +177,7 @@ def make_loader(
 
 		# Create actual batches
 		loader = []
+		fidx = 0
 		for key, dataset_per_key in dataset_dict.items():
 			num_neighbors, num_obstacles = key
 			batch_x = []
@@ -191,19 +197,19 @@ def make_loader(
 					idx += 2
 				batch_x.append(obs_array)
 				batch_y.append(data.action)
-				if (len(batch_x))%batch_size == 0:
-					print("add batch ", key, len(batch_x))
-					batch_y = torch.from_numpy(np.array(batch_y)).float()
-					loader.append([torch.Tensor(batch_x),batch_y])
-					batch_x = []
-					batch_y = []
 
-			if len(batch_x) > 0:
-				print("add batch ", key, len(batch_x))
-				batch_y = torch.from_numpy(np.array(batch_y)).float()
-				loader.append([torch.Tensor(batch_x),batch_y])
-				batch_x = []
-				batch_y = []
+			# store all the data for this nn/no-pair in a file
+			batch_x = np.array(batch_x)
+			batch_y = np.array(batch_y)
+			with open("batch_{}_nn{}_no{}.npy".format(name,num_neighbors, num_obstacles), "wb") as f:
+				np.save(f, np.hstack((batch_x, batch_y)), allow_pickle=False)
+
+			# split data by batch size
+			for idx in np.arange(0, batch_x.shape[0], batch_size):
+				last_idx = min(idx + batch_size, batch_x.shape[0])
+				x_data = torch.from_numpy(batch_x[idx:last_idx]).float()
+				y_data = torch.from_numpy(batch_y[idx:last_idx]).float()
+				loader.append([x_data, y_data])
 
 		return loader
 
@@ -265,7 +271,8 @@ def load_dataset(env, filename):
 def train(param,env,model,optimizer,loader):
 
 	
-	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	# loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	loss_func = torch.nn.L1Loss()
 	epoch_loss = 0
 
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
@@ -281,7 +288,8 @@ def train(param,env,model,optimizer,loader):
 
 
 def test(param,env,model,loader):
-	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	# loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	loss_func = torch.nn.L1Loss()
 	epoch_loss = 0
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 
@@ -381,7 +389,8 @@ def train_il(param, env):
 				batch_size=param.il_batch_size,
 				n_data=param.il_n_data,
 				max_neighbors=param.max_neighbors,
-				max_obstacles=param.max_obstacles)
+				max_obstacles=param.max_obstacles,
+				name = "train")
 
 			loader_test = make_loader(
 				dataset=test_dataset,
@@ -389,7 +398,8 @@ def train_il(param, env):
 				batch_size=param.il_batch_size,
 				n_data=param.il_n_data,
 				max_neighbors=param.max_neighbors,
-				max_obstacles=param.max_obstacles)
+				max_obstacles=param.max_obstacles,
+				name = "test")
 
 		# consensus dataset 
 		elif "consensus" in param.il_load_dataset:

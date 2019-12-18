@@ -97,11 +97,12 @@ class SingleIntegrator(Env):
 			p_i = agent_i.p
 			s_i = agent_i.s
 			relative_goal = torch.Tensor(agent_i.s_g - s_i)
+
 			# conditional normalization of relative goal
-			dist = relative_goal.norm()
+			dist = relative_goal[0:2].norm()
 			if dist > self.param.r_obs_sense:
-				relative_goal = relative_goal / dist * self.param.r_obs_sense
-			
+				relative_goal[0:2] = relative_goal[0:2] / dist * self.param.r_obs_sense
+
 			time_to_goal = self.total_time - self.time_step * self.dt
 			relative_neighbors = []
 			for agent_j in self.agents:
