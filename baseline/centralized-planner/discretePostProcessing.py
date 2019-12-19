@@ -4,15 +4,18 @@ import argparse
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("input", help="input file containing schedule")
+  parser.add_argument("input_problem", help="input file containing problem")
+  parser.add_argument("input_schedule", help="input file containing schedule")
   parser.add_argument("output", help="output file with post-processed schedule")
   args = parser.parse_args()
 
+  with open(args.input_problem) as input_file:
+    data_problem = yaml.load(input_file, Loader=yaml.SafeLoader)
 
-  with open(args.input) as input_file:
+  with open(args.input_schedule) as input_file:
     data = yaml.load(input_file, Loader=yaml.SafeLoader)
 
-  for agent_name in data["schedule"]:
+  for k, agent_name in enumerate(data["schedule"]):
     agent = data["schedule"][agent_name]
     path = []
     i = 0
@@ -34,6 +37,12 @@ if __name__ == "__main__":
         'x': agent[-1]['x'],
         'y': agent[-1]['y'],
         't': 1})
+
+    # convert to real
+    path[0]['x'] = data_problem["agents"][k]['start_real'][0]
+    path[0]['y'] = data_problem["agents"][k]['start_real'][1]
+    path[-1]['x'] = data_problem["agents"][k]['goal_real'][0]
+    path[-1]['y'] = data_problem["agents"][k]['goal_real'][1]
 
     data["schedule"][agent_name] = path
 
