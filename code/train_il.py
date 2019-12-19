@@ -197,9 +197,11 @@ def make_loader(
 			# store all the data for this nn/no-pair in a file
 			batch_x = np.array(batch_x)
 			batch_y = np.array(batch_y)
+
 			print(name, num_neighbors, num_obstacles, batch_x.shape[0])
-			# with open("batch_{}_nn{}_no{}.npy".format(name,num_neighbors, num_obstacles), "wb") as f:
-			# 	np.save(f, np.hstack((batch_x, batch_y)), allow_pickle=False)
+
+			with open("../preprocessed_data/batch_{}_nn{}_no{}.npy".format(name,num_neighbors, num_obstacles), "wb") as f:
+				np.save(f, np.hstack((batch_x, batch_y)), allow_pickle=False)
 
 			# split data by batch size
 			for idx in np.arange(0, batch_x.shape[0], batch_size):
@@ -222,6 +224,29 @@ def make_loader(
 		dataset = dataset[0:n_data]
 
 	loader = batch_loader(dataset)
+
+	if preprocess_transformation:
+		loader_numpy,_ = utilities.preprocess_transformation(loader)
+		loader = [(torch.Tensor(o),torch.Tensor(a)) for o,a in loader_numpy]
+	return loader
+
+def load_loader(name,batch_size,preprocess_transformation):
+
+	loader = []
+	datadir = glob.glob("../preprocessed_data/batch_{}*.npy".format(name))
+	for file in datadir: 
+		
+		batch = np.load(file)
+		batch_x = batch[:,0:-2]
+		batch_y = batch[:,-2:]
+
+		# split data by batch size
+		for idx in np.arange(0, batch_x.shape[0], batch_size):
+			last_idx = min(idx + batch_size, batch_x.shape[0])
+			# print("Batch of size ", last_idx - idx)
+			x_data = torch.from_numpy(batch_x[idx:last_idx]).float()
+			y_data = torch.from_numpy(batch_y[idx:last_idx]).float()
+			loader.append([x_data, y_data])
 
 	if preprocess_transformation:
 		loader_numpy,_ = utilities.preprocess_transformation(loader)
@@ -333,67 +358,74 @@ def train_il(param, env):
 			training = True 
 			total_dataset_size = 0
 			# while True:
-			for k,file in enumerate(sorted(datadir)):
-				
-				print(file)
 
-				if training:
-					if param.il_state_loss_on:
-						train_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+
+			if not param.il_load_loader_on:
+				for k,file in enumerate(sorted(datadir)):
+					
+					print(file)
+
+					if training:
+						if param.il_state_loss_on:
+							train_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+						else:
+							train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
+								param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
+							
+						print(len(train_dataset))
+
+						if len(train_dataset) > param.il_n_data*param.il_test_train_ratio:
+
+							# primitive_data_dir = glob.glob("../data/singleintegrator/central/*primitive*")
+							# for primitive_file in sorted(primitive_data_dir):
+
+							# 	print(primitive_file)
+							# 	train_dataset.extend(load_orca_dataset_action_loss(primitive_file,param.r_comm,
+							# 		param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
+
+							training = False
+
 					else:
-						train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
-							param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
-						
-					print(len(train_dataset))
+						if param.il_state_loss_on:
+							test_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
+						else:
+							test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
+								param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
+							
+						print(len(test_dataset))
 
-					if len(train_dataset) > param.il_n_data*param.il_test_train_ratio:
+						if len(test_dataset) > param.il_n_data*(1-param.il_test_train_ratio):
+							break
 
-						# primitive_data_dir = glob.glob("../data/singleintegrator/central/*primitive*")
-						# for primitive_file in sorted(primitive_data_dir):
+					# total_dataset_size = len(train_dataset) + len(test_dataset)
+					# if len(test_dataset) < param.il_n_data*(1-param.il_test_train_ratio):
+					# 	param.il_n_data = int(0.99*total_dataset_size)
+					# else:
+					# 	break
 
-						# 	print(primitive_file)
-						# 	train_dataset.extend(load_orca_dataset_action_loss(primitive_file,param.r_comm,
-						# 		param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
+				print('Total Training Dataset Size: ',len(train_dataset))
+				print('Total Testing Dataset Size: ',len(test_dataset))
+				loader_train = make_loader(
+					dataset=train_dataset,
+					shuffle=True,
+					batch_size=param.il_batch_size,
+					n_data=param.il_n_data,
+					max_neighbors=param.max_neighbors,
+					max_obstacles=param.max_obstacles,
+					name = "train")
 
-						training = False
+				loader_test = make_loader(
+					dataset=test_dataset,
+					shuffle=True,
+					batch_size=param.il_batch_size,
+					n_data=param.il_n_data,
+					max_neighbors=param.max_neighbors,
+					max_obstacles=param.max_obstacles,
+					name = "test")
 
-				else:
-					if param.il_state_loss_on:
-						test_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
-					else:
-						test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
-							param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
-						
-					print(len(test_dataset))
-
-					if len(test_dataset) > param.il_n_data*(1-param.il_test_train_ratio):
-						break
-
-				# total_dataset_size = len(train_dataset) + len(test_dataset)
-				# if len(test_dataset) < param.il_n_data*(1-param.il_test_train_ratio):
-				# 	param.il_n_data = int(0.99*total_dataset_size)
-				# else:
-				# 	break
-
-			print('Total Training Dataset Size: ',len(train_dataset))
-			print('Total Testing Dataset Size: ',len(test_dataset))
-			loader_train = make_loader(
-				dataset=train_dataset,
-				shuffle=True,
-				batch_size=param.il_batch_size,
-				n_data=param.il_n_data,
-				max_neighbors=param.max_neighbors,
-				max_obstacles=param.max_obstacles,
-				name = "train")
-
-			loader_test = make_loader(
-				dataset=test_dataset,
-				shuffle=True,
-				batch_size=param.il_batch_size,
-				n_data=param.il_n_data,
-				max_neighbors=param.max_neighbors,
-				max_obstacles=param.max_obstacles,
-				name = "test")
+			else:
+				loader_train = load_loader("train",param.il_batch_size,True)
+				loader_test  = load_loader("test",param.il_batch_size,True)
 
 		# consensus dataset 
 		elif "consensus" in param.il_load_dataset:
