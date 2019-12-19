@@ -15,7 +15,10 @@ def stats(map_filename, schedule_filename):
 	for i, agent in enumerate(map_data["agents"]):
 		goal = np.array([0.5,0.5]) + np.array(agent["goal"])
 		distances = np.linalg.norm(data[:,(i*4+1):(i*4+3)] - goal, axis=1)
-		lastIdx = np.max(np.argwhere(distances > 0.2))
+		goalIdx = np.argwhere(distances > 0.5)
+		if len(goalIdx) == 0:
+			goalIdx = np.array([0])
+		lastIdx = np.max(goalIdx)
 		if lastIdx < data.shape[0] - 1:
 			goal_time = data[lastIdx,0]
 			num_agents_reached_goal += 1
@@ -47,8 +50,7 @@ def stats(map_filename, schedule_filename):
 		for j in range(i+1, num_agents):
 			pos_j = data[:,(j*4+1):(j*4+3)]
 			distances = np.linalg.norm(pos_i - pos_j, axis=1)
-			num_agent_agent_collisions += np.count_nonzero(distances < 0.4)
-			# min_dist = min(min_dist, np.min(distances))
+			num_agent_agent_collisions += np.count_nonzero(distances < 0.4 - 1e-4)
 
 	num_agent_obstacle_collisions = 0
 	# TODO: this just assumes obstacles to be circle (with r = 0.5)
@@ -58,7 +60,7 @@ def stats(map_filename, schedule_filename):
 		pos_i = data[:,(i*4+1):(i*4+3)]
 		for o in map_data["map"]["obstacles"]:
 			distances = np.linalg.norm(pos_i - (np.array(o) + np.array([0.5,0.5])), axis=1)
-			num_agent_obstacle_collisions += np.count_nonzero(distances < 0.5+0.2)
+			num_agent_obstacle_collisions += np.count_nonzero(distances < 0.5+0.2 - 1e-4)
 
 
 	result = dict()

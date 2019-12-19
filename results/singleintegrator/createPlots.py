@@ -24,11 +24,12 @@ def add_scatter(pp, results, key, title):
 
 	width = 0.8 / len(solvers)
 
-	for k, solver in enumerate(solvers):
+	for k, solver in enumerate(sorted(solvers)):
 		idx = 0
 		x = []
 		y = []
-		for _, results in result_by_instance.items():
+		for instance in sorted(result_by_instance):
+			results = result_by_instance[instance]
 			for r in results:
 				if r["solver"] == solver:
 					x.append(idx)
@@ -63,7 +64,7 @@ def add_bar_chart(pp, results, key, title):
 if __name__ == '__main__':
 
 	result_by_instance = dict()
-	for file in glob.glob("**/*.npy", recursive=True):
+	for file in glob.glob("**/*agents10*.npy", recursive=True):
 		solver = os.path.dirname(file)
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
@@ -80,12 +81,9 @@ if __name__ == '__main__':
 	add_scatter(pp, result_by_instance, "percent_agents_reached_goal", "% reached goal")
 	add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
 
-	for instance, results in result_by_instance.items():
-		# results = []
-		# solvers = []
-		# for result in item:
-			# results.append(stats.stats(map_filename, file))
-			# solvers.append(solver)
+	for instance in sorted(result_by_instance):
+		print(instance)
+		results = result_by_instance[instance]
 
 		add_bar_chart(pp, results, "percent_agents_reached_goal", instance + " (% reached goal)")
 		add_bar_chart(pp, results, "num_collisions", instance + " (# collisions)")
@@ -102,6 +100,12 @@ if __name__ == '__main__':
 
 			for o in map_data["map"]["obstacles"]:
 				ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
+			for x in range(-1,map_data["map"]["dimensions"][0]+1):
+				ax.add_patch(Rectangle([x,-1], 1.0, 1.0, facecolor='gray', alpha=0.5))
+				ax.add_patch(Rectangle([x,map_data["map"]["dimensions"][1]], 1.0, 1.0, facecolor='gray', alpha=0.5))
+			for y in range(map_data["map"]["dimensions"][0]):
+				ax.add_patch(Rectangle([-1,y], 1.0, 1.0, facecolor='gray', alpha=0.5))
+				ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
 
 			data = np.load("{}/{}.npy".format(r["solver"], instance))
 			num_agents = len(map_data["agents"])
