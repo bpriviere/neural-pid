@@ -92,11 +92,11 @@ if __name__ == "__main__":
 
     # map_size = [32, 32]
     map_size = [8, 8]
-    num_agents_lst = [10]
+    num_agents_lst = [1]
     # num_groups = num_agents
-    num_obstacles = int(map_size[0] * map_size[1] * 0.2)
-    # cases = range(100)
-    cases = [7]
+    num_obstacles = int(map_size[0] * map_size[1] * 0.1)
+    cases = range(100)
+    # cases = [7]
 
     for num_agents in num_agents_lst:
     # for num_agents in range(15, 21):

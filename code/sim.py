@@ -32,7 +32,7 @@ def run_sim(param, env, controller, initial_state):
 		if param.env_name is 'Consensus' and (isinstance(controller, LCP_Policy) or isinstance(controller,PPO)):
 			observation = env.unpack_observations(observation)
 
-		action = controller.policy(observation)
+		action = controller.policy(observation,env.transformations)
 		next_state, r, done, _ = env.step(action)
 		reward += r
 		

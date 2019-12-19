@@ -9,6 +9,7 @@ import torch
 
 # my package
 import plotter 
+import utilities
 
 class Agent:
 	def __init__(self,i):
@@ -93,16 +94,14 @@ class SingleIntegrator(Env):
 		Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles'])
 
 		observations = []
+		oa_pairs = []
 		for agent_i in self.agents:
 			p_i = agent_i.p
 			s_i = agent_i.s
 			relative_goal = torch.Tensor(agent_i.s_g - s_i)
-			# conditional normalization of relative goal
-			dist = relative_goal.norm()
-			if dist > self.param.r_obs_sense:
-				relative_goal = relative_goal / dist * self.param.r_obs_sense
 			
 			time_to_goal = self.total_time - self.time_step * self.dt
+
 			relative_neighbors = []
 			for agent_j in self.agents:
 				if agent_j.i != agent_i.i:
@@ -138,8 +137,13 @@ class SingleIntegrator(Env):
 				obs_array[idx:idx+2] = observation_i.relative_obstacles[i]
 				idx += 2
 
+			oa_pairs.append((obs_array,np.zeros((self.action_dim_per_agent))))
 			observations.append(obs_array)
 			# observations.append(observation_i)
+
+		transformed_oa_pairs, transformations = utilities.preprocess_transformation(oa_pairs)
+		observations = [o for o,_ in transformed_oa_pairs]
+		self.transformations = transformations
 		return observations
 
 	def reward(self):

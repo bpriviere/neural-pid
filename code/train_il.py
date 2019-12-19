@@ -7,6 +7,7 @@ import random
 import glob
 import os
 import yaml
+import utilities
 
 from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
@@ -23,7 +24,7 @@ from learning.nl_el_net import NL_EL_Net
 from learning.consensus_net import Consensus_Net
 
 
-def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacles):
+def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacles,training_time_downsample):
 	data = np.load(filename)
 	data = torch.from_numpy(data)
 
@@ -50,7 +51,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacl
 	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
-		if t%10 != 0:
+		if t%training_time_downsample != 0:
 			continue
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
@@ -58,10 +59,6 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacl
 			relative_goal = s_g - s_i   # relative goal 
 			if np.allclose(relative_goal, np.zeros(4)):
 				continue
-			# conditional normalization of relative goal
-			dist = relative_goal.norm()
-			if dist > obstacleDist:
-				relative_goal = relative_goal / dist * obstacleDist
 			time_to_goal = data[-1,0] - data[t,0]
 			relative_neighbors = []
 			for j in range(num_agents):
@@ -154,6 +151,7 @@ def make_loader(
 	n_data=None,
 	shuffle=False,
 	batch_size=None,
+	preprocess_transformation=True,
 	max_neighbors=1000,
 	max_obstacles=1000):
 
@@ -218,54 +216,18 @@ def make_loader(
 		dataset = dataset[0:n_data]
 
 	loader = batch_loader(dataset)
+
+	if preprocess_transformation:
+		loader_numpy,_ = utilities.preprocess_transformation(loader)
+		loader = [(torch.Tensor(o),torch.Tensor(a)) for o,a in loader_numpy]
 	return loader
-
-
-
-def make_dataset(param, env):
-	model = torch.load(param.il_imitate_model_fn)
-	times = param.sim_times
-	states = []
-	actions = []
-	while len(states) < param.il_n_data:
-		states.append(env.reset())
-		for step, time in enumerate(times[:-1]):
-
-			observations = env.observe()
-			action = model.policy(observation)
-			s_prime, _, done, _ = env.step(action)
-
-			states.append(s_prime)
-			if param.il_state_loss_on:
-				actions.append(s_prime)
-			else:
-				actions.append(action.reshape(-1))
-			
-			if done:
-				break
-
-		if param.il_state_loss_on:
-			actions.append(zeros(env.n))
-		else:
-			actions.append(zeros(env.m))
-
-	states = states[0:param.il_n_data]
-	actions = actions[0:param.il_n_data]
-	return torch.tensor(states).float(),torch.tensor(actions).float()
-
-
-def load_dataset(env, filename):
-	data = np.loadtxt(filename, delimiter=',', dtype=np.float32)
-	return data[0:-2] # do not include last row (invalid action)
-
-	# return 	torch.tensor(data[0:-2,1:1+env.n]).float(),
-	# 		torch.tensor(data[0:-2,1+env.n:1+env.n+env.m]).float()
 
 
 def train(param,env,model,optimizer,loader):
 
 	
-	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	# loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	loss_func = torch.nn.L1Loss()  
 	epoch_loss = 0
 
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
@@ -281,21 +243,24 @@ def train(param,env,model,optimizer,loader):
 
 
 def test(param,env,model,loader):
-	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+
+	# loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	loss_func = torch.nn.L1Loss()  
 	epoch_loss = 0
+
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 
-		# convert b_y if necessary
-		if not isinstance(b_y, torch.Tensor):
-			b_y = torch.from_numpy(np.array(b_y)).float()
+		# # convert b_y if necessary
+		# if not isinstance(b_y, torch.Tensor):
+		# 	b_y = torch.from_numpy(np.array(b_y)).float()
 
 		prediction = model(b_x)     # input batch state and predict batch action
 
-		if param.il_state_loss_on:
-			prediction_a = prediction
-			prediction = torch.zeros((b_y.shape))
-			for k,a in enumerate(prediction_a): 
-				prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
+		# if param.il_state_loss_on:
+		# 	prediction_a = prediction
+		# 	prediction = torch.zeros((b_y.shape))
+		# 	for k,a in enumerate(prediction_a): 
+		# 		prediction[k,:] = env.next_state_training_state_loss(b_x[k],a)
 
 		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
 		epoch_loss += float(loss)
@@ -340,38 +305,66 @@ def train_il(param, env):
 			elif "random" in param.il_load_dataset:
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
-				datadir = glob.glob("../data/singleintegrator/central/*agents10*")
+				
+				# 10 agent cases
+				# datadir = glob.glob("../data/singleintegrator/central/*agents10*")
+				
+				# primitive cases
+				# datadir = glob.glob("../data/singleintegrator/central/*primitive*")
+
+				# single primitive case
+				# datadir = glob.glob("../data/singleintegrator/central_single_case_2/*.npy")
+
+				# general 1 agent case and primitives
+				datadir = glob.glob("../data/singleintegrator/central/*agents1_*")
+				# datadir.extend(glob.glob("../data/singleintegrator/central/*primitive*"))
 
 			train_dataset = []
 			test_dataset = [] 
 			training = True 
+			total_dataset_size = 0
+			# while True:
 			for k,file in enumerate(sorted(datadir)):
-				# if k%20 != 0:
-				# if "empty" in file:
-					# continue
+				
 				print(file)
 
 				if training:
 					if param.il_state_loss_on:
 						train_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 					else:
-						train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense, param.max_obstacles))
-						# break
+						train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
+							param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
+						
 					print(len(train_dataset))
 
 					if len(train_dataset) > param.il_n_data*param.il_test_train_ratio:
+
+						primitive_data_dir = glob.glob("../data/singleintegrator/central/*primitive*")
+						for primitive_file in sorted(primitive_data_dir):
+
+							print(primitive_file)
+							train_dataset.extend(load_orca_dataset_action_loss(primitive_file,param.r_comm,
+								param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
+
 						training = False
 
 				else:
 					if param.il_state_loss_on:
 						test_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
 					else:
-						test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,param.r_obs_sense, param.max_obstacles))
-						# break
-					print(len(test_dataset))					
+						test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
+							param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
+						
+					print(len(test_dataset))
 
 					if len(test_dataset) > param.il_n_data*(1-param.il_test_train_ratio):
 						break
+
+				# total_dataset_size = len(train_dataset) + len(test_dataset)
+				# if len(test_dataset) < param.il_n_data*(1-param.il_test_train_ratio):
+				# 	param.il_n_data = int(0.99*total_dataset_size)
+				# else:
+				# 	break
 
 			print('Total Training Dataset Size: ',len(train_dataset))
 			print('Total Testing Dataset Size: ',len(test_dataset))
@@ -488,6 +481,57 @@ def train_il(param, env):
 				best_test_loss = test_epoch_loss
 				print('      saving @ best test loss:', best_test_loss)
 				torch.save(model,param.il_train_model_fn)
+
+
+
+
+
+
+
+
+
+def make_dataset(param, env):
+	model = torch.load(param.il_imitate_model_fn)
+	times = param.sim_times
+	states = []
+	actions = []
+	while len(states) < param.il_n_data:
+		states.append(env.reset())
+		for step, time in enumerate(times[:-1]):
+
+			observations = env.observe()
+			action = model.policy(observation)
+			s_prime, _, done, _ = env.step(action)
+
+			states.append(s_prime)
+			if param.il_state_loss_on:
+				actions.append(s_prime)
+			else:
+				actions.append(action.reshape(-1))
+			
+			if done:
+				break
+
+		if param.il_state_loss_on:
+			actions.append(zeros(env.n))
+		else:
+			actions.append(zeros(env.m))
+
+	states = states[0:param.il_n_data]
+	actions = actions[0:param.il_n_data]
+	return torch.tensor(states).float(),torch.tensor(actions).float()
+
+
+def load_dataset(env, filename):
+	data = np.loadtxt(filename, delimiter=',', dtype=np.float32)
+	return data[0:-2] # do not include last row (invalid action)
+
+	# return 	torch.tensor(data[0:-2,1:1+env.n]).float(),
+	# 		torch.tensor(data[0:-2,1+env.n:1+env.n+env.m]).float()
+
+
+
+
 
 
 # def make_dataset(env):

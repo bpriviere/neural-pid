@@ -60,3 +60,87 @@ def torch_tile(a, dim, n_tile):
     a = a.repeat(*(repeat_idx))
     order_index = torch.LongTensor(np.concatenate([init_dim * np.arange(n_tile) + i for i in range(init_dim)]))
     return torch.index_select(a, dim, order_index)
+
+
+def rot_mat_2d(th):
+	return np.array([[np.cos(th),np.sin(th)],[-np.sin(th),np.cos(th)]])
+
+
+
+def preprocess_transformation(dataset_batches):
+	# input: 
+	# 	- list of tuple of (observation, actions) pairs, numpy/pytorch supported
+	# output: 
+	# 	- list of tuple of (observation, actions) pairs, numpy arrays
+	# 	- list of transformations 
+
+	# TEMP 
+	obstacleDist = 3.0 
+	transformed_dataset_batches = []
+	transformations_batches = []	
+	for (dataset, classification) in dataset_batches:
+
+		# dataset = [#n, sg-si, {sj-si}, {so-si}]
+
+		if isinstance(dataset,torch.Tensor):
+			dataset = dataset.detach().numpy()
+		if isinstance(classification,torch.Tensor):
+			classification = classification.detach().numpy()
+				
+		if dataset.ndim == 1:
+			dataset = np.reshape(dataset,(-1,len(dataset)))
+		if classification.ndim == 1:
+			classification = np.reshape(classification,(-1,len(classification)))
+
+		num_neighbors = int(dataset[0,0]) #int((x.size()[1]-4)/4)
+		num_obstacles = int((dataset.shape[1]-5-4*num_neighbors)/2)
+
+		idx_goal = np.arange(1,3,dtype=int)
+
+		transformed_dataset = np.empty(dataset.shape)
+		transformed_classification = np.empty(classification.shape)
+		transformations = np.empty((dataset.shape[0],2,2))
+
+		for k,row in enumerate(dataset):
+
+			transformed_row = np.empty(row.shape)
+
+			# get goal 
+			# s_gi = sg - si 
+			s_gi = row[idx_goal]
+
+			# get transformation 
+			th = np.arctan2(s_gi[1],s_gi[0])
+			R = rot_mat_2d(th)
+			# conditional normalization of relative goal
+			dist = np.linalg.norm(s_gi[0:2])
+			if dist > obstacleDist:
+				s_gi = s_gi / dist * obstacleDist
+
+			# transform goal 
+			transformed_row[idx_goal] = np.matmul(R,s_gi)
+
+			# get neighbors
+			# transform neighbors 
+			for j in range(num_neighbors):
+				idx = 1+4+j*4+np.arange(0,4,dtype=int)
+				s_ji = row[idx] 
+				transformed_row[idx] = np.matmul(R,s_ji)
+
+			# get obstacles
+			# transform neighbors 
+			for j in range(num_obstacles):
+				idx = 1+4+num_neighbors*4+j*2+np.arange(0,2,dtype=int)
+				s_oi = row[idx] 
+				transformed_row[idx] = np.matmul(R,s_oi)
+			
+			# transform action
+			if classification is not None: 
+				transformed_classification[k,:] = np.matmul(R,classification[k])
+			transformed_dataset[k,:] = transformed_row
+			transformations[k,:,:] = R
+
+		transformed_dataset_batches.append((transformed_dataset,transformed_classification))
+		transformations_batches.append(transformations)
+
+	return transformed_dataset_batches, transformations_batches
