@@ -312,16 +312,19 @@ def train_il(param, env):
 				datadir = glob.glob("../data/singleintegrator/random/*.npy")
 			elif "centralplanner" in param.il_load_dataset:
 				
+				# 1 agent cases
+				datadir = glob.glob("../data/singleintegrator/central/*agents1_*")				
+
 				# 10 agent cases
-				datadir = glob.glob("../data/singleintegrator/central/*agents10*")
+				# datadir = glob.glob("../data/singleintegrator/central/*agents10*")
 				
 				# primitive cases
 				# datadir = glob.glob("../data/singleintegrator/central/*primitive*")
 
-				# single primitive case
+				# single case ex (to overfit)
 				# datadir = glob.glob("../data/singleintegrator/central_single_case_2/*.npy")
 
-				# general 1 agent case and primitives
+				# 1 agent cases and primitives
 				# datadir = glob.glob("../data/singleintegrator/central/*agents1_*")
 				# datadir.extend(glob.glob("../data/singleintegrator/central/*primitive*"))
 
