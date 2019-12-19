@@ -25,8 +25,8 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
   sim->setAgentDefaults(
     /* neighborDist*/ 1.0f,
     /* maxNeighbors*/ 30,
-    /* timeHorizon*/ 10.0f,
-    /* timeHorizonObst*/ 10.0f,
+    /* timeHorizon*/ 2.0f,
+    /* timeHorizonObst*/ 2.0f,
     /* radius*/ 0.2f,
     /* maxSpeed*/ 0.5f);
 
@@ -170,6 +170,7 @@ void setPreferredVelocities(RVO::RVOSimulator *sim)
 
     sim->setAgentPrefVelocity(i, goalVector);
 
+#if 0
     /*
      * Perturb a little to avoid deadlocks due to perfect symmetry.
      */
@@ -178,6 +179,7 @@ void setPreferredVelocities(RVO::RVOSimulator *sim)
 
     sim->setAgentPrefVelocity(i, sim->getAgentPrefVelocity(i) +
                               dist * RVO::Vector2(std::cos(angle), std::sin(angle)));
+#endif
   }
 }
 

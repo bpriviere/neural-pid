@@ -105,6 +105,7 @@ def preprocess_transformation(dataset_batches):
 		for k,row in enumerate(dataset):
 
 			transformed_row = np.empty(row.shape)
+			transformed_row[0] = row[0]
 
 			# get goal 
 			# s_gi = sg - si 
