@@ -61,7 +61,7 @@ class SingleIntegratorParam(Param):
 		self.plots_fn = 'plots.pdf'
 
 		# IL
-		self.training_time_downsample = 5
+		self.training_time_downsample = 10
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
@@ -70,7 +70,7 @@ class SingleIntegratorParam(Param):
 		self.il_n_epoch = 5000
 		self.il_lr = 1e-4
 		self.il_wd = 0*0.0001
-		self.il_n_data = 100000
+		self.il_n_data = 50000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier'

@@ -64,7 +64,9 @@ def add_bar_chart(pp, results, key, title):
 if __name__ == '__main__':
 
 	result_by_instance = dict()
+
 	for file in glob.glob("**/*agents10*.npy", recursive=True):
+	# for file in glob.glob("**/*agents1_*.npy", recursive=True):
 		solver = os.path.dirname(file)
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)

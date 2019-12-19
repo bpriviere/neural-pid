@@ -1,6 +1,7 @@
 
 
 import numpy as np 
+from scipy.linalg import block_diag
 import torch 
 
 def to_cvec(x):
@@ -125,7 +126,8 @@ def preprocess_transformation(dataset_batches):
 			for j in range(num_neighbors):
 				idx = 1+4+j*4+np.arange(0,4,dtype=int)
 				s_ji = row[idx] 
-				transformed_row[idx] = np.matmul(R,s_ji)
+				bigR = block_diag(R,R)
+				transformed_row[idx] = np.matmul(bigR,s_ji)
 
 			# get obstacles
 			# transform neighbors 

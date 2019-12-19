@@ -15,7 +15,9 @@ if __name__ == '__main__':
 
 	pp = PdfPages("results.pdf")
 
-	for file in sorted(glob.glob("orca/*obst6*.npy")):
+	# for file in sorted(glob.glob("orca/*obst6*.npy")):
+	# for file in sorted(glob.glob("central_single_case_2/*.npy")):
+	for file in sorted(glob.glob("central/*primitive*")):
 		instance = os.path.splitext(os.path.basename(file))[0]
 		print(instance)
 		map_filename = "instances/{}.yaml".format(instance)
