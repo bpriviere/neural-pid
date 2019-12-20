@@ -113,7 +113,10 @@ def preprocess_transformation(dataset_batches):
 
 			# get transformation 
 			th = np.arctan2(s_gi[1],s_gi[0])
+			
 			R = rot_mat_2d(th)
+			# R = rot_mat_2d(0)
+
 			# conditional normalization of relative goal
 			dist = np.linalg.norm(s_gi[0:2])
 			if dist > obstacleDist:

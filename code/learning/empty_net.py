@@ -46,6 +46,12 @@ class Empty_Net(nn.Module):
 		A = np.empty((len(x),self.action_dim_per_agent))
 		for i,x_i in enumerate(x):
 			
+			
+			# R = transformations[i][0]
+			# print('R: ', R)
+			# print('transformations: ', transformations)
+			# exit()
+
 			R = transformations[i][0]
 
 			a_i = self(torch.Tensor(x_i))

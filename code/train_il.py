@@ -257,8 +257,8 @@ def load_loader(name,batch_size,preprocess_transformation):
 def train(param,env,model,optimizer,loader):
 
 	
-	# loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
-	loss_func = torch.nn.L1Loss()
+	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	# loss_func = torch.nn.L1Loss()
 	epoch_loss = 0
 
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
@@ -275,8 +275,8 @@ def train(param,env,model,optimizer,loader):
 
 def test(param,env,model,loader):
 
-	# loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
-	loss_func = torch.nn.L1Loss()  
+	loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+	# loss_func = torch.nn.L1Loss()  
 	epoch_loss = 0
 
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
@@ -338,13 +338,17 @@ def train_il(param, env):
 			elif "centralplanner" in param.il_load_dataset:
 				
 				# 1 agent cases
-				datadir = glob.glob("../data/singleintegrator/central/*agents1_*")				
+				# datadir = glob.glob("../data/singleintegrator/central/*agents1_*")				
 
 				# 10 agent cases
 				# datadir = glob.glob("../data/singleintegrator/central/*agents10*")
 				
 				# primitive cases
 				# datadir = glob.glob("../data/singleintegrator/central/*primitive*")
+
+				# 6 obst cases
+				datadir = glob.glob("../data/singleintegrator/central/*obst6_agents1_*")		
+				datadir.extend(glob.glob("../data/singleintegrator/central/*obst12_agents1_*"))		
 
 				# single case ex (to overfit)
 				# datadir = glob.glob("../data/singleintegrator/central_single_case_2/*.npy")
@@ -524,12 +528,6 @@ def train_il(param, env):
 				best_test_loss = test_epoch_loss
 				print('      saving @ best test loss:', best_test_loss)
 				torch.save(model,param.il_train_model_fn)
-
-
-
-
-
-
 
 
 

@@ -60,15 +60,23 @@ class Barrier_Net(nn.Module):
 		self.a_noise = param.a_noise
 		self.circle_obstacles_on = param.circle_obstacles_on
 
-	def policy(self,x):
+	def policy(self,x,transformations):
 
 		# inputs observation from all agents...
 		# outputs policy for all agents
 
 		A = np.empty((len(x),self.action_dim_per_agent))
 		for i,x_i in enumerate(x):
-			a_i = self(torch.Tensor([x_i]))
-			A[i,:] = a_i.detach().numpy()
+
+			R = transformations[i][0]
+
+			a_i = self(torch.Tensor(x_i))
+			a_i = a_i.detach().numpy()
+			a_i = np.matmul(R.T,a_i.T).T
+			A[i,:] = a_i
+
+			# a_i = self(torch.Tensor([x_i]))
+			# A[i,:] = a_i.detach().numpy()
 		return A
 
 	def empty(self,x):

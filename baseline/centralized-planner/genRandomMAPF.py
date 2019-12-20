@@ -7,6 +7,7 @@ import collections
 import random
 import copy
 import yaml
+import numpy as np 
 
 
 def reachable(map_size, start, goal, obstacles):
@@ -23,6 +24,30 @@ def reachable(map_size, start, goal, obstacles):
                 if pos[0] >= 0 and pos[0] < map_size[0] and pos[1] >= 0 and pos[1] < map_size[1] and pos not in obstacles:
                     stack.append(pos)
     return False
+
+def check_collision(agent_loc,obstacles):
+    x,y = agent_loc[:]
+    collision = False
+    for o in obstacles:
+        if x  > o[0]-0.5 and x < o[0]+0.5 and \
+            y  > o[1]-0.5 and y  < o[1]+0.5:
+            collision = True
+            break
+    return collision
+
+def interesting(map_size, start, goal, obstacles):
+
+    line = np.linspace(np.array(start),np.array(goal),50)
+
+    if np.linalg.norm(line[0,:]-line[-1,:]) < 2.0:
+        return False
+
+    for point in line:
+        if check_collision(point,obstacles):
+            return True
+
+    return False
+
 
 def randAgents1(map_size, num_agents, num_groups, num_obstacles):
     locations = [(x, y) for x in range(0, map_size[0]) for y in range(0, map_size[1])]
@@ -55,7 +80,8 @@ def randAgents1(map_size, num_agents, num_groups, num_obstacles):
             locationS = locations[0]
             locationE = locationsE[0]
 
-            if reachable(map_size, locationS, locationE, obstacles):
+            if reachable(map_size, locationS, locationE, obstacles) and \
+               interesting(map_size, locationS,locationE, obstacles):
                 groups[groupIdx].start.append(locationS)
                 groups[groupIdx].goal.append(locationE)
                 del locations[0]
@@ -81,8 +107,8 @@ def writeFile(obstacles, map_size, groups, file_name):
         for agentIdx in range(0, len(group.start)):
             agent = dict()
             agent["name"] = "agent" + str(i)
-            agent["start"] = list(group.start[agentIdx])
-            agent["goal"] = list(group.goal[agentIdx])
+            agent["start"] = (np.array(group.start[agentIdx])+np.random.uniform(-0.3, 0.3, 2)).tolist()
+            agent["goal"] = (np.array(group.goal[agentIdx])+np.random.uniform(-0.3, 0.3, 2)).tolist()
             i += 1
             data["agents"].append(agent)
     with open(file_name, "w") as f:
@@ -94,8 +120,8 @@ if __name__ == "__main__":
     map_size = [8, 8]
     num_agents_lst = [1]
     # num_groups = num_agents
-    num_obstacles = int(map_size[0] * map_size[1] * 0.1)
-    cases = range(100)
+    num_obstacles = int(map_size[0] * map_size[1] * 0.2)
+    cases = range(1000)
     # cases = [7]
 
     for num_agents in num_agents_lst:
