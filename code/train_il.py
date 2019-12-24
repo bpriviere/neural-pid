@@ -338,7 +338,7 @@ def train_il(param, env):
 			elif "centralplanner" in param.il_load_dataset:
 				
 				# 1 agent cases
-				# datadir = glob.glob("../data/singleintegrator/central/*agents1_*")				
+				# datadir = glob.glob("../data/singleintegrator/central/*agents1_*")
 
 				# 10 agent cases
 				# datadir = glob.glob("../data/singleintegrator/central/*agents10*")
@@ -347,8 +347,8 @@ def train_il(param, env):
 				# datadir = glob.glob("../data/singleintegrator/central/*primitive*")
 
 				# 6 obst cases
-				datadir = glob.glob("../data/singleintegrator/central/*obst6_agents1_*")		
-				datadir.extend(glob.glob("../data/singleintegrator/central/*obst12_agents1_*"))		
+				datadir = glob.glob("../data/singleintegrator/central/*obst6_agents1_ex00*.npy")
+				# datadir.extend(glob.glob("../data/singleintegrator/central/*obst12_agents1_*"))
 
 				# single case ex (to overfit)
 				# datadir = glob.glob("../data/singleintegrator/central_single_case_2/*.npy")
@@ -369,43 +369,18 @@ def train_il(param, env):
 					
 					print(file)
 
-					if training:
-						if param.il_state_loss_on:
-							train_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
-						else:
-							train_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
-								param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
-							
-						print(len(train_dataset))
-
-						if len(train_dataset) > param.il_n_data*param.il_test_train_ratio:
-
-							# primitive_data_dir = glob.glob("../data/singleintegrator/central/*primitive*")
-							# for primitive_file in sorted(primitive_data_dir):
-
-							# 	print(primitive_file)
-							# 	train_dataset.extend(load_orca_dataset_action_loss(primitive_file,param.r_comm,
-							# 		param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
-
-							training = False
-
+					if param.il_state_loss_on:
+						dataset = load_orca_dataset_state_loss(file,param.r_comm)
 					else:
-						if param.il_state_loss_on:
-							test_dataset.extend(load_orca_dataset_state_loss(file,param.r_comm))
-						else:
-							test_dataset.extend(load_orca_dataset_action_loss(file,param.r_comm,
-								param.r_obs_sense, param.max_obstacles,param.training_time_downsample))
-							
-						print(len(test_dataset))
+						dataset = load_orca_dataset_action_loss(file,param.r_comm,
+							param.r_obs_sense, param.max_obstacles,param.training_time_downsample)
+					
+					if np.random.uniform(0, 1) <= param.il_test_train_ratio:
+						train_dataset.extend(dataset)
+					else:
+						test_dataset.extend(dataset)
 
-						if len(test_dataset) > param.il_n_data*(1-param.il_test_train_ratio):
-							break
-
-					# total_dataset_size = len(train_dataset) + len(test_dataset)
-					# if len(test_dataset) < param.il_n_data*(1-param.il_test_train_ratio):
-					# 	param.il_n_data = int(0.99*total_dataset_size)
-					# else:
-					# 	break
+					print(len(train_dataset), len(test_dataset))
 
 				print('Total Training Dataset Size: ',len(train_dataset))
 				print('Total Testing Dataset Size: ',len(test_dataset))

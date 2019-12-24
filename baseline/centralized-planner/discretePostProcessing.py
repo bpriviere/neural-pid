@@ -39,10 +39,14 @@ if __name__ == "__main__":
         't': 1})
 
     # convert to real
-    path[0]['x'] = data_problem["agents"][k]['start_real'][0]
-    path[0]['y'] = data_problem["agents"][k]['start_real'][1]
-    path[-1]['x'] = data_problem["agents"][k]['goal_real'][0]
-    path[-1]['y'] = data_problem["agents"][k]['goal_real'][1]
+    path.insert(0, {
+      'x': data_problem["agents"][k]['start_real'][0],
+      'y': data_problem["agents"][k]['start_real'][1],
+      't': path[0]['t'] - 1})
+    path.append({
+      'x': data_problem["agents"][k]['goal_real'][0],
+      'y': data_problem["agents"][k]['goal_real'][1],
+      't': path[-1]['t'] + 1})
 
     data["schedule"][agent_name] = path
 
