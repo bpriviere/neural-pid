@@ -92,10 +92,10 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
       const auto& start = node["start"];
       const auto& goal = node["goal"];
 
-      RVO::Vector2 startPos(start[0].as<int>() + 0.5f, start[1].as<int>()+ 0.5f);
+      RVO::Vector2 startPos(start[0].as<float>() + 0.5f, start[1].as<float>()+ 0.5f);
       sim->addAgent(startPos);
 
-      RVO::Vector2 goalPos(goal[0].as<int>()+ 0.5f, goal[1].as<int>()+ 0.5f);
+      RVO::Vector2 goalPos(goal[0].as<float>()+ 0.5f, goal[1].as<float>()+ 0.5f);
       goals.push_back(goalPos);
 
     }

@@ -24,7 +24,7 @@ from learning.nl_el_net import NL_EL_Net
 from learning.consensus_net import Consensus_Net
 
 
-def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacles,training_time_downsample):
+def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_neighbors,max_obstacles,training_time_downsample):
 	data = np.load(filename)
 	data = torch.from_numpy(data)
 
@@ -48,8 +48,8 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacl
 
 	num_agents = int((data.shape[1] - 1) / 4)
 	dataset = []
-	Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
-	Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
+	# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
+	# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
 		if t%training_time_downsample != 0:
 			continue
@@ -58,7 +58,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacl
 			# s_g = data[-1,i*4+1:i*4+5]  # goal state i 
 			s_g = torch.Tensor(map_data["agents"][i]["goal"] + [0,0]) + torch.Tensor([0.5,0.5,0,0])
 			# print(s_g, data[-1,i*4+1:i*4+5])
-			relative_goal = s_g - s_i   # relative goal 
+			relative_goal = s_g - s_i   # relative goal
 			if np.allclose(relative_goal, np.zeros(4)):
 				continue
 			time_to_goal = data[-1,0] - data[t,0]
@@ -73,17 +73,45 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_obstacl
 						# print(dist, len(relative_neighbors))
 						# break
 			relative_neighbors.sort(key=lambda n: n[0:2].norm())
+			del relative_neighbors[max_neighbors:]
+
 			relative_obstacles = []
 			for o in obstacles:
 				dist = (o - s_i[0:2]).norm()
 				if dist <= obstacleDist:
 					relative_obstacles.append(o - s_i[0:2])
 			relative_obstacles.sort(key=lambda o: o.norm())
+			del relative_obstacles[max_obstacles:]
 
-			o = Observation._make((relative_goal,time_to_goal,relative_neighbors,relative_obstacles))
-			a = data[t+1, i*4+3:i*4+5].numpy() # desired control is the velocity in the next timestep
-			oa_pair = Observation_Action_Pair._make((o,a))
-			dataset.append(oa_pair)
+			num_neighbors = len(relative_neighbors)
+			num_obstacles = len(relative_obstacles)
+
+			obs_array = np.empty(5+4*num_neighbors+2*num_obstacles+2, dtype=np.float32)
+			obs_array[0] = num_neighbors
+			idx = 1
+			obs_array[idx:idx+4] = relative_goal
+			idx += 4
+			# obs_array[4] = data.observation.time_to_goal
+			for k in range(num_neighbors):
+				obs_array[idx:idx+4] = relative_neighbors[k]
+				idx += 4
+			for k in range(num_obstacles):
+				obs_array[idx:idx+2] = relative_obstacles[k]
+				idx += 2
+			obs_array[idx:idx+2] = data[t+1, i*4+3:i*4+5]
+			idx += 2
+
+			dataset.append(obs_array)
+
+			# o = Observation._make((
+			# 	relative_goal,
+			# 	time_to_goal,
+			# 	relative_neighbors,
+			# 	relative_obstacles))
+			# # a = data[t+1, i*4+3:i*4+5].clone().detach().numpy() # desired control is the velocity in the next timestep
+			# a = np.array(data[t+1, i*4+3:i*4+5], dtype=np.float32)
+			# oa_pair = Observation_Action_Pair._make((o,a))
+			# dataset.append(oa_pair)
 			# break
 	print('Dataset Size: ',len(dataset))
 
@@ -154,8 +182,6 @@ def make_loader(
 	shuffle=False,
 	batch_size=None,
 	preprocess_transformation=True,
-	max_neighbors=1000,
-	max_obstacles=1000,
 	name=None):
 
 	def batch_loader(dataset):
@@ -163,8 +189,8 @@ def make_loader(
 		dataset_dict = dict()
 
 		for data in dataset:
-			num_neighbors = min(max_neighbors,len(data.observation.relative_neighbors))
-			num_obstacles = min(max_obstacles,len(data.observation.relative_obstacles))
+			num_neighbors = int(data[0])
+			num_obstacles = int((data.shape[0] - num_neighbors*4 - 5 - 2) / 2)
 			key = (num_neighbors, num_obstacles)
 			if key in dataset_dict:
 				dataset_dict[key].append(data)
@@ -173,32 +199,19 @@ def make_loader(
 
 		# Create actual batches
 		loader = []
-		fidx = 0
 		for key, dataset_per_key in dataset_dict.items():
 			num_neighbors, num_obstacles = key
 			batch_x = []
 			batch_y = []
 			for data in dataset_per_key:
-				obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
-				obs_array[0] = num_neighbors
-				idx = 1
-				obs_array[idx:idx+4] = data.observation.relative_goal
-				idx += 4
-				# obs_array[4] = data.observation.time_to_goal
-				for i in range(num_neighbors):
-					obs_array[idx:idx+4] = data.observation.relative_neighbors[i]
-					idx += 4
-				for i in range(num_obstacles):
-					obs_array[idx:idx+2] = data.observation.relative_obstacles[i]
-					idx += 2
-				batch_x.append(obs_array)
-				batch_y.append(data.action)
+				batch_x.append(data[0:-2])
+				batch_y.append(data[-2:])
 
 			# store all the data for this nn/no-pair in a file
 			batch_x = np.array(batch_x)
 			batch_y = np.array(batch_y)
 
-			print(name, num_neighbors, num_obstacles, batch_x.shape[0])
+			print(name, " neighbors ", num_neighbors, " obstacles ", num_obstacles, " ex. ", batch_x.shape[0])
 
 			with open("../preprocessed_data/batch_{}_nn{}_no{}.npy".format(name,num_neighbors, num_obstacles), "wb") as f:
 				np.save(f, np.hstack((batch_x, batch_y)), allow_pickle=False)
@@ -347,7 +360,7 @@ def train_il(param, env):
 				# datadir = glob.glob("../data/singleintegrator/central/*primitive*")
 
 				# 6 obst cases
-				datadir = glob.glob("../data/singleintegrator/central/*obst6_agents1_ex00*.npy")
+				datadir = glob.glob("../data/singleintegrator/central/*obst6_agents4_ex*.npy")
 				# datadir.extend(glob.glob("../data/singleintegrator/central/*obst12_agents1_*"))
 
 				# single case ex (to overfit)
@@ -363,6 +376,8 @@ def train_il(param, env):
 			total_dataset_size = 0
 			# while True:
 
+			# import tracemalloc
+			# tracemalloc.start()
 
 			if not param.il_load_loader_on:
 				for k,file in enumerate(sorted(datadir)):
@@ -370,10 +385,21 @@ def train_il(param, env):
 					print(file)
 
 					if param.il_state_loss_on:
-						dataset = load_orca_dataset_state_loss(file,param.r_comm)
+						dataset = load_orca_dataset_state_loss(
+							file,
+							param.r_comm,
+							param.r_obs_sense,
+							param.max_neighbors,
+							param.max_obstacles,
+							param.training_time_downsample)
 					else:
-						dataset = load_orca_dataset_action_loss(file,param.r_comm,
-							param.r_obs_sense, param.max_obstacles,param.training_time_downsample)
+						dataset = load_orca_dataset_action_loss(
+							file,
+							param.r_comm,
+							param.r_obs_sense,
+							param.max_neighbors,
+							param.max_obstacles,
+							param.training_time_downsample)
 					
 					if np.random.uniform(0, 1) <= param.il_test_train_ratio:
 						train_dataset.extend(dataset)
@@ -382,15 +408,25 @@ def train_il(param, env):
 
 					print(len(train_dataset), len(test_dataset))
 
+					if len(train_dataset) + len(test_dataset) > param.il_n_data:
+						break
+
 				print('Total Training Dataset Size: ',len(train_dataset))
 				print('Total Testing Dataset Size: ',len(test_dataset))
+
+				# # debug loading memory usage
+				# snapshot = tracemalloc.take_snapshot()
+				# top_stats = snapshot.statistics('lineno')
+
+				# print("[ Top 10 ]")
+				# for stat in top_stats[:10]:
+				# 	print(stat)
+
 				loader_train = make_loader(
 					dataset=train_dataset,
 					shuffle=True,
 					batch_size=param.il_batch_size,
 					n_data=param.il_n_data,
-					max_neighbors=param.max_neighbors,
-					max_obstacles=param.max_obstacles,
 					name = "train")
 
 				loader_test = make_loader(
@@ -398,8 +434,6 @@ def train_il(param, env):
 					shuffle=True,
 					batch_size=param.il_batch_size,
 					n_data=param.il_n_data,
-					max_neighbors=param.max_neighbors,
-					max_obstacles=param.max_obstacles,
 					name = "test")
 
 			else:
@@ -503,6 +537,14 @@ def train_il(param, env):
 				best_test_loss = test_epoch_loss
 				print('      saving @ best test loss:', best_test_loss)
 				torch.save(model,param.il_train_model_fn)
+
+	# # debug loading memory usage
+	# snapshot = tracemalloc.take_snapshot()
+	# top_stats = snapshot.statistics('lineno')
+
+	# print("[ Top 10 ]")
+	# for stat in top_stats[:10]:
+	# 	print(stat)
 
 
 
