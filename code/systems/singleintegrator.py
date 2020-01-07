@@ -155,9 +155,10 @@ class SingleIntegrator(Env):
 			return -1
 
 		# check with respect to obstacles
-		results = self.kd_tree_obstacles.query_pairs(self.r_agent + 0.5)
-		if len(results) > 0:
-			return -1
+		results = self.kd_tree_obstacles.query_ball_point(self.positions, self.r_agent + 0.5)
+		for r in results:
+			if len(r) > 0:
+				return -1
 
 		return 0
 
