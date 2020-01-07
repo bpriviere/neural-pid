@@ -96,7 +96,7 @@ def preprocess_transformation(dataset_batches):
 		num_neighbors = int(dataset[0,0]) #int((x.size()[1]-4)/4)
 		num_obstacles = int((dataset.shape[1]-5-4*num_neighbors)/2)
 
-		idx_goal = np.arange(1,3,dtype=int)
+		idx_goal = np.arange(1,5,dtype=int)
 
 		transformed_dataset = np.empty(dataset.shape)
 		transformed_classification = np.empty(classification.shape)
@@ -112,6 +112,7 @@ def preprocess_transformation(dataset_batches):
 			s_gi = row[idx_goal]
 
 			# get transformation 
+			# th = 0
 			th = np.arctan2(s_gi[1],s_gi[0])
 			
 			R = rot_mat_2d(th)
@@ -131,7 +132,6 @@ def preprocess_transformation(dataset_batches):
 			for j in range(num_neighbors):
 				idx = 1+4+j*4+np.arange(0,4,dtype=int)
 				s_ji = row[idx] 
-				bigR = block_diag(R,R)
 				transformed_row[idx] = np.matmul(bigR,s_ji)
 
 			# get obstacles

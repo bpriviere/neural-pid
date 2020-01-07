@@ -38,6 +38,10 @@ class Empty_Net(nn.Module):
 
 		self.layers = param.il_psi_network_architecture
 		self.activation = param.il_network_activation
+		self.dim_g = param.il_psi_network_architecture[0].in_features - \
+						self.model_obstacles.rho_out_dim - \
+						self.model_neighbors.rho_out_dim
+
 
 	def policy(self,x,transformations):
 
@@ -90,7 +94,7 @@ class Empty_Net(nn.Module):
 		rho_neighbors = self.model_neighbors.forward(x[:,5:5+4*num_neighbors])
 		# print("rho_neighbors", rho_neighbors)
 		rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
-		g = x[:,1:3]
+		g = x[:,1:1+self.dim_g]
 		# g_norm = g.norm(dim=1,keepdim=True)
 		# time_to_goal = x[:,4:5]
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)

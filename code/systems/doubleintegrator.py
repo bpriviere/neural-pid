@@ -7,6 +7,8 @@ from collections import namedtuple
 import numpy as np 
 import torch
 from scipy import spatial
+import os
+import yaml
 
 # my package
 import plotter 
@@ -269,6 +271,149 @@ class DoubleIntegrator(Env):
 
 	def agent_idx_to_state_idx(self,i):
 		return self.state_dim_per_agent*i 
+
+
+	def load_dataset_action_loss(self, filename):
+		data = np.load(filename)
+		data = torch.from_numpy(data)
+
+		# load map
+		instance = os.path.splitext(os.path.basename(filename))[0]
+
+		filename_map = "{}/../instances/{}.yaml".format(os.path.dirname(filename), instance)
+		with open(filename_map) as map_file:
+			map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
+		obstacles = []
+		for o in map_data["map"]["obstacles"]:
+			obstacles.append(np.array(o) + np.array([0.5,0.5]))
+
+		for x in range(-1,map_data["map"]["dimensions"][0]+1):
+			obstacles.append(np.array([x,-1]) + np.array([0.5,0.5]))
+			obstacles.append(np.array([x,map_data["map"]["dimensions"][1]]) + np.array([0.5,0.5]))
+		for y in range(map_data["map"]["dimensions"][0]):
+			obstacles.append(np.array([-1,y]) + np.array([0.5,0.5]))
+			obstacles.append(np.array([map_data["map"]["dimensions"][0],y]) + np.array([0.5,0.5]))
+
+		obstacles = np.array(obstacles)
+		kd_tree_obstacles = spatial.KDTree(obstacles)
+
+		num_agents = int((data.shape[1] - 1) / 4)
+		dataset = []
+		reached_goal = set()
+		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
+		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
+		for t in range(data.shape[0]-1):
+			if t%self.param.training_time_downsample != 0:
+				continue
+
+			# build kd-tree
+			positions = np.array([data[t,i*4+1:i*4+3].numpy() for i in range(num_agents)])
+			kd_tree_neighbors = spatial.KDTree(positions)
+
+			for i in range(num_agents):
+				# skip datapoints where agents are just sitting at goal
+				if i in reached_goal:
+					continue
+
+				s_i = data[t,i*4+1:i*4+5]   # state i 
+				# s_g = data[-1,i*4+1:i*4+5]  # goal state i 
+				s_g = torch.Tensor(map_data["agents"][i]["goal"] + [0,0]) + torch.Tensor([0.5,0.5,0,0])
+				# print(s_g, data[-1,i*4+1:i*4+5])
+				relative_goal = s_g - s_i   # relative goal
+				# if we reached the goal, do not include more datapoints from this trajectory
+				if np.allclose(relative_goal, np.zeros(4)):
+					reached_goal.add(i)
+				time_to_goal = data[-1,0] - data[t,0]
+
+				# query visible neighbors
+				_, neighbor_idx = kd_tree_neighbors.query(
+					s_i[0:2].numpy(),
+					k=self.param.max_neighbors,
+					distance_upper_bound=self.param.r_comm)
+				relative_neighbors = []
+				for k in neighbor_idx[1:]: # skip first entry (self)
+					if k < positions.shape[0]:
+						relative_neighbors.append(data[t,k*4+1:k*4+5] - s_i)
+					else:
+						break
+
+				# query visible obstacles
+				_, obst_idx = kd_tree_obstacles.query(
+					s_i[0:2].numpy(),
+					k=self.param.max_obstacles,
+					distance_upper_bound=self.param.r_obs_sense)
+				relative_obstacles = []
+				for k in obst_idx:
+					if k < obstacles.shape[0]:
+						relative_obstacles.append(obstacles[k,:] - s_i[0:2].numpy())
+					else:
+						break
+
+				num_neighbors = len(relative_neighbors)
+				num_obstacles = len(relative_obstacles)
+
+				obs_array = np.empty(5+4*num_neighbors+2*num_obstacles+2, dtype=np.float32)
+				obs_array[0] = num_neighbors
+				idx = 1
+				obs_array[idx:idx+4] = relative_goal
+				idx += 4
+				# obs_array[4] = data.observation.time_to_goal
+				for k in range(num_neighbors):
+					obs_array[idx:idx+4] = relative_neighbors[k]
+					idx += 4
+				for k in range(num_obstacles):
+					obs_array[idx:idx+2] = relative_obstacles[k]
+					idx += 2
+				# action: acceleration
+				dt = data[t+1, 0] - data[t, 0]
+				obs_array[idx:idx+2] = (data[t+1, i*4+3:i*4+5] - data[t, i*4+3:i*4+5]) / dt
+				idx += 2
+
+				dataset.append(obs_array)
+
+				# o = Observation._make((
+				# 	relative_goal,
+				# 	time_to_goal,
+				# 	relative_neighbors,
+				# 	relative_obstacles))
+				# # a = data[t+1, i*4+3:i*4+5].clone().detach().numpy() # desired control is the velocity in the next timestep
+				# a = np.array(data[t+1, i*4+3:i*4+5], dtype=np.float32)
+				# oa_pair = Observation_Action_Pair._make((o,a))
+				# dataset.append(oa_pair)
+				# break
+		# print('Dataset Size: ',len(dataset))
+
+		# import plotter
+		# from matplotlib.patches import Rectangle
+		# robot = 0
+		# for item in dataset:
+		# 	fig,ax = plotter.make_fig()
+		# 	ax.set_title('State')
+		# 	ax.set_aspect('equal')
+
+		# 	ax.set_xlim([-1,10])
+		# 	ax.set_ylim([-1,10])
+
+		# 	# plot all obstacles
+		# 	for o in obstacles:
+		# 		ax.add_patch(Rectangle(o - torch.Tensor([0.5,0.5]), 1.0, 1.0, facecolor='gray', alpha=0.5))
+
+		# 	# plot current position
+		# 	s_g = data[-1,robot*4+1:robot*4+5]
+		# 	robot_pos = s_g - item.observation.relative_goal
+		# 	plotter.plot_circle(robot_pos[0], robot_pos[1],0.2,fig=fig,ax=ax)
+
+		# 	# plot current observation
+		# 	for i, obs in enumerate(item.observation.relative_obstacles):
+		# 		pos = obs + robot_pos[0:2] - torch.Tensor([0.5,0.5])
+		# 		ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+		# 		if i >= max_obstacles-1:
+		# 			break
+
+		# plotter.save_figs(filename + ".pdf")
+		# plotter.open_figs(filename + ".pdf")
+
+		return dataset
 
 	def visualize(self,states,dt):
 
