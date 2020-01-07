@@ -5,10 +5,12 @@
 from gym import Env
 from collections import namedtuple
 import numpy as np 
-import torch 
+import torch
+from scipy import spatial
 
 # my package
 import plotter 
+import utilities
 
 class Agent:
 	def __init__(self,i):
@@ -27,10 +29,20 @@ class DoubleIntegrator(Env):
 		self.state = None
 		self.time_step = None
 
+		self.total_time = param.sim_times[-1]
+		self.dt = param.sim_times[1] - param.sim_times[0]
+
 		self.n_agents = param.n_agents
 		self.state_dim_per_agent = 4
 		self.action_dim_per_agent = 2
 		self.r_agent = param.r_agent
+		self.r_obstacle = param.r_obstacle
+		self.r_obs_sense = param.r_obs_sense
+		self.r_comm = param.r_comm 
+
+		# barrier stuff 
+		self.b_gamma = param.b_gamma
+		self.b_exph = param.b_exph
 
 		# control lim
 		self.a_min = param.a_min
@@ -65,9 +77,11 @@ class DoubleIntegrator(Env):
 		self.param = param
 		self.max_reward = 0 
 
+		self.obstacles = []
+
 
 	def render(self):
-		pass		
+		pass
 
 	def step(self, a):
 		self.s = self.next_state(self.s, a)
@@ -80,47 +94,74 @@ class DoubleIntegrator(Env):
 		return False
 
 	def observe(self):
-		Observation = namedtuple('Observation',['relative_goal','relative_neighbors']) 
-
 		observations = []
+		oa_pairs = []
 		for agent_i in self.agents:
 			p_i = agent_i.p
 			s_i = agent_i.s
 			relative_goal = torch.Tensor(agent_i.s_g - s_i)
+			
+			time_to_goal = self.total_time - self.time_step * self.dt
+
+			# query visible neighbors
+			_, neighbor_idx = self.kd_tree_neighbors.query(p_i,
+				k=self.param.max_neighbors,
+				distance_upper_bound=self.param.r_comm)
 			relative_neighbors = []
-			for agent_j in self.agents:
-				if agent_j.i != agent_i.i:
-					p_j = agent_j.p
-					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
-						s_j = agent_j.s
-						relative_neighbors.append(torch.Tensor(s_j-s_i))
-			observation_i = Observation._make((relative_goal,relative_neighbors))
+			for k in neighbor_idx[1:]: # skip first entry (self)
+				if k < self.positions.shape[0]:
+					relative_neighbors.append(self.agents[k].s - s_i)
+				else:
+					break
 
-			# convert to new format
-			obs_array = np.zeros(self.state_dim_per_agent*(1+len(observation_i.relative_neighbors)))
-			obs_array[0:self.state_dim_per_agent] = observation_i.relative_goal
-			for i in range(len(observation_i.relative_neighbors)):
-				idx = (i+1)*self.state_dim_per_agent + np.arange(0,self.state_dim_per_agent,dtype=int)
-				obs_array[idx ] = observation_i.relative_neighbors[i]
+			# query visible obstacles
+			_, obst_idx = self.kd_tree_obstacles.query(p_i,
+				k=self.param.max_obstacles,
+				distance_upper_bound=self.param.r_obs_sense)
+			relative_obstacles = []
+			for k in obst_idx:
+				if k < self.obstacles_np.shape[0]:
+					relative_obstacles.append(self.obstacles_np[k,:] - p_i)
+				else:
+					break
 
+			# convert to numpy array format
+			num_neighbors = len(relative_neighbors)
+			num_obstacles = len(relative_obstacles)
+			obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
+			obs_array[0] = num_neighbors
+			idx = 1
+			obs_array[idx:idx+4] = relative_goal
+			idx += 4
+			# obs_array[4] = observation_i.time_to_goal
+			for i in range(num_neighbors):
+				obs_array[idx:idx+4] = relative_neighbors[i]
+				idx += 4
+			for i in range(num_obstacles):
+				obs_array[idx:idx+2] = relative_obstacles[i]
+				idx += 2
+
+			oa_pairs.append((obs_array,np.zeros((self.action_dim_per_agent))))
 			observations.append(obs_array)
 			# observations.append(observation_i)
+
+		transformed_oa_pairs, transformations = utilities.preprocess_transformation(oa_pairs)
+		observations = [o for o,_ in transformed_oa_pairs]
+		self.transformations = transformations
 		return observations
 
 	def reward(self):
-		minDist = np.Inf
-		for agent_i in self.agents:
-			idx = self.agent_idx_to_state_idx(agent_i.i)
-			pos_i = self.s[idx:idx+2]
-			for agent_j in self.agents:
-				if agent_i != agent_j:
-					idx = self.agent_idx_to_state_idx(agent_j.i)
-					pos_j = self.s[idx:idx+2]
-					dist = np.linalg.norm(pos_i - pos_j)
-					if dist < minDist:
-						minDist = dist
-		if minDist < 2*self.r_agent:
+		# check with respect to other agents
+		results = self.kd_tree_neighbors.query_pairs(2*self.r_agent)
+		if len(results) > 0:
 			return -1
+
+		# check with respect to obstacles
+		results = self.kd_tree_obstacles.query_ball_point(self.positions, self.r_agent + 0.5)
+		for r in results:
+			if len(r) > 0:
+				return -1
+
 		return 0
 
 
@@ -138,15 +179,18 @@ class DoubleIntegrator(Env):
 				initial_state[idx] = agent_i.s
 			self.s = initial_state
 		else:
-			# print(initial_state)
+			print(initial_state)
 			self.s = initial_state.start
 
 			# assign goal state 
 			for agent in self.agents:
 				idx = self.agent_idx_to_state_idx(agent.i) + \
 					np.arange(0,self.state_dim_per_agent)
-				# print(idx)
+				print(idx)
 				agent.s_g = initial_state.goal[idx]
+
+		self.obstacles_np = np.array([np.array(o) + np.array([0.5,0.5]) for o in self.obstacles])
+		self.kd_tree_obstacles = spatial.KDTree(self.obstacles)
 
 		self.update_agents(self.s)
 		return np.copy(self.s)
@@ -182,7 +226,7 @@ class DoubleIntegrator(Env):
 		sp1 = np.zeros((self.n))
 		dt = self.times[self.time_step+1]-self.times[self.time_step]
 
-		# single integrator
+		# double integrator
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			p_idx = np.arange(idx,idx+2)
@@ -219,6 +263,9 @@ class DoubleIntegrator(Env):
 			agent_i.p = s[idx:idx+2]
 			agent_i.v = s[idx+2:idx+4]
 			agent_i.s = np.concatenate((agent_i.p,agent_i.v))
+
+		self.positions = np.array([agent_i.p for agent_i in self.agents])
+		self.kd_tree_neighbors = spatial.KDTree(self.positions)
 
 	def agent_idx_to_state_idx(self,i):
 		return self.state_dim_per_agent*i 

@@ -53,6 +53,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_neighbo
 
 	num_agents = int((data.shape[1] - 1) / 4)
 	dataset = []
+	reached_goal = set()
 	# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 	# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 	for t in range(data.shape[0]-1):
@@ -64,13 +65,18 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_neighbo
 		kd_tree_neighbors = spatial.KDTree(positions)
 
 		for i in range(num_agents):
+			# skip datapoints where agents are just sitting at goal
+			if i in reached_goal:
+				continue
+
 			s_i = data[t,i*4+1:i*4+5]   # state i 
 			# s_g = data[-1,i*4+1:i*4+5]  # goal state i 
 			s_g = torch.Tensor(map_data["agents"][i]["goal"] + [0,0]) + torch.Tensor([0.5,0.5,0,0])
 			# print(s_g, data[-1,i*4+1:i*4+5])
 			relative_goal = s_g - s_i   # relative goal
+			# if we reached the goal, do not include more datapoints from this trajectory
 			if np.allclose(relative_goal, np.zeros(4)):
-				continue
+				reached_goal.add(i)
 			time_to_goal = data[-1,0] - data[t,0]
 
 			# query visible neighbors

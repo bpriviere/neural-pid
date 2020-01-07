@@ -116,14 +116,15 @@ def preprocess_transformation(dataset_batches):
 			
 			R = rot_mat_2d(th)
 			# R = rot_mat_2d(0)
+			bigR = block_diag(R,R)
 
 			# conditional normalization of relative goal
 			dist = np.linalg.norm(s_gi[0:2])
 			if dist > obstacleDist:
-				s_gi = s_gi / dist * obstacleDist
+				s_gi[0:2] = s_gi[0:2] / dist * obstacleDist
 
 			# transform goal 
-			transformed_row[idx_goal] = np.matmul(R,s_gi)
+			transformed_row[idx_goal] = np.matmul(bigR,s_gi)
 
 			# get neighbors
 			# transform neighbors 
