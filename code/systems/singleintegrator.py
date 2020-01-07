@@ -5,7 +5,8 @@
 from gym import Env
 from collections import namedtuple
 import numpy as np 
-import torch 
+import torch
+from scipy import spatial
 
 # my package
 import plotter 
@@ -91,8 +92,6 @@ class SingleIntegrator(Env):
 		return False
 
 	def observe(self):
-		Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles'])
-
 		observations = []
 		oa_pairs = []
 		for agent_i in self.agents:
@@ -102,39 +101,42 @@ class SingleIntegrator(Env):
 			
 			time_to_goal = self.total_time - self.time_step * self.dt
 
+			# query visible neighbors
+			_, neighbor_idx = self.kd_tree_neighbors.query(p_i,
+				k=self.param.max_neighbors,
+				distance_upper_bound=self.param.r_comm)
 			relative_neighbors = []
-			for agent_j in self.agents:
-				if agent_j.i != agent_i.i:
-					p_j = agent_j.p
-					if np.linalg.norm(p_i-p_j) < self.param.r_comm:
-						s_j = agent_j.s
-						relative_neighbors.append(torch.Tensor(s_j-s_i))
-			relative_neighbors.sort(key=lambda n: n[0:2].norm())
+			for k in neighbor_idx[1:]: # skip first entry (self)
+				if k < self.positions.shape[0]:
+					relative_neighbors.append(self.agents[k].s - s_i)
+				else:
+					break
 
+			# query visible obstacles
+			_, obst_idx = self.kd_tree_obstacles.query(p_i,
+				k=self.param.max_obstacles,
+				distance_upper_bound=self.param.r_obs_sense)
 			relative_obstacles = []
-			for o in self.obstacles:
-				o = np.array(o) + np.array([0.5,0.5])
-				dist = np.linalg.norm(o-p_i)
-				if dist <= self.param.r_obs_sense:
-					relative_obstacles.append(torch.Tensor(o-p_i))
-			relative_obstacles.sort(key=lambda o: o.norm() )
+			for k in obst_idx:
+				if k < self.obstacles_np.shape[0]:
+					relative_obstacles.append(self.obstacles_np[k,:] - p_i)
+				else:
+					break
 
-			observation_i = Observation._make((relative_goal,time_to_goal,relative_neighbors,relative_obstacles))
-
-			# convert to new format
-			num_neighbors = min(self.param.max_neighbors, len(observation_i.relative_neighbors))
-			num_obstacles = min(self.param.max_obstacles, len(observation_i.relative_obstacles))
+			# convert to numpy array format
+			num_neighbors = len(relative_neighbors)
+			num_obstacles = len(relative_obstacles)
 			obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
 			obs_array[0] = num_neighbors
 			idx = 1
-			obs_array[idx:idx+4] = observation_i.relative_goal
+			obs_array[idx:idx+4] = relative_goal
 			idx += 4
 			# obs_array[4] = observation_i.time_to_goal
 			for i in range(num_neighbors):
-				obs_array[idx:idx+4] = observation_i.relative_neighbors[i]
+				obs_array[idx:idx+4] = relative_neighbors[i]
 				idx += 4
 			for i in range(num_obstacles):
-				obs_array[idx:idx+2] = observation_i.relative_obstacles[i]
+				obs_array[idx:idx+2] = relative_obstacles[i]
 				idx += 2
 
 			oa_pairs.append((obs_array,np.zeros((self.action_dim_per_agent))))
@@ -148,29 +150,13 @@ class SingleIntegrator(Env):
 
 	def reward(self):
 		# check with respect to other agents
-		minDist = np.Inf
-		for agent_i in self.agents:
-			idx = self.agent_idx_to_state_idx(agent_i.i)
-			pos_i = self.s[idx:idx+2]
-			for agent_j in self.agents:
-				if agent_i != agent_j:
-					idx = self.agent_idx_to_state_idx(agent_j.i)
-					pos_j = self.s[idx:idx+2]
-					dist = np.linalg.norm(pos_i - pos_j)
-					if dist < minDist:
-						minDist = dist
-		if minDist < 2*self.r_agent:
+		results = self.kd_tree_neighbors.query_pairs(2*self.r_agent)
+		if len(results) > 0:
 			return -1
+
 		# check with respect to obstacles
-		minDist = np.Inf
-		for agent_i in self.agents:
-			idx = self.agent_idx_to_state_idx(agent_i.i)
-			pos_i = self.s[idx:idx+2]
-			for o in self.obstacles:
-				dist = np.linalg.norm(pos_i - (np.array(o)+np.array([0.5,0.5])))
-				if dist < minDist:
-					minDist = dist
-		if minDist < self.r_agent + 0.5:
+		results = self.kd_tree_obstacles.query_pairs(self.r_agent + 0.5)
+		if len(results) > 0:
 			return -1
 
 		return 0
@@ -199,6 +185,9 @@ class SingleIntegrator(Env):
 					np.arange(0,self.state_dim_per_agent)
 				print(idx)
 				agent.s_g = initial_state.goal[idx]
+
+		self.obstacles_np = np.array([np.array(o) + np.array([0.5,0.5]) for o in self.obstacles])
+		self.kd_tree_obstacles = spatial.KDTree(self.obstacles)
 
 		self.update_agents(self.s)
 		return np.copy(self.s)
@@ -269,6 +258,9 @@ class SingleIntegrator(Env):
 			agent_i.p = s[idx:idx+2]
 			agent_i.v = s[idx+2:idx+4]
 			agent_i.s = np.concatenate((agent_i.p,agent_i.v))
+
+		self.positions = np.array([agent_i.p for agent_i in self.agents])
+		self.kd_tree_neighbors = spatial.KDTree(self.positions)
 
 	def agent_idx_to_state_idx(self,i):
 		return self.state_dim_per_agent*i 

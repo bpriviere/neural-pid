@@ -8,9 +8,12 @@ import glob
 import os
 import yaml
 import utilities
+import concurrent.futures
+from itertools import repeat
 
 from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
+from scipy import spatial
 from torch.distributions import Categorical
 from collections import namedtuple
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -36,15 +39,17 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_neighbo
 		map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 	obstacles = []
 	for o in map_data["map"]["obstacles"]:
-		obstacles.append(torch.Tensor(o) + torch.Tensor([0.5,0.5]))
+		obstacles.append(np.array(o) + np.array([0.5,0.5]))
 
 	for x in range(-1,map_data["map"]["dimensions"][0]+1):
-		obstacles.append(torch.Tensor([x,-1]) + torch.Tensor([0.5,0.5]))
-		obstacles.append(torch.Tensor([x,map_data["map"]["dimensions"][1]]) + torch.Tensor([0.5,0.5]))
+		obstacles.append(np.array([x,-1]) + np.array([0.5,0.5]))
+		obstacles.append(np.array([x,map_data["map"]["dimensions"][1]]) + np.array([0.5,0.5]))
 	for y in range(map_data["map"]["dimensions"][0]):
-		obstacles.append(torch.Tensor([-1,y]) + torch.Tensor([0.5,0.5]))
-		obstacles.append(torch.Tensor([map_data["map"]["dimensions"][0],y]) + torch.Tensor([0.5,0.5]))
+		obstacles.append(np.array([-1,y]) + np.array([0.5,0.5]))
+		obstacles.append(np.array([map_data["map"]["dimensions"][0],y]) + np.array([0.5,0.5]))
 
+	obstacles = np.array(obstacles)
+	kd_tree_obstacles = spatial.KDTree(obstacles)
 
 	num_agents = int((data.shape[1] - 1) / 4)
 	dataset = []
@@ -53,6 +58,11 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_neighbo
 	for t in range(data.shape[0]-1):
 		if t%training_time_downsample != 0:
 			continue
+
+		# build kd-tree
+		positions = np.array([data[t,i*4+1:i*4+3].numpy() for i in range(num_agents)])
+		kd_tree_neighbors = spatial.KDTree(positions)
+
 		for i in range(num_agents):
 			s_i = data[t,i*4+1:i*4+5]   # state i 
 			# s_g = data[-1,i*4+1:i*4+5]  # goal state i 
@@ -62,26 +72,24 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_neighbo
 			if np.allclose(relative_goal, np.zeros(4)):
 				continue
 			time_to_goal = data[-1,0] - data[t,0]
-			relative_neighbors = []
-			for j in range(num_agents):
-				if i != j:
-					s_j = data[t,j*4+1:j*4+5] # state j
-					# dist = np.linalg.norm(s_i[0:2] - s_j[0:2])
-					dist = (s_j[0:2] - s_i[0:2]).norm()
-					if dist <= neighborDist:
-						relative_neighbors.append(s_j - s_i)
-						# print(dist, len(relative_neighbors))
-						# break
-			relative_neighbors.sort(key=lambda n: n[0:2].norm())
-			del relative_neighbors[max_neighbors:]
 
+			# query visible neighbors
+			_, neighbor_idx = kd_tree_neighbors.query(s_i[0:2].numpy(), k=max_neighbors, distance_upper_bound=neighborDist)
+			relative_neighbors = []
+			for k in neighbor_idx[1:]: # skip first entry (self)
+				if k < positions.shape[0]:
+					relative_neighbors.append(data[t,k*4+1:k*4+5] - s_i)
+				else:
+					break
+
+			# query visible obstacles
+			_, obst_idx = kd_tree_obstacles.query(s_i[0:2].numpy(), k=max_obstacles, distance_upper_bound=obstacleDist)
 			relative_obstacles = []
-			for o in obstacles:
-				dist = (o - s_i[0:2]).norm()
-				if dist <= obstacleDist:
-					relative_obstacles.append(o - s_i[0:2])
-			relative_obstacles.sort(key=lambda o: o.norm())
-			del relative_obstacles[max_obstacles:]
+			for k in obst_idx:
+				if k < obstacles.shape[0]:
+					relative_obstacles.append(obstacles[k,:] - s_i[0:2].numpy())
+				else:
+					break
 
 			num_neighbors = len(relative_neighbors)
 			num_obstacles = len(relative_obstacles)
@@ -113,7 +121,7 @@ def load_orca_dataset_action_loss(filename,neighborDist,obstacleDist,max_neighbo
 			# oa_pair = Observation_Action_Pair._make((o,a))
 			# dataset.append(oa_pair)
 			# break
-	print('Dataset Size: ',len(dataset))
+	# print('Dataset Size: ',len(dataset))
 
 	# import plotter
 	# from matplotlib.patches import Rectangle
@@ -380,36 +388,51 @@ def train_il(param, env):
 			# tracemalloc.start()
 
 			if not param.il_load_loader_on:
-				for k,file in enumerate(sorted(datadir)):
+
+				# for k,file in enumerate(sorted(datadir)):
 					
-					print(file)
+				# 	print(file)
 
-					if param.il_state_loss_on:
-						dataset = load_orca_dataset_state_loss(
-							file,
-							param.r_comm,
-							param.r_obs_sense,
-							param.max_neighbors,
-							param.max_obstacles,
-							param.training_time_downsample)
-					else:
-						dataset = load_orca_dataset_action_loss(
-							file,
-							param.r_comm,
-							param.r_obs_sense,
-							param.max_neighbors,
-							param.max_obstacles,
-							param.training_time_downsample)
+				# 	if param.il_state_loss_on:
+				# 		dataset = load_orca_dataset_state_loss(
+				# 			file,
+				# 			param.r_comm,
+				# 			param.r_obs_sense,
+				# 			param.max_neighbors,
+				# 			param.max_obstacles,
+				# 			param.training_time_downsample)
+				# 	else:
+				# 		dataset = load_orca_dataset_action_loss(
+				# 			file,
+				# 			param.r_comm,
+				# 			param.r_obs_sense,
+				# 			param.max_neighbors,
+				# 			param.max_obstacles,
+				# 			param.training_time_downsample)
 					
-					if np.random.uniform(0, 1) <= param.il_test_train_ratio:
-						train_dataset.extend(dataset)
-					else:
-						test_dataset.extend(dataset)
+				# 	if np.random.uniform(0, 1) <= param.il_test_train_ratio:
+				# 		train_dataset.extend(dataset)
+				# 	else:
+				# 		test_dataset.extend(dataset)
 
-					print(len(train_dataset), len(test_dataset))
+				# 	print(len(train_dataset), len(test_dataset))
 
-					if len(train_dataset) + len(test_dataset) > param.il_n_data:
-						break
+				# 	if len(train_dataset) + len(test_dataset) > param.il_n_data:
+				# 		break
+
+				with concurrent.futures.ProcessPoolExecutor() as executor:
+					for dataset in executor.map(load_orca_dataset_action_loss, 
+							datadir, repeat(param.r_comm), repeat(param.r_obs_sense), repeat(param.max_neighbors),
+							repeat(param.max_obstacles), repeat(param.training_time_downsample)):
+						if np.random.uniform(0, 1) <= param.il_test_train_ratio:
+							train_dataset.extend(dataset)
+						else:
+							test_dataset.extend(dataset)
+
+						print(len(train_dataset) + len(test_dataset))
+
+						if len(train_dataset) + len(test_dataset) > param.il_n_data:
+							break
 
 				print('Total Training Dataset Size: ',len(train_dataset))
 				print('Total Testing Dataset Size: ',len(test_dataset))
