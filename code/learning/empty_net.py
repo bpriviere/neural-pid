@@ -72,29 +72,30 @@ class Empty_Net(nn.Module):
 		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
 		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
 
-		num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-		num_obstacles = int((x.size()[1] - 5 - 4*num_neighbors)/2)
+		if self.dim_g == 2:
+			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
+			num_obstacles = int((x.size()[1] - 3 - 2*num_neighbors)/2)
 
-		idx_neighbors = np.arange(5,5+4*num_neighbors,dtype=int)
-		idx_obstacles = np.arange(5+4*num_neighbors,x.shape[1],dtype=int)
-		idx_goal = np.arange(1,3,dtype=int)
+			# print("neighbors ", num_neighbors)
+			# print("obs ", num_obstacles)
 
-		# print('x[0,:]: ', x[0,:])
-		# print('x[0,5:5+4*num_neighbors]: ', x[0,5:5+4*num_neighbors])
-		# print('x[0,idx_neighbors]: ', x[0,idx_neighbors])
-		# print('x[0,5+4*num_neighbors:]: ', x[0,5+4*num_neighbors:])
-		# print('x[0,idx_obstacles]: ', x[0,idx_obstacles])
-		# print('x[0,1:3]:', x[0,1:3])
-		# print('x[0,idx_goal]: ', x[0,idx_goal])
-		# exit()
+			rho_neighbors = self.model_neighbors.forward(x[:,3:3+2*num_neighbors])
+			# print("rho_neighbors", rho_neighbors)
+			rho_obstacles = self.model_obstacles.forward(x[:,3+2*num_neighbors:])
+			g = x[:,1:3]
+		elif self.dim_g == 4:
+			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
+			num_obstacles = int((x.size()[1] - 5 - 4*num_neighbors)/2)
 
-		# print("neighbors ", num_neighbors)
-		# print("obs ", num_obstacles)
+			# print("neighbors ", num_neighbors)
+			# print("obs ", num_obstacles)
 
-		rho_neighbors = self.model_neighbors.forward(x[:,5:5+4*num_neighbors])
-		# print("rho_neighbors", rho_neighbors)
-		rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
-		g = x[:,1:1+self.dim_g]
+			rho_neighbors = self.model_neighbors.forward(x[:,5:5+4*num_neighbors])
+			# print("rho_neighbors", rho_neighbors)
+			rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
+			g = x[:,1:5]
+		else:
+			assert(False)
 		# g_norm = g.norm(dim=1,keepdim=True)
 		# time_to_goal = x[:,4:5]
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)

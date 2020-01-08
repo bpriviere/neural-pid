@@ -378,7 +378,7 @@ class SingleIntegrator(Env):
 		# print('Dataset Size: ',len(dataset))
 
 		# import plotter
-		# from matplotlib.patches import Rectangle
+		# from matplotlib.patches import Rectangle, Circle
 		# robot = 0
 		# for item in dataset:
 		# 	fig,ax = plotter.make_fig()
@@ -390,19 +390,29 @@ class SingleIntegrator(Env):
 
 		# 	# plot all obstacles
 		# 	for o in obstacles:
-		# 		ax.add_patch(Rectangle(o - torch.Tensor([0.5,0.5]), 1.0, 1.0, facecolor='gray', alpha=0.5))
+		# 		ax.add_patch(Rectangle(o - np.array([0.5,0.5]), 1.0, 1.0, facecolor='gray', alpha=0.5))
 
 		# 	# plot current position
 		# 	s_g = data[-1,robot*4+1:robot*4+5]
-		# 	robot_pos = s_g - item.observation.relative_goal
+		# 	robot_pos = s_g.numpy()[0:2] - item[1:3]
 		# 	plotter.plot_circle(robot_pos[0], robot_pos[1],0.2,fig=fig,ax=ax)
 
 		# 	# plot current observation
-		# 	for i, obs in enumerate(item.observation.relative_obstacles):
-		# 		pos = obs + robot_pos[0:2] - torch.Tensor([0.5,0.5])
-		# 		ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
-		# 		if i >= max_obstacles-1:
-		# 			break
+		# 	num_neighbors = int(item[0])
+		# 	num_obstacles = int((item.shape[0]-3 - 2*num_neighbors-2)/2)
+
+		# 	idx = 3
+		# 	for i in range(num_neighbors):
+		# 		pos = item[idx : idx+2] + robot_pos
+		# 		ax.add_patch(Circle(pos, 0.25, facecolor='gray', edgecolor='red', alpha=0.5))
+		# 		idx += 2
+
+		# 	for i in range(num_obstacles):
+		# 		# pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
+		# 		# ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+		# 		pos = item[idx : idx+2] + robot_pos
+		# 		ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
+		# 		idx += 2
 
 		# plotter.save_figs(filename + ".pdf")
 		# plotter.open_figs(filename + ".pdf")
