@@ -65,7 +65,8 @@ if __name__ == '__main__':
 
 	result_by_instance = dict()
 
-	for file in glob.glob("**/*agents10*.npy", recursive=True):
+	# for file in glob.glob("**/*agents10*.npy", recursive=True):
+	for file in glob.glob("**/*agents4_ex000*.npy", recursive=True):
 	# for file in glob.glob("**/*agents1_*.npy", recursive=True):
 		solver = os.path.dirname(file)
 		instance = os.path.splitext(os.path.basename(file))[0]

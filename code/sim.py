@@ -33,6 +33,8 @@ def run_sim(param, env, controller, initial_state):
 			observation = env.unpack_observations(observation)
 
 		action = controller.policy(observation,env.transformations)
+		# action = controller.policy(observation)
+		
 		next_state, r, done, _ = env.step(action)
 		reward += r
 		
@@ -97,6 +99,7 @@ def sim(param, env, controllers, initial_state, visualize):
 					result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
 				plotter.plot_square(agent.s_g[0],agent.s_g[1],param.r_agent,angle=45,fig=fig,ax=ax,color=color)
 
+<<<<<<< Updated upstream
 			# # draw state for each time step (single integrator)
 			# robot = 1
 			# for step in np.arange(0, result.steps, 10):
@@ -184,7 +187,6 @@ def sim(param, env, controllers, initial_state, visualize):
 			# 	# plot goal
 			# 	goal = observation[1:3] + robot_pos
 			# 	ax.add_patch(Rectangle(goal - np.array([0.2,0.2]), 0.4, 0.4, alpha=0.5, color=color))
-
 
 		elif param.env_name == 'Consensus' and param.sim_render_on:
 			env.render()

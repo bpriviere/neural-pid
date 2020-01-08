@@ -14,7 +14,10 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
 
-  for file in sorted(glob.glob("instances/*agents1_*")):
+  # for file in sorted(glob.glob("instances/*agents1_*")):
+  # for file in sorted(glob.glob("instances/*agents4_*")):
+  # for file in sorted(glob.glob("instances/*")):
+  for file in sorted(glob.glob("instances/*agents4_ex000*")):
     basename = os.path.splitext(os.path.basename(file))[0]
     print(basename)
     if args.central:
