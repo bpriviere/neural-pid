@@ -9,7 +9,7 @@ from collections import namedtuple
 
 # my package
 import plotter
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle
 import utilities as util
 from other_policy import ZeroPolicy, LCP_Policy
 from learning.ppo_v2 import PPO
@@ -97,9 +97,9 @@ def sim(param, env, controllers, initial_state, visualize):
 					result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
 				plotter.plot_square(agent.s_g[0],agent.s_g[1],param.r_agent,angle=45,fig=fig,ax=ax,color=color)
 
-			# draw state for each time step
-			# robot = 0
-			# for step in np.arange(0, result.steps, 100):
+			# # draw state for each time step (single integrator)
+			# robot = 1
+			# for step in np.arange(0, result.steps, 10):
 			# 	fig,ax = plotter.make_fig()
 			# 	ax.set_title('State at t={} for robot={}'.format(times[step], robot))
 			# 	ax.set_aspect('equal')
@@ -118,14 +118,68 @@ def sim(param, env, controllers, initial_state, visualize):
 			# 		result.states[step,env.agent_idx_to_state_idx(robot)+1],param.r_agent,fig=fig,ax=ax,color=color)
 
 			# 	# plot current observation
-			# 	observation = result.observations[step][0][0]
+			# 	observation = result.observations[step][robot][0]
+			# 	num_neighbors = int(observation[0])
+			# 	num_obstacles = int((observation.shape[0]-3 - 2*num_neighbors)/2)
+
+			# 	robot_pos = result.states[step,env.agent_idx_to_state_idx(robot):env.agent_idx_to_state_idx(robot)+2]
+				
+			# 	idx = 3
+			# 	for i in range(num_neighbors):
+			# 		pos = observation[idx : idx+2] + robot_pos
+			# 		ax.add_patch(Circle(pos, 0.25, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		idx += 2
+
+			# 	for i in range(num_obstacles):
+			# 		# pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
+			# 		# ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		pos = observation[idx : idx+2] + robot_pos
+			# 		ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		idx += 2
+
+			# 	# plot goal
+			# 	goal = observation[1:3] + robot_pos
+			# 	ax.add_patch(Rectangle(goal - np.array([0.2,0.2]), 0.4, 0.4, alpha=0.5, color=color))
+
+			# # draw state for each time step (double integrator)
+			# robot = 1
+			# for step in np.arange(0, result.steps, 10):
+			# 	fig,ax = plotter.make_fig()
+			# 	ax.set_title('State at t={} for robot={}'.format(times[step], robot))
+			# 	ax.set_aspect('equal')
+
+			# 	# plot all obstacles
+			# 	for o in env.obstacles:
+			# 		ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
+
+			# 	# plot overall trajectory
+			# 	line = ax.plot(result.states[0:result.steps,env.agent_idx_to_state_idx(robot)], 
+			# 		result.states[0:result.steps,env.agent_idx_to_state_idx(robot)+1],"--")
+			# 	color = line[0].get_color()
+
+			# 	# plot current position
+			# 	plotter.plot_circle(result.states[step,env.agent_idx_to_state_idx(robot)],
+			# 		result.states[step,env.agent_idx_to_state_idx(robot)+1],param.r_agent,fig=fig,ax=ax,color=color)
+
+			# 	# plot current observation
+			# 	observation = result.observations[step][robot][0]
 			# 	num_neighbors = int(observation[0])
 			# 	num_obstacles = int((observation.shape[0]-5 - 4*num_neighbors)/2)
 
 			# 	robot_pos = result.states[step,env.agent_idx_to_state_idx(robot):env.agent_idx_to_state_idx(robot)+2]
+				
+			# 	idx = 5
+			# 	for i in range(num_neighbors):
+			# 		pos = observation[idx : idx+2] + robot_pos
+			# 		ax.add_patch(Circle(pos, 0.25, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		idx += 4
+
 			# 	for i in range(num_obstacles):
-			# 		pos = observation[5+i*2 : 5+i*2+2] + robot_pos - np.array([0.5,0.5])
-			# 		ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		# pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
+			# 		# ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		pos = observation[idx : idx+2] + robot_pos
+			# 		ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		idx += 2
 
 			# 	# plot goal
 			# 	goal = observation[1:3] + robot_pos

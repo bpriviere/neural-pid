@@ -194,7 +194,7 @@ class DoubleIntegrator(Env):
 				agent.s_g = initial_state.goal[idx]
 
 		self.obstacles_np = np.array([np.array(o) + np.array([0.5,0.5]) for o in self.obstacles])
-		self.kd_tree_obstacles = spatial.KDTree(self.obstacles)
+		self.kd_tree_obstacles = spatial.KDTree(self.obstacles_np)
 
 		self.update_agents(self.s)
 		return np.copy(self.s)
