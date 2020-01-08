@@ -268,13 +268,7 @@ def train_il(param, env):
 				# 			param.max_obstacles,
 				# 			param.training_time_downsample)
 				# 	else:
-				# 		dataset = load_orca_dataset_action_loss(
-				# 			file,
-				# 			param.r_comm,
-				# 			param.r_obs_sense,
-				# 			param.max_neighbors,
-				# 			param.max_obstacles,
-				# 			param.training_time_downsample)
+				# 		dataset = env.load_dataset_action_loss(file)
 					
 				# 	if np.random.uniform(0, 1) <= param.il_test_train_ratio:
 				# 		train_dataset.extend(dataset)
@@ -285,6 +279,7 @@ def train_il(param, env):
 
 				# 	if len(train_dataset) + len(test_dataset) > param.il_n_data:
 				# 		break
+
 
 				with concurrent.futures.ProcessPoolExecutor() as executor:
 					for dataset in executor.map(env.load_dataset_action_loss, datadir):
