@@ -81,7 +81,7 @@ class SingleIntegratorParam(Param):
 		# learning hyperparameters
 		n,m,h,l,p = 4,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
-			nn.Linear(4,h),
+			nn.Linear(2,h),
 			nn.Linear(h,h),
 			nn.Linear(h,l)])
 
@@ -203,7 +203,13 @@ if __name__ == '__main__':
 		for name, controller in controllers.items():
 			print("Running simulation with " + name)
 			states, observations, actions, step = run_sim(param, env, controller, s0)
-			result = np.hstack((param.sim_times.reshape(-1,1), states))
+			states_and_actions = np.zeros((actions.shape[0], states.shape[1] + actions.shape[1]), dtype=states.dtype)
+			states_and_actions[:,0::4] = states[:-1,0::2]
+			states_and_actions[:,1::4] = states[:-1,1::2]
+			states_and_actions[:,2::4] = actions[:,0::2]
+			states_and_actions[:,3::4] = actions[:,1::2]
+
+			result = np.hstack((param.sim_times[0:-1].reshape(-1,1), states_and_actions))
 			# store in binary format
 			basename = os.path.splitext(os.path.basename(args.instance))[0]
 			output_file = "../results/singleintegrator/{}/{}.npy".format(name, basename)
