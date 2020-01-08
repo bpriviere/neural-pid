@@ -13,6 +13,8 @@ import yaml
 # my package
 import plotter 
 import utilities
+from utilities import rot_mat_2d
+from scipy.linalg import block_diag
 
 class Agent:
 	def __init__(self,i):
@@ -35,7 +37,7 @@ class SingleIntegrator(Env):
 		self.dt = param.sim_times[1] - param.sim_times[0]
 
 		self.n_agents = param.n_agents
-		self.state_dim_per_agent = 4
+		self.state_dim_per_agent = 2
 		self.action_dim_per_agent = 2
 		self.r_agent = param.r_agent
 		self.r_obstacle = param.r_obstacle
@@ -66,12 +68,10 @@ class SingleIntegrator(Env):
 		self.states_name = [
 			'x-Position [m]',
 			'y-Position [m]',
-			'x-Velocity [m/s]',
-			'y-Velocity [m/s]',
 			]
 		self.actions_name = [
-			'x-Velocity [m/s^2]',
-			'y-Velocity [m/s^2]'
+			'x-Velocity [m/s]',
+			'y-Velocity [m/s]'
 			]
 
 		self.param = param
@@ -128,15 +128,15 @@ class SingleIntegrator(Env):
 			# convert to numpy array format
 			num_neighbors = len(relative_neighbors)
 			num_obstacles = len(relative_obstacles)
-			obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
+			obs_array = np.zeros(3+2*num_neighbors+2*num_obstacles)
 			obs_array[0] = num_neighbors
 			idx = 1
-			obs_array[idx:idx+4] = relative_goal
-			idx += 4
+			obs_array[idx:idx+2] = relative_goal
+			idx += 2
 			# obs_array[4] = observation_i.time_to_goal
 			for i in range(num_neighbors):
-				obs_array[idx:idx+4] = relative_neighbors[i]
-				idx += 4
+				obs_array[idx:idx+2] = relative_neighbors[i]
+				idx += 2
 			for i in range(num_obstacles):
 				obs_array[idx:idx+2] = relative_obstacles[i]
 				idx += 2
@@ -145,7 +145,7 @@ class SingleIntegrator(Env):
 			observations.append(obs_array)
 			# observations.append(observation_i)
 
-		transformed_oa_pairs, transformations = utilities.preprocess_transformation(oa_pairs)
+		transformed_oa_pairs, transformations = self.preprocess_transformation(oa_pairs)
 		observations = [o for o,_ in transformed_oa_pairs]
 		self.transformations = transformations
 		return observations
@@ -230,10 +230,7 @@ class SingleIntegrator(Env):
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			p_idx = np.arange(idx,idx+2)
-			v_idx = np.arange(idx+2,idx+4)
-			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
-			
-			sp1[v_idx] = a[agent_i.i,:]
+			sp1[p_idx] = self.s[p_idx] + a[agent_i.i,:]*dt
 			# sp1[v_idx] = np.clip(a[agent_i.i,:],self.a_max,self.a_min)
 
 		self.update_agents(sp1)
@@ -260,7 +257,7 @@ class SingleIntegrator(Env):
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			agent_i.p = s[idx:idx+2]
 			agent_i.v = s[idx+2:idx+4]
-			agent_i.s = np.concatenate((agent_i.p,agent_i.v))
+			agent_i.s = agent_i.p
 
 		self.positions = np.array([agent_i.p for agent_i in self.agents])
 		self.kd_tree_neighbors = spatial.KDTree(self.positions)
@@ -311,13 +308,13 @@ class SingleIntegrator(Env):
 				if i in reached_goal:
 					continue
 
-				s_i = data[t,i*4+1:i*4+5]   # state i 
+				s_i = data[t,i*4+1:i*4+3]   # state i 
 				# s_g = data[-1,i*4+1:i*4+5]  # goal state i 
-				s_g = torch.Tensor(map_data["agents"][i]["goal"] + [0,0]) + torch.Tensor([0.5,0.5,0,0])
+				s_g = torch.Tensor(map_data["agents"][i]["goal"]) + torch.Tensor([0.5,0.5])
 				# print(s_g, data[-1,i*4+1:i*4+5])
 				relative_goal = s_g - s_i   # relative goal
 				# if we reached the goal, do not include more datapoints from this trajectory
-				if np.allclose(relative_goal, np.zeros(4)):
+				if np.allclose(relative_goal, np.zeros(2)):
 					reached_goal.add(i)
 				time_to_goal = data[-1,0] - data[t,0]
 
@@ -329,7 +326,7 @@ class SingleIntegrator(Env):
 				relative_neighbors = []
 				for k in neighbor_idx[1:]: # skip first entry (self)
 					if k < positions.shape[0]:
-						relative_neighbors.append(data[t,k*4+1:k*4+5] - s_i)
+						relative_neighbors.append(data[t,k*4+1:k*4+3] - s_i)
 					else:
 						break
 
@@ -348,27 +345,25 @@ class SingleIntegrator(Env):
 				num_neighbors = len(relative_neighbors)
 				num_obstacles = len(relative_obstacles)
 
-				obs_array = np.empty(5+4*num_neighbors+2*num_obstacles+2, dtype=np.float32)
+				obs_array = np.empty(3+2*num_neighbors+2*num_obstacles+2, dtype=np.float32)
 				obs_array[0] = num_neighbors
 				idx = 1
-				obs_array[idx:idx+4] = relative_goal
-				idx += 4
+				obs_array[idx:idx+2] = relative_goal
+				idx += 2
 				# obs_array[4] = data.observation.time_to_goal
 				for k in range(num_neighbors):
-					obs_array[idx:idx+4] = relative_neighbors[k]
-					idx += 4
+					obs_array[idx:idx+2] = relative_neighbors[k]
+					idx += 2
 				for k in range(num_obstacles):
 					obs_array[idx:idx+2] = relative_obstacles[k]
 					idx += 2
 				# action: velocity
 				obs_array[idx:idx+2] = data[t+1, i*4+3:i*4+5]
 				idx += 2
-				# # action: acceleration
-				# dt = data[t+1, 0] - data[t, 0]
-				# obs_array[idx:idx+2] = (data[t+1, i*4+3:i*4+5] - data[t, i*4+3:i*4+5]) / dt
-				# idx += 2
 
-				dataset.append(obs_array)
+				transformed_oa_pairs, _ = self.preprocess_transformation([(obs_array[0:-2],obs_array[-2:])])
+
+				dataset.append(np.hstack(transformed_oa_pairs[0]).flatten())
 
 				# o = Observation._make((
 				# 	relative_goal,
@@ -413,6 +408,91 @@ class SingleIntegrator(Env):
 		# plotter.open_figs(filename + ".pdf")
 
 		return dataset
+
+
+	def preprocess_transformation(self, dataset_batches):
+		# input: 
+		# 	- list of tuple of (observation, actions) pairs, numpy/pytorch supported
+		# output: 
+		# 	- list of tuple of (observation, actions) pairs, numpy arrays
+		# 	- list of transformations 
+
+		# TEMP 
+		obstacleDist = self.param.r_obs_sense
+		transformed_dataset_batches = []
+		transformations_batches = []	
+		for (dataset, classification) in dataset_batches:
+
+			# dataset = [#n, sg-si, {sj-si}, {so-si}]
+
+			if isinstance(dataset,torch.Tensor):
+				dataset = dataset.detach().numpy()
+			if isinstance(classification,torch.Tensor):
+				classification = classification.detach().numpy()
+					
+			if dataset.ndim == 1:
+				dataset = np.reshape(dataset,(-1,len(dataset)))
+			if classification.ndim == 1:
+				classification = np.reshape(classification,(-1,len(classification)))
+
+			num_neighbors = int(dataset[0,0]) #int((x.size()[1]-4)/4)
+			num_obstacles = int((dataset.shape[1]-3-2*num_neighbors)/2)
+
+			idx_goal = np.arange(1,3,dtype=int)
+
+			transformed_dataset = np.empty(dataset.shape)
+			transformed_classification = np.empty(classification.shape)
+			transformations = np.empty((dataset.shape[0],2,2))
+
+			for k,row in enumerate(dataset):
+
+				transformed_row = np.empty(row.shape)
+				transformed_row[0] = row[0]
+
+				# get goal 
+				# s_gi = sg - si 
+				s_gi = row[idx_goal]
+
+				# get transformation 
+				# th = 0
+				th = np.arctan2(s_gi[1],s_gi[0])
+				
+				R = rot_mat_2d(th)
+
+				# conditional normalization of relative goal
+				dist = np.linalg.norm(s_gi[0:2])
+				if dist > obstacleDist:
+					s_gi[0:2] = s_gi[0:2] / dist * obstacleDist
+
+				# transform goal 
+				transformed_row[idx_goal] = np.matmul(R,s_gi)
+
+				# get neighbors
+				# transform neighbors 
+				for j in range(num_neighbors):
+					idx = 1+2+j*2+np.arange(0,2,dtype=int)
+					s_ji = row[idx] 
+					transformed_row[idx] = np.matmul(R,s_ji)
+
+				# get obstacles
+				# transform neighbors 
+				for j in range(num_obstacles):
+					idx = 1+2+num_neighbors*2+j*2+np.arange(0,2,dtype=int)
+					s_oi = row[idx] 
+					transformed_row[idx] = np.matmul(R,s_oi)
+				
+				# transform action
+				if classification is not None: 
+					transformed_classification[k,:] = np.matmul(R,classification[k])
+				transformed_dataset[k,:] = transformed_row
+				transformations[k,:,:] = R
+
+			transformed_dataset_batches.append((transformed_dataset,transformed_classification))
+			transformations_batches.append(transformations)
+
+		return transformed_dataset_batches, transformations_batches
+
+
 
 	def visualize(self,states,dt):
 

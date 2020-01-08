@@ -57,20 +57,20 @@ def load_consensus_dataset(filename,n_neighbor,agent_memory):
 	return dataset
 
 def make_loader(
+	env,
 	dataset=None,
 	n_data=None,
 	shuffle=False,
 	batch_size=None,
-	preprocess_transformation=True,
 	name=None):
 
-	def batch_loader(dataset):
+	def batch_loader(env, dataset):
 		# break by observation size
 		dataset_dict = dict()
 
 		for data in dataset:
 			num_neighbors = int(data[0])
-			num_obstacles = int((data.shape[0] - num_neighbors*4 - 5 - 2) / 2)
+			num_obstacles = int((data.shape[0] - 1 - env.state_dim_per_agent - num_neighbors*env.state_dim_per_agent - 2) / 2)
 			key = (num_neighbors, num_obstacles)
 			if key in dataset_dict:
 				dataset_dict[key].append(data)
@@ -116,14 +116,11 @@ def make_loader(
 	if n_data is not None and n_data < len(dataset):
 		dataset = dataset[0:n_data]
 
-	loader = batch_loader(dataset)
+	loader = batch_loader(env, dataset)
 
-	if preprocess_transformation:
-		loader_numpy,_ = utilities.preprocess_transformation(loader)
-		loader = [(torch.Tensor(o),torch.Tensor(a)) for o,a in loader_numpy]
 	return loader
 
-def load_loader(name,batch_size,preprocess_transformation):
+def load_loader(name,batch_size):
 
 	loader = []
 	datadir = glob.glob("../preprocessed_data/batch_{}*.npy".format(name))
@@ -141,9 +138,6 @@ def load_loader(name,batch_size,preprocess_transformation):
 			y_data = torch.from_numpy(batch_y[idx:last_idx]).float()
 			loader.append([x_data, y_data])
 
-	if preprocess_transformation:
-		loader_numpy,_ = utilities.preprocess_transformation(loader)
-		loader = [(torch.Tensor(o),torch.Tensor(a)) for o,a in loader_numpy]
 	return loader
 
 
@@ -316,6 +310,7 @@ def train_il(param, env):
 				# 	print(stat)
 
 				loader_train = make_loader(
+					env,
 					dataset=train_dataset,
 					shuffle=True,
 					batch_size=param.il_batch_size,
@@ -323,6 +318,7 @@ def train_il(param, env):
 					name = "train")
 
 				loader_test = make_loader(
+					env,
 					dataset=test_dataset,
 					shuffle=True,
 					batch_size=param.il_batch_size,
@@ -330,8 +326,8 @@ def train_il(param, env):
 					name = "test")
 
 			else:
-				loader_train = load_loader("train",param.il_batch_size,True)
-				loader_test  = load_loader("test",param.il_batch_size,True)
+				loader_train = load_loader("train",param.il_batch_size)
+				loader_test  = load_loader("test",param.il_batch_size)
 
 		# consensus dataset 
 		elif "consensus" in param.il_load_dataset:

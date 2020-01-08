@@ -13,6 +13,8 @@ import yaml
 # my package
 import plotter 
 import utilities
+from utilities import rot_mat_2d
+from scipy.linalg import block_diag
 
 class Agent:
 	def __init__(self,i):
@@ -147,7 +149,7 @@ class DoubleIntegrator(Env):
 			observations.append(obs_array)
 			# observations.append(observation_i)
 
-		transformed_oa_pairs, transformations = utilities.preprocess_transformation(oa_pairs)
+		transformed_oa_pairs, transformations = self.preprocess_transformation(oa_pairs)
 		observations = [o for o,_ in transformed_oa_pairs]
 		self.transformations = transformations
 		return observations
@@ -369,7 +371,9 @@ class DoubleIntegrator(Env):
 				obs_array[idx:idx+2] = (data[t+1, i*4+3:i*4+5] - data[t, i*4+3:i*4+5]) / dt
 				idx += 2
 
-				dataset.append(obs_array)
+				transformed_oa_pairs, _ = self.preprocess_transformation([(obs_array[0:-2],obs_array[-2:])])
+
+				dataset.append(np.hstack(transformed_oa_pairs[0]).flatten())
 
 				# o = Observation._make((
 				# 	relative_goal,
@@ -414,6 +418,93 @@ class DoubleIntegrator(Env):
 		# plotter.open_figs(filename + ".pdf")
 
 		return dataset
+
+
+	def preprocess_transformation(self, dataset_batches):
+		# input: 
+		# 	- list of tuple of (observation, actions) pairs, numpy/pytorch supported
+		# output: 
+		# 	- list of tuple of (observation, actions) pairs, numpy arrays
+		# 	- list of transformations 
+
+		# TEMP 
+		obstacleDist = self.param.r_obs_sense
+		transformed_dataset_batches = []
+		transformations_batches = []	
+		for (dataset, classification) in dataset_batches:
+
+			# dataset = [#n, sg-si, {sj-si}, {so-si}]
+
+			if isinstance(dataset,torch.Tensor):
+				dataset = dataset.detach().numpy()
+			if isinstance(classification,torch.Tensor):
+				classification = classification.detach().numpy()
+					
+			if dataset.ndim == 1:
+				dataset = np.reshape(dataset,(-1,len(dataset)))
+			if classification.ndim == 1:
+				classification = np.reshape(classification,(-1,len(classification)))
+
+			num_neighbors = int(dataset[0,0]) #int((x.size()[1]-4)/4)
+			num_obstacles = int((dataset.shape[1]-5-4*num_neighbors)/2)
+
+			idx_goal = np.arange(1,5,dtype=int)
+
+			transformed_dataset = np.empty(dataset.shape)
+			transformed_classification = np.empty(classification.shape)
+			transformations = np.empty((dataset.shape[0],2,2))
+
+			for k,row in enumerate(dataset):
+
+				transformed_row = np.empty(row.shape)
+				transformed_row[0] = row[0]
+
+				# get goal 
+				# s_gi = sg - si 
+				s_gi = row[idx_goal]
+
+				# get transformation 
+				# th = 0
+				th = np.arctan2(s_gi[1],s_gi[0])
+				
+				R = rot_mat_2d(th)
+				# R = rot_mat_2d(0)
+				bigR = block_diag(R,R)
+
+				# conditional normalization of relative goal
+				dist = np.linalg.norm(s_gi[0:2])
+				if dist > obstacleDist:
+					s_gi[0:2] = s_gi[0:2] / dist * obstacleDist
+
+				# transform goal 
+				transformed_row[idx_goal] = np.matmul(bigR,s_gi)
+
+				# get neighbors
+				# transform neighbors 
+				for j in range(num_neighbors):
+					idx = 1+4+j*4+np.arange(0,4,dtype=int)
+					s_ji = row[idx] 
+					transformed_row[idx] = np.matmul(bigR,s_ji)
+
+				# get obstacles
+				# transform neighbors 
+				for j in range(num_obstacles):
+					idx = 1+4+num_neighbors*4+j*2+np.arange(0,2,dtype=int)
+					s_oi = row[idx] 
+					transformed_row[idx] = np.matmul(R,s_oi)
+				
+				# transform action
+				if classification is not None: 
+					transformed_classification[k,:] = np.matmul(R,classification[k])
+				transformed_dataset[k,:] = transformed_row
+				transformations[k,:,:] = R
+
+			transformed_dataset_batches.append((transformed_dataset,transformed_classification))
+			transformations_batches.append(transformations)
+
+		return transformed_dataset_batches, transformations_batches
+
+
 
 	def visualize(self,states,dt):
 

@@ -157,14 +157,14 @@ if __name__ == '__main__':
 		else:
 
 			import yaml
-			ex = '0045' # 4 is hard 
+			ex = '0001' # 4 is hard 
 			
 			if args.instance:
 				with open(args.instance) as map_file:
 					map_data = yaml.load(map_file)
 			else:
 				# test map 
-				with open("../data/singleintegrator/instances/map_8by8_obst12_agents1_ex{}.yaml".format(ex)) as map_file:
+				with open("../results/singleintegrator/instances/map_8by8_obst6_agents4_ex{}.yaml".format(ex)) as map_file:
 
 				# test map test dataset
 
@@ -174,9 +174,7 @@ if __name__ == '__main__':
 			g = []
 			for agent in map_data["agents"]:
 				s.extend([agent["start"][0] + 0.5, agent["start"][1] + 0.5])
-				s.extend([0,0])
 				g.extend([agent["goal"][0] + 0.5, agent["goal"][1] + 0.5])
-				g.extend([0,0])
 
 			InitialState = namedtuple('InitialState', ['start', 'goal'])
 			s0 = InitialState._make((np.array(s), np.array(g)))
