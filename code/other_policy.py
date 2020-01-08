@@ -149,10 +149,12 @@ class Empty_Net_wAPF():
 		A = np.empty((len(x),self.action_dim_per_agent))
 		for i,x_i in enumerate(x):
 			R = transformations[i][0]
+			
 			empty_action = self.empty_net(torch.Tensor(x_i))
 			barrier_action = self.APF(x_i)
 			a_i = (barrier_action+empty_action).detach().numpy()
-			# a_i = self.scale(barrier_action+empty_action).detach().numpy()
+			a_i = self.scale(barrier_action+empty_action).detach().numpy()
+
 			a_i = np.matmul(R.T,a_i.T).T
 			A[i,:] = a_i
 		return A
@@ -167,47 +169,50 @@ class Empty_Net_wAPF():
 		if not isinstance(x,torch.Tensor):
 			x = torch.from_numpy(x).float()
 
-		# this implementation uses only the closest barrier 
-		min_neighbor_dist = np.Inf 
-		min_neighbor_agent = True
-		for j in range(nn):
-			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-			relative_neighbor = x[:,idx].numpy()
-			P_i = -1*relative_neighbor[:,0:2] # pi - pj
-			if np.linalg.norm(P_i) < min_neighbor_dist: 
-				min_neighbor_p = P_i 
-				min_neighbor_dist = np.linalg.norm(P_i)
+		closest_barrier_mode_on = False
+		if closest_barrier_mode_on:
+			# this implementation uses only the closest barrier 
+			min_neighbor_dist = np.Inf 
+			min_neighbor_agent = True
+			for j in range(nn):
+				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
+				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
+				relative_neighbor = x[:,idx].numpy()
+				P_i = -1*relative_neighbor[:,0:2] # pi - pj
+				if np.linalg.norm(P_i) < min_neighbor_dist: 
+					min_neighbor_p = P_i 
+					min_neighbor_dist = np.linalg.norm(P_i)
 
-		for j in range(no):
-			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
-			P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-			if np.linalg.norm(P_i) < min_neighbor_dist: 
-				min_neighbor_p = P_i 
-				min_neighbor_dist = np.linalg.norm(P_i)
-				min_neighbor_agent = False
+			for j in range(no):
+				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
+				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
+				if np.linalg.norm(P_i) < min_neighbor_dist: 
+					min_neighbor_p = P_i 
+					min_neighbor_dist = np.linalg.norm(P_i)
+					min_neighbor_agent = False
 
-		if min_neighbor_agent:
-			barrier_action = torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
+			if min_neighbor_agent:
+				barrier_action = torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
+			else:
+				barrier_action = torch.from_numpy(self.get_obstacle_barrier(min_neighbor_p)).float()
+
 		else:
-			barrier_action = torch.from_numpy(self.get_obstacle_barrier(min_neighbor_p)).float()
+			# this implementation uses all barriers
+			# print('Neighbors')
+			for j in range(nn):
+				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
+				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
+				relative_neighbor = x[:,idx].numpy()
+				P_i = -1*relative_neighbor[:,0:2] # pi - pj
+				A_i = self.get_robot_barrier(P_i)
+				barrier_action += torch.from_numpy(A_i).float()
 
-
-		# print('Neighbors')
-		# for j in range(nn):
-		# 	# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-		# 	idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-		# 	relative_neighbor = x[:,idx].numpy()
-		# 	P_i = -1*relative_neighbor[:,0:2] # pi - pj
-		# 	A_i = self.get_robot_barrier(P_i)
-		# 	barrier_action += torch.from_numpy(A_i).float()
-
-		# # print('Obstacles')
-		# for j in range(no):
-		# 	idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
-		# 	P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-		# 	A_i = self.get_obstacle_barrier(P_i)
-		# 	barrier_action += torch.from_numpy(A_i).float()
+			# print('Obstacles')
+			for j in range(no):
+				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
+				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
+				A_i = self.get_obstacle_barrier(P_i)
+				barrier_action += torch.from_numpy(A_i).float()
 
 		return barrier_action 
 
