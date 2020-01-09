@@ -47,6 +47,38 @@ def add_scatter(pp, results, key, title):
 	plt.close(fig)
 
 
+def add_bar_agg(pp, results, key, title):
+	fig, ax = plt.subplots()
+	ax.set_title(title)
+
+	# find set of solvers
+	solvers = set()
+	for _, results in result_by_instance.items():
+		for r in results:
+			solvers.add(r["solver"])
+
+	# x = []
+	# y = []
+	for k, solver in enumerate(sorted(solvers)):
+
+		agg = 0
+		for _, results in result_by_instance.items():
+			for r in results:
+				if r["solver"] == solver:
+					agg += r[key]
+		ax.bar(k, agg)
+		# x.append(k)
+		# y.append(agg)
+	# print(y)
+	# ax.bar(x, y)
+
+	ax.set_xticks(np.arange(len(solvers)))
+	ax.set_xticklabels([solver for solver in sorted(solvers)])
+
+	pp.savefig(fig)
+	plt.close(fig)
+
+
 def add_bar_chart(pp, results, key, title):
 	fig, ax = plt.subplots()
 	ax.set_title(title)
@@ -65,10 +97,11 @@ if __name__ == '__main__':
 
 	result_by_instance = dict()
 
-	# for file in glob.glob("**/*agents10*.npy", recursive=True):
-	for file in glob.glob("**/*agents4_ex000*.npy", recursive=True):
-	# for file in glob.glob("**/*agents1_*.npy", recursive=True):
+	for file in glob.glob("**/*obst6_agents4_ex000*.npy", recursive=True):
+	# for file in glob.glob("**/*.npy", recursive=True):
 		solver = os.path.dirname(file)
+		if solver not in ["EN", "ENwAPF", "orca"]:
+			continue
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)
@@ -81,6 +114,7 @@ if __name__ == '__main__':
 
 	pp = PdfPages("results.pdf")
 
+	add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
 	add_scatter(pp, result_by_instance, "percent_agents_reached_goal", "% reached goal")
 	add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
 
