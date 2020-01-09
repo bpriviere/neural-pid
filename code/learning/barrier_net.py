@@ -125,7 +125,7 @@ class Barrier_Net(nn.Module):
 		no = int( (x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
 		
 		# this implementation uses only the closest barrier 
-		closest_barrier_mode_on = True
+		closest_barrier_mode_on = False
 		if closest_barrier_mode_on:	
 			min_neighbor_dist = np.Inf 
 			min_neighbor_mode = 0

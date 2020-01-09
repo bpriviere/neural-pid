@@ -169,7 +169,7 @@ class Empty_Net_wAPF():
 		if not isinstance(x,torch.Tensor):
 			x = torch.from_numpy(x).float()
 
-		closest_barrier_mode_on = True
+		closest_barrier_mode_on = False
 		if closest_barrier_mode_on:
 			min_neighbor_dist = np.Inf 
 			min_neighbor_mode = 0
@@ -194,11 +194,11 @@ class Empty_Net_wAPF():
 					min_neighbor_dist = dist[0]
 					min_neighbor_mode = 2
 
-			if min_neighbor_dist < self.param.r_agent + 0.15:
-				if min_neighbor_mode == 1:
-					barrier_action += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
-				elif min_neighbor_mode == 2:
-					barrier_action += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)).float()
+			# if min_neighbor_dist < self.param.r_agent + 0.15:
+			if min_neighbor_mode == 1:
+				barrier_action += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
+			elif min_neighbor_mode == 2:
+				barrier_action += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)).float()
 
 		else:
 			# this implementation uses all barriers
@@ -215,7 +215,10 @@ class Empty_Net_wAPF():
 			for j in range(no):
 				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
 				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-				A_i = self.get_obstacle_barrier(P_i)
+				closest, dist = min_dist_circle_rectangle(
+					np.zeros(2), self.param.r_agent,
+					P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
+				A_i = self.get_obstacle_barrier_square(closest)
 				barrier_action += torch.from_numpy(A_i).float()
 
 		return barrier_action 

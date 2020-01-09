@@ -32,9 +32,9 @@ class Empty_Net(nn.Module):
 
 			self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
 		
-		self.a_max = param.a_max
-		self.a_min = param.a_min
-		self.a_noise = param.a_noise
+		self.phi_max = param.phi_max
+		self.phi_min = param.phi_min
+		# self.a_noise = param.a_noise
 
 		self.layers = param.il_psi_network_architecture
 		self.activation = param.il_network_activation
@@ -49,29 +49,16 @@ class Empty_Net(nn.Module):
 		# outputs policy for all agents
 		A = np.empty((len(x),self.action_dim_per_agent))
 		for i,x_i in enumerate(x):
-			
-			
-			# R = transformations[i][0]
-			# print('R: ', R)
-			# print('transformations: ', transformations)
-			# exit()
-
 			R = transformations[i][0]
-
 			a_i = self(torch.Tensor(x_i))
 			a_i = a_i.detach().numpy()
 			a_i = np.matmul(R.T,a_i.T).T
-			
-			# a_i = self(torch.Tensor([x_i]))
-			# a_i = a_i + self.a_noise*np.random(size=a_i.shape)
-			
 			A[i,:] = a_i
 		return A
 
 	def __call__(self,x):
 		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
 		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
-
 		if self.dim_g == 2:
 			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
 			num_obstacles = int((x.size()[1] - 3 - 2*num_neighbors)/2)
@@ -99,15 +86,14 @@ class Empty_Net(nn.Module):
 		# g_norm = g.norm(dim=1,keepdim=True)
 		# time_to_goal = x[:,4:5]
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)
-
 		for layer in self.layers[:-1]:
 			x = self.activation(layer(x))
 		x = self.layers[-1](x)
+		self.scale(x)
+		
+		return x
 
-		# add noise ???
-		# x = x + self.a_noise*np.random(size=x.shape)
-
-		# if no control authority lim in deepset implement here instead:
-		# x = torch.tanh(x) # x \in [-1,1]
-		# x = (x+1.)/2.*torch.tensor((self.a_max-self.a_min)).float()+torch.tensor((self.a_min)).float() #, x \in [amin,amax]
+	def scale(self,x):
+		x = torch.tanh(x) # x \in [-1,1]
+		x = (x+1.)/2.*torch.tensor((self.phi_max-self.phi_min)).float()+torch.tensor((self.phi_min)).float() #, x \in [amin,amax]
 		return x

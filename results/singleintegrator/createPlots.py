@@ -100,8 +100,8 @@ if __name__ == '__main__':
 	for file in glob.glob("**/*obst6_agents4_ex000*.npy", recursive=True):
 	# for file in glob.glob("**/*.npy", recursive=True):
 		solver = os.path.dirname(file)
-		if solver not in ["EN", "ENwAPF", "orca"]:
-			continue
+		# if solver not in ["EN", "ENwAPF", "orca"]:
+		# 	continue
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)

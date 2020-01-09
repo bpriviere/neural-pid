@@ -159,7 +159,7 @@ class SingleIntegrator(Env):
 			return -1
 
 		# check with respect to obstacles
-		results = self.kd_tree_obstacles.query_ball_point(self.positions, self.r_agent + 0.5)
+		results = self.kd_tree_obstacles.query_ball_point(self.positions, self.r_agent + self.r_obstacle)
 		for r in results:
 			if len(r) > 0:
 				return -1
@@ -320,6 +320,9 @@ class SingleIntegrator(Env):
 					reached_goal.add(i)
 				time_to_goal = data[-1,0] - data[t,0]
 
+
+				# here! 
+
 				# query visible neighbors
 				_, neighbor_idx = kd_tree_neighbors.query(
 					s_i[0:2].numpy(),
@@ -379,6 +382,7 @@ class SingleIntegrator(Env):
 				# oa_pair = Observation_Action_Pair._make((o,a))
 				# dataset.append(oa_pair)
 				# break
+
 		# print('Dataset Size: ',len(dataset))
 
 		# import plotter
@@ -507,7 +511,6 @@ class SingleIntegrator(Env):
 		return transformed_dataset_batches, transformations_batches
 
 
-
 	def visualize(self,states,dt):
 
 		import meshcat
@@ -529,3 +532,5 @@ class SingleIntegrator(Env):
 					pos = state[idx]
 					vis["agent" + str(i)].set_transform(tf.translation_matrix([pos[0], pos[1], 0]))
 				time.sleep(dt)
+
+				
