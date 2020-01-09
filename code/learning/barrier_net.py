@@ -125,30 +125,32 @@ class Barrier_Net(nn.Module):
 		no = int( (x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
 		
 		# this implementation uses only the closest barrier 
-		# min_neighbor_dist = np.Inf 
-		# min_neighbor_mode = 0
-		# for j in range(nn):
-		# 	# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-		# 	idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-		# 	relative_neighbor = x[:,idx].numpy()
-		# 	P_i = -1*relative_neighbor[:,0:2] # pi - pj
-		# 	if np.linalg.norm(P_i) < min_neighbor_dist: 
-		# 		min_neighbor_p = P_i 
-		# 		min_neighbor_dist = np.linalg.norm(P_i)
-		# 		min_neighbor_mode = 1 
+		closest_barrier_mode_on = True
+		if closest_barrier_mode_on:	
+			min_neighbor_dist = np.Inf 
+			min_neighbor_mode = 0
+			for j in range(nn):
+				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
+				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
+				relative_neighbor = x[:,idx].numpy()
+				P_i = -1*relative_neighbor[:,0:2] # pi - pj
+				if np.linalg.norm(P_i) < min_neighbor_dist: 
+					min_neighbor_p = P_i 
+					min_neighbor_dist = np.linalg.norm(P_i)
+					min_neighbor_mode = 1 
 
-		# for j in range(no):
-		# 	idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
-		# 	P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-		# 	if np.linalg.norm(P_i) < min_neighbor_dist: 
-		# 		min_neighbor_p = P_i 
-		# 		min_neighbor_dist = np.linalg.norm(P_i)
-		# 		min_neighbor_mode = 2
+			for j in range(no):
+				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
+				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
+				if np.linalg.norm(P_i) < min_neighbor_dist: 
+					min_neighbor_p = P_i 
+					min_neighbor_dist = np.linalg.norm(P_i)
+					min_neighbor_mode = 2
 
-		# if min_neighbor_mode == 1:
-		# 	barrier_action += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
-		# elif min_neighbor_mode == 2:
-		# 	barrier_action += torch.from_numpy(self.get_obstacle_barrier(min_neighbor_p)).float()
+			if min_neighbor_mode == 1:
+				barrier_action += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
+			elif min_neighbor_mode == 2:
+				barrier_action += torch.from_numpy(self.get_obstacle_barrier(min_neighbor_p)).float()
 
 		# this implementation uses all barriers
 		# print('Neighbors')
