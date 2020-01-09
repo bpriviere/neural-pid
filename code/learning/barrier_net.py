@@ -10,7 +10,7 @@ import numpy as np
 # my package
 from learning.deepset import DeepSet
 from learning.empty_net import Empty_Net
-from utilities import torch_tile
+from utilities import torch_tile, min_dist_circle_rectangle
 
 
 class Barrier_Net(nn.Module):
@@ -117,6 +117,16 @@ class Barrier_Net(nn.Module):
 		action = self.scale(action)
 		return action 
 
+		# empty_action = self.empty(x)
+		# barrier_action = self.APF(x)
+		# action = empty_action + barrier_action 
+		# return action
+
+		# empty_action = self.scale_empty(self.empty(x))
+		# barrier_action = self.APF(x)
+		# action = empty_action + barrier_action
+		# return action
+
 
 	def APF(self,x):
 		barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
@@ -125,73 +135,131 @@ class Barrier_Net(nn.Module):
 		no = int( (x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
 		
 		# this implementation uses only the closest barrier 
-		closest_barrier_mode_on = False
-		if closest_barrier_mode_on:	
-			min_neighbor_dist = np.Inf 
-			min_neighbor_mode = 0
+		
+		closest_barrier_mode_on = True
+		if closest_barrier_mode_on:
+
+			# barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
+			# for k in range(len(x)):
+			# 	min_neighbor_dist = np.Inf
+			# 	min_neighbor_mode = 0
+			# 	for j in range(nn):
+			# 		# j+1 to skip relative goal entries, +1 to skip number of neighbors column
+			# 		idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
+			# 		relative_neighbor = x[k:k+1,idx].numpy()
+			# 		P_i = -1*relative_neighbor[:,0:2] # pi - pj
+			# 		if np.linalg.norm(P_i) - self.r_agent < min_neighbor_dist: 
+			# 			min_neighbor_p = P_i 
+			# 			min_neighbor_dist = np.linalg.norm(P_i) - self.r_agent
+			# 			min_neighbor_mode = 1 
+
+			# 	for j in range(no):
+			# 		idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
+			# 		P_i = -1*x[k:k+1,idx].numpy() # in nd x state_dim_per_agent
+			# 		closest, dist = min_dist_circle_rectangle(
+			# 			np.zeros(2), self.r_agent,
+			# 			P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
+			# 		if dist[0] < min_neighbor_dist:
+			# 			min_neighbor_p = closest
+			# 			min_neighbor_dist = dist[0]
+			# 			min_neighbor_mode = 2
+
+			# 	# if min_neighbor_dist < self.r_agent + 0.15:
+			# 	if True:
+			# 		if min_neighbor_mode == 1:
+			# 			barrier_action[k:k+1] += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
+			# 		elif min_neighbor_mode == 2:
+			# 			barrier_action[k:k+1] += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)).float()
+
+			# print(barrier_action)
+			# #####
+			barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
+
+
+			# TODO: the KD-Tree outputs data is sorted, so technically no need to loop over everything
+			min_neighbor_dist = np.repeat(np.Inf, len(x))
+			min_neighbor_p = np.empty((len(x),2))
+			min_neighbor_mode = np.repeat(0, len(x))
 			for j in range(nn):
 				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
 				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
 				relative_neighbor = x[:,idx].numpy()
 				P_i = -1*relative_neighbor[:,0:2] # pi - pj
-				if np.linalg.norm(P_i) < min_neighbor_dist: 
-					min_neighbor_p = P_i 
-					min_neighbor_dist = np.linalg.norm(P_i)
-					min_neighbor_mode = 1 
+				dist = np.linalg.norm(P_i, axis=1) - self.r_agent
+				predicate = dist < min_neighbor_dist
+				min_neighbor_p[predicate] = P_i[predicate]
+				min_neighbor_dist[predicate] = dist[predicate]
+				min_neighbor_mode[predicate] = 1
 
 			for j in range(no):
 				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
 				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-				if np.linalg.norm(P_i) < min_neighbor_dist: 
-					min_neighbor_p = P_i 
-					min_neighbor_dist = np.linalg.norm(P_i)
-					min_neighbor_mode = 2
+				closest, dist = min_dist_circle_rectangle(
+					np.zeros(2), self.r_agent,
+					P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
 
-			if min_neighbor_mode == 1:
-				barrier_action += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
-			elif min_neighbor_mode == 2:
-				barrier_action += torch.from_numpy(self.get_obstacle_barrier(min_neighbor_p)).float()
+				predicate = dist < min_neighbor_dist
+				min_neighbor_p[predicate] = closest[predicate]
+				min_neighbor_dist[predicate] = dist[predicate]
+				min_neighbor_mode[predicate] = 2
 
-		# this implementation uses all barriers
-		# print('Neighbors')
-		for j in range(nn):
-			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-			relative_neighbor = x[:,idx].numpy()
-			P_i = -1*relative_neighbor[:,0:2] # pi - pj
-			A_i = self.get_robot_barrier(P_i)
-			
-			# print('x:',x)
-			# print('nd:',nd)
-			# print('nn:',nn)
-			# print('no:',no)
-			# print('j:',j)
-			# print('idx:',idx)
-			# print('x[:,idx]:',x[:,idx])
-			# print('P_i: ', P_i)
-			# print('A_i: ', A_i)
+			# print(min_neighbor_dist)
+			# print(min_neighbor_mode)
+			# print(min_neighbor_p)
+
+			predicate = np.logical_and(min_neighbor_mode==1, min_neighbor_dist < self.r_agent + 0.15)
+			# predicate = min_neighbor_mode==1
+			barrier_action[predicate] += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)[predicate]).float()
+
+			predicate = np.logical_and(min_neighbor_mode==2, min_neighbor_dist < self.r_agent + 0.15)
+			# predicate = min_neighbor_mode==2
+			barrier_action[predicate] += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)[predicate]).float()
+
+
+			# print(barrier_action)
 			# exit()
+		else:
 
-			barrier_action += torch.from_numpy(A_i).float()
+			# this implementation uses all barriers
+			# print('Neighbors')
+			for j in range(nn):
+				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
+				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
+				relative_neighbor = x[:,idx].numpy()
+				P_i = -1*relative_neighbor[:,0:2] # pi - pj
+				A_i = self.get_robot_barrier(P_i)
+				
+				# print('x:',x)
+				# print('nd:',nd)
+				# print('nn:',nn)
+				# print('no:',no)
+				# print('j:',j)
+				# print('idx:',idx)
+				# print('x[:,idx]:',x[:,idx])
+				# print('P_i: ', P_i)
+				# print('A_i: ', A_i)
+				# exit()
 
-		# print('Obstacles')
-		for j in range(no):
-			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
-			P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-			A_i = self.get_obstacle_barrier(P_i)
+				barrier_action += torch.from_numpy(A_i).float()
 
-			# print('x:',x)
-			# print('nd:',nd)
-			# print('nn:',nn)
-			# print('no:',no)
-			# print('j:',j)
-			# print('idx:',idx)
-			# print('x[:,idx]:',x[:,idx])
-			# print('P_i: ', P_i)
-			# print('A_i: ', A_i)
-			# exit()
+			# print('Obstacles')
+			for j in range(no):
+				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
+				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
+				A_i = self.get_obstacle_barrier(P_i)
 
-			barrier_action += torch.from_numpy(A_i).float()
+				# print('x:',x)
+				# print('nd:',nd)
+				# print('nn:',nn)
+				# print('no:',no)
+				# print('j:',j)
+				# print('idx:',idx)
+				# print('x[:,idx]:',x[:,idx])
+				# print('P_i: ', P_i)
+				# print('A_i: ', A_i)
+				# exit()
+
+				barrier_action += torch.from_numpy(A_i).float()
 
 		return barrier_action 
 
@@ -224,6 +292,15 @@ class Barrier_Net(nn.Module):
 		normP = np.tile(normP,(1,np.shape(P)[1]))
 		return self.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.b_exph)),P)
 
+
+	def get_obstacle_barrier_square(self,P):
+		H = np.linalg.norm(P,axis=1) - self.r_agent
+		H = np.reshape(H,(len(H),1))
+		H = np.tile(H,(1,np.shape(P)[1]))
+		normP = np.linalg.norm(P,axis=1)
+		normP = np.reshape(normP,(len(normP),1))
+		normP = np.tile(normP,(1,np.shape(P)[1]))
+		return self.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.b_exph)),P)
 
 	# old fncs 
 	# def get_robot_barrier(self,dp,dv):
