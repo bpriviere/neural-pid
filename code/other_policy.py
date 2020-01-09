@@ -6,7 +6,7 @@ from cvxpy.atoms.norm_inf import norm_inf
 from collections import namedtuple
 
 
-from utilities import torch_tile
+from utilities import torch_tile, min_dist_circle_rectangle
 import torch 
 
 
@@ -169,32 +169,36 @@ class Empty_Net_wAPF():
 		if not isinstance(x,torch.Tensor):
 			x = torch.from_numpy(x).float()
 
-		closest_barrier_mode_on = False
+		closest_barrier_mode_on = True
 		if closest_barrier_mode_on:
-			# this implementation uses only the closest barrier 
 			min_neighbor_dist = np.Inf 
-			min_neighbor_agent = True
+			min_neighbor_mode = 0
 			for j in range(nn):
 				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
 				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
 				relative_neighbor = x[:,idx].numpy()
 				P_i = -1*relative_neighbor[:,0:2] # pi - pj
-				if np.linalg.norm(P_i) < min_neighbor_dist: 
+				if np.linalg.norm(P_i) - self.param.r_agent < min_neighbor_dist: 
 					min_neighbor_p = P_i 
-					min_neighbor_dist = np.linalg.norm(P_i)
+					min_neighbor_dist = np.linalg.norm(P_i) - self.param.r_agent
+					min_neighbor_mode = 1 
 
 			for j in range(no):
 				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
 				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-				if np.linalg.norm(P_i) < min_neighbor_dist: 
-					min_neighbor_p = P_i 
-					min_neighbor_dist = np.linalg.norm(P_i)
-					min_neighbor_agent = False
+				closest, dist = min_dist_circle_rectangle(
+					np.zeros(2), self.param.r_agent,
+					P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
+				if dist[0] < min_neighbor_dist:
+					min_neighbor_p = closest
+					min_neighbor_dist = dist[0]
+					min_neighbor_mode = 2
 
-			if min_neighbor_agent:
-				barrier_action = torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
-			else:
-				barrier_action = torch.from_numpy(self.get_obstacle_barrier(min_neighbor_p)).float()
+			if min_neighbor_dist < self.param.r_agent + 0.15:
+				if min_neighbor_mode == 1:
+					barrier_action += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
+				elif min_neighbor_mode == 2:
+					barrier_action += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)).float()
 
 		else:
 			# this implementation uses all barriers
@@ -246,6 +250,15 @@ class Empty_Net_wAPF():
 		normP = np.tile(normP,(1,np.shape(P)[1]))
 		return self.param.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.param.b_exph)),P)
 
+
+	def get_obstacle_barrier_square(self,P):
+		H = np.linalg.norm(P,axis=1) - self.param.r_agent
+		H = np.reshape(H,(len(H),1))
+		H = np.tile(H,(1,np.shape(P)[1]))
+		normP = np.linalg.norm(P,axis=1)
+		normP = np.reshape(normP,(len(normP),1))
+		normP = np.tile(normP,(1,np.shape(P)[1]))
+		return self.param.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.param.b_exph)),P)
 
 # control barrier function as implemented by Ames 2017
 # static obstacles not implemented  

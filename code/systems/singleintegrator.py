@@ -118,6 +118,8 @@ class SingleIntegrator(Env):
 			_, obst_idx = self.kd_tree_obstacles.query(p_i,
 				k=self.param.max_obstacles,
 				distance_upper_bound=self.param.r_obs_sense)
+			if type(obst_idx) is not np.ndarray:
+				obst_idx = [obst_idx]
 			relative_obstacles = []
 			for k in obst_idx:
 				if k < self.obstacles_np.shape[0]:
@@ -335,6 +337,8 @@ class SingleIntegrator(Env):
 					s_i[0:2].numpy(),
 					k=self.param.max_obstacles,
 					distance_upper_bound=self.param.r_obs_sense)
+				if type(obst_idx) is not np.ndarray:
+					obst_idx = [obst_idx]
 				relative_obstacles = []
 				for k in obst_idx:
 					if k < obstacles.shape[0]:
@@ -464,8 +468,8 @@ class SingleIntegrator(Env):
 				s_gi = row[idx_goal]
 
 				# get transformation 
-				# th = 0
-				th = np.arctan2(s_gi[1],s_gi[0])
+				th = 0
+				# th = np.arctan2(s_gi[1],s_gi[0])
 				
 				R = rot_mat_2d(th)
 

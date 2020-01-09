@@ -99,9 +99,8 @@ def sim(param, env, controllers, initial_state, visualize):
 					result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
 				plotter.plot_square(agent.s_g[0],agent.s_g[1],param.r_agent,angle=45,fig=fig,ax=ax,color=color)
 
-<<<<<<< Updated upstream
 			# # draw state for each time step (single integrator)
-			# robot = 1
+			# robot = 2
 			# for step in np.arange(0, result.steps, 10):
 			# 	fig,ax = plotter.make_fig()
 			# 	ax.set_title('State at t={} for robot={}'.format(times[step], robot))

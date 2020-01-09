@@ -212,7 +212,10 @@ if __name__ == '__main__':
 			result = np.hstack((param.sim_times[0:-1].reshape(-1,1), states_and_actions))
 			# store in binary format
 			basename = os.path.splitext(os.path.basename(args.instance))[0]
-			output_file = "../results/singleintegrator/{}/{}.npy".format(name, basename)
+			folder_name = "../results/singleintegrator/{}".format(name)
+			if not os.path.exists(folder_name):
+				os.mkdir(folder_name)
+			output_file = "{}/{}.npy".format(folder_name, basename)
 			with open(output_file, "wb") as f:
 				np.save(f, result, allow_pickle=False)
 	else:
