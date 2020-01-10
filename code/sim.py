@@ -143,6 +143,10 @@ def sim(param, env, controllers, initial_state, visualize):
 				goal = observation[1:3] + robot_pos
 				ax.add_patch(Rectangle(goal - np.array([0.2,0.2]), 0.4, 0.4, alpha=0.5, color=color))
 
+			# 	# import matplotlib.pyplot as plt
+			# 	# plt.savefig("test.svg")
+			# 	# exit()
+
 			# # draw state for each time step (double integrator)
 			# robot = 1
 			# for step in np.arange(0, result.steps, 10):

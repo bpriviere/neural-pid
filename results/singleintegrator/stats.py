@@ -2,6 +2,9 @@ import numpy as np
 import argparse
 import yaml
 
+robot_radius = 0.15
+goal_dist = 0.5 # minimum distance to count as goal
+
 # from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
 def is_collision_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
 	# Find the closest point to the circle within the rectangle
@@ -25,7 +28,7 @@ def stats(map_filename, schedule_filename):
 	for i, agent in enumerate(map_data["agents"]):
 		goal = np.array([0.5,0.5]) + np.array(agent["goal"])
 		distances = np.linalg.norm(data[:,(i*4+1):(i*4+3)] - goal, axis=1)
-		goalIdx = np.argwhere(distances > 0.5)
+		goalIdx = np.argwhere(distances > goal_dist)
 		if len(goalIdx) == 0:
 			goalIdx = np.array([0])
 		lastIdx = np.max(goalIdx)
@@ -62,7 +65,7 @@ def stats(map_filename, schedule_filename):
 		for j in range(i+1, num_agents):
 			pos_j = data[:,(j*4+1):(j*4+3)]
 			distances = np.linalg.norm(pos_i - pos_j, axis=1)
-			inc = np.count_nonzero(distances < 0.4 - 1e-4)
+			inc = np.count_nonzero(distances < 2 * robot_radius - 1e-4)
 			num_agent_agent_collisions += inc
 			if inc > 0:
 				agents_collided.add(i)
@@ -73,7 +76,7 @@ def stats(map_filename, schedule_filename):
 	for i in range(num_agents):
 		pos_i = data[:,(i*4+1):(i*4+3)]
 		for o in map_data["map"]["obstacles"]:
-			coll = is_collision_circle_rectangle(pos_i, 0.2, np.array(o), np.array(o) + np.array([1.0,1.0]))
+			coll = is_collision_circle_rectangle(pos_i, robot_radius, np.array(o), np.array(o) + np.array([1.0,1.0]))
 			inc = np.count_nonzero(coll)
 
 			# distances = np.linalg.norm(pos_i - (np.array(o) + np.array([0.5,0.5])), axis=1)

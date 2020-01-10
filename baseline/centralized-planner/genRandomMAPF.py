@@ -42,6 +42,8 @@ def interesting(map_size, start, goal, obstacles):
     if np.linalg.norm(line[0,:]-line[-1,:]) < 2.0:
         return False
 
+    # return True
+
     for point in line:
         if check_collision(point,obstacles):
             return True
@@ -118,10 +120,10 @@ if __name__ == "__main__":
 
     # map_size = [32, 32]
     map_size = [8, 8]
-    num_agents_lst = [1]
+    num_agents_lst = [4]
     # num_groups = num_agents
-    num_obstacles = int(map_size[0] * map_size[1] * 0.2)
-    cases = range(1000)
+    num_obstacles = int(map_size[0] * map_size[1] * 0.1)
+    cases = range(10,100)
     # cases = [7]
 
     for num_agents in num_agents_lst:
