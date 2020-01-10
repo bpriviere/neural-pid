@@ -41,20 +41,20 @@ def stats(map_filename, schedule_filename):
 
 	# Sum of cost:
 	soc = np.sum(goal_times)
+	num_agents = len(map_data["agents"])
 
 	# makespan
 	makespan = np.max(goal_times)
 
 	# control effort (here: single integrator => velocity)
-	control_effort = 0
+	control_effort = np.zeros(num_agents)
 	for i, agent in enumerate(map_data["agents"]):
-		control_effort += np.sum(np.abs(data[:,i*4+3]))
-		control_effort += np.sum(np.abs(data[:,i*4+4]))
+		control_effort[i] += np.sum(np.abs(data[:,i*4+3]))
+		control_effort[i] += np.sum(np.abs(data[:,i*4+4]))
 	control_effort *= (data[1,0] - data[0,0])
 
 	# Collisions
 	agents_collided = set()
-	num_agents = len(map_data["agents"])
 	# min_dist = float('inf')
 	num_agent_agent_collisions = 0
 	for i in range(num_agents):
@@ -96,6 +96,8 @@ def stats(map_filename, schedule_filename):
 	result["num_collisions"] = num_agent_agent_collisions + num_agent_obstacle_collisions
 
 	result["num_agents_success"] = num_agents_success
+
+	result["agents_succeeded"] = agents_reached_goal - agents_collided
 
 	return result
 
