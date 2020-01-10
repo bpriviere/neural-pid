@@ -133,15 +133,21 @@ def sim(param, env, controllers, initial_state, visualize):
 			# 		idx += 2
 
 			# 	for i in range(num_obstacles):
-			# 		# pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
-			# 		# ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
-			# 		pos = observation[idx : idx+2] + robot_pos
-			# 		ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
+			# 		ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		# pos = observation[idx : idx+2] + robot_pos
+			# 		# ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
 			# 		idx += 2
+
+			# 	ax.add_patch(Circle(robot_pos, param.r_comm, edgecolor='red', alpha=0.5))
 
 			# 	# plot goal
 			# 	goal = observation[1:3] + robot_pos
 			# 	ax.add_patch(Rectangle(goal - np.array([0.2,0.2]), 0.4, 0.4, alpha=0.5, color=color))
+
+			# 	# import matplotlib.pyplot as plt
+			# 	# plt.savefig("test.svg")
+			# 	# exit()
 
 			# # draw state for each time step (double integrator)
 			# robot = 1
