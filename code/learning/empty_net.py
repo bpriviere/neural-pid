@@ -10,6 +10,7 @@ import numpy as np
 
 # my package
 from learning.deepset import DeepSet
+from learning.feedforward import FeedForward
 
 class Empty_Net(nn.Module):
 
@@ -36,11 +37,13 @@ class Empty_Net(nn.Module):
 		self.phi_min = param.phi_min
 		# self.a_noise = param.a_noise
 
-		self.layers = param.il_psi_network_architecture
-		self.activation = param.il_network_activation
+		self.psi = FeedForward(
+			param.il_psi_network_architecture,
+			param.il_network_activation)
+
 		self.dim_g = param.il_psi_network_architecture[0].in_features - \
-						self.model_obstacles.rho_out_dim - \
-						self.model_neighbors.rho_out_dim
+						self.model_obstacles.rho.out_dim - \
+						self.model_neighbors.rho.out_dim
 
 
 	def policy(self,x,transformations):
@@ -55,6 +58,11 @@ class Empty_Net(nn.Module):
 			a_i = np.matmul(R.T,a_i.T).T
 			A[i,:] = a_i
 		return A
+
+	def export_to_onnx(self, filename):
+		self.model_neighbors.export_to_onnx("{}_neighbors".format(filename))
+		self.model_obstacles.export_to_onnx("{}_obstacles".format(filename))
+		self.psi.export_to_onnx("{}_psi".format(filename))
 
 	def __call__(self,x):
 		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
@@ -86,11 +94,10 @@ class Empty_Net(nn.Module):
 		# g_norm = g.norm(dim=1,keepdim=True)
 		# time_to_goal = x[:,4:5]
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)
-		for layer in self.layers[:-1]:
-			x = self.activation(layer(x))
-		x = self.layers[-1](x)
-		self.scale(x)
-		
+		x = self.psi(x)
+
+		# x = self.scale(x)
+
 		return x
 
 	def scale(self,x):

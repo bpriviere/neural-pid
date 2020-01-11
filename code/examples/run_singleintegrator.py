@@ -225,6 +225,9 @@ if __name__ == '__main__':
 			output_file = "{}/{}.npy".format(folder_name, basename)
 			with open(output_file, "wb") as f:
 				np.save(f, result, allow_pickle=False)
+	elif args.export:
+		model = torch.load(param.il_train_model_fn)
+		model.export_to_onnx("IL")
 	else:
 		run(param, env, controllers, s0, args)
 

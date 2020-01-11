@@ -213,8 +213,8 @@ if __name__ == '__main__':
 			output_file = "../results/doubleintegrator/{}/{}.npy".format(name, basename)
 			with open(output_file, "wb") as f:
 				np.save(f, result, allow_pickle=False)
-	else:
+	elif args.export:
 		controllers['IL'].export_to_onnx("IL")
-
+	else:
 		run(param, env, controllers, s0, args)
 
