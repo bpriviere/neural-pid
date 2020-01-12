@@ -87,7 +87,7 @@ void nn_reset(void)
 	memset(deepset_sum_obstacle, 0, sizeof(deepset_sum_obstacle));
 }
 
-void nn_add_neighbor(const float input[])
+void nn_add_neighbor(const float input[2])
 {
 	const float* phi = n_phi(input);
 	// sum result
@@ -96,7 +96,7 @@ void nn_add_neighbor(const float input[])
 	}
 }
 
-void nn_add_obstacle(const float input[])
+void nn_add_obstacle(const float input[2])
 {
 	const float* phi = o_phi(input);
 	// sum result
@@ -105,7 +105,7 @@ void nn_add_obstacle(const float input[])
 	}
 }
 
-const float* nn_eval(const float goal[])
+const float* nn_eval(const float goal[2])
 {
 	static float pi_input[18];
 
