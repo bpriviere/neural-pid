@@ -12,6 +12,16 @@ static float temp2[32];
 static float deepset_sum_neighbor[8];
 static float deepset_sum_obstacle[8];
 
+static float closest_dist;
+static float closest[2];
+static float min_distance;
+
+static const float b_gamma = 0.1;
+static const float b_exph = 1.0;
+static const float robot_radius = 0.15; // m
+static const float max_v = 0.5; // m/s
+
+
 static float relu(float num) {
 	if (num > 0) {
 		return num;
@@ -81,10 +91,42 @@ static const float* psi(const float input[]) {
 	return temp1;
 }
 
-void nn_reset(void)
+static float clip(float value, float min, float max) {
+	if (value < min) {
+		return min;
+	}
+	if (value > max) {
+		return max;
+	}
+	return value;
+}
+
+static void barrier(float x, float y, float D, float* vx, float *vy) {
+	float normP = sqrtf(x*x + y*y);
+	float H = normP - D;
+
+	float factor = powf(H, -b_exph) / normP;
+
+	*vx = b_gamma * factor * x;
+	*vy = b_gamma * factor * y;
+}
+
+static void APF(float* vel)
+{
+	if (isfinite(closest_dist)) {
+		float vx, vy;
+		barrier(closest[0], closest[1], min_distance, &vx, &vy);
+		vel[0] -= vx;
+		vel[1] -= vy;
+	}
+}
+
+void nn_reset()
 {
 	memset(deepset_sum_neighbor, 0, sizeof(deepset_sum_neighbor));
 	memset(deepset_sum_obstacle, 0, sizeof(deepset_sum_obstacle));
+
+	closest_dist = INFINITY;
 }
 
 void nn_add_neighbor(const float input[2])
@@ -94,6 +136,13 @@ void nn_add_neighbor(const float input[2])
 	for (int i = 0; i < 8; ++i) {
 		deepset_sum_neighbor[i] += phi[i];
 	}
+
+	float dist = fmaxf(sqrtf(powf(input[0], 2) + powf(input[1], 2)) - robot_radius, 0);
+	if (dist < closest_dist) {
+		memcpy(closest, input, sizeof(closest));
+		closest_dist = dist;
+		min_distance = 2 * robot_radius;
+	}
 }
 
 void nn_add_obstacle(const float input[2])
@@ -102,6 +151,16 @@ void nn_add_obstacle(const float input[2])
 	// sum result
 	for (int i = 0; i < 8; ++i) {
 		deepset_sum_obstacle[i] += phi[i];
+	}
+
+	float closest_x = clip(0, input[0] - 0.5f, input[0] + 0.5f);
+	float closest_y = clip(0, input[1] - 0.5f, input[1] + 0.5f);
+	float dist = sqrtf(powf(closest_x, 2) + powf(closest_y, 2));
+	if (dist < closest_dist) {
+		closest[0] = closest_x;
+		closest[1] = closest_y;
+		closest_dist = dist;
+		min_distance = robot_radius;
 	}
 }
 
@@ -117,6 +176,17 @@ const float* nn_eval(const float goal[2])
 
 	memcpy(&pi_input[16], goal, 2 * sizeof(float));
 
-	return psi(pi_input);
+	const float* empty = psi(pi_input);
+	temp1[0] = empty[0];
+	temp1[1] = empty[1];
+
+	APF(temp1);
+
+	float inv_alpha = fmaxf(fabsf(temp1[0]), fabsf(temp1[1])) / max_v;
+	inv_alpha = fmaxf(inv_alpha, 1.0);
+	temp1[0] /= inv_alpha;
+	temp1[1] /= inv_alpha;
+
+	return temp1;
 }
 
