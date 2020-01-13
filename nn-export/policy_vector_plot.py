@@ -117,13 +117,13 @@ if __name__ == '__main__':
 		ax.add_patch(Rectangle([-1,y], 1.0, 1.0, facecolor='gray', alpha=0.5))
 		ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
 
+	color = 'black'
 	for j in range(num_agents):
-		if not i == j:
-			color = 'blue'
-		else:
-			color = 'black'
-			start = np.array(map_data["agents"][i]["start"])
-			goal = np.array(map_data["agents"][i]["goal"])
+		if i == j:
+			goal = np.array(map_data["agents"][j]["goal"])
 			ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))
+		else:
+			start = np.array(map_data["agents"][j]["start"])
+			ax.add_patch(Circle(start, 0.2, alpha=0.5, color=color))
 
 	plt.show(fig)

@@ -48,7 +48,7 @@ if __name__ == '__main__':
 	print("};")
 
 	# export actual variable holding the data from the network
-	print("static struct neuralNetworkFF_{} {} = {{".format(args.name, args.name))
+	print("static const struct neuralNetworkFF_{} {} = {{".format(args.name, args.name))
 	for w in weights:
 		name = w.name.replace(".", "_")
 		a = numpy_helper.to_array(w).T
