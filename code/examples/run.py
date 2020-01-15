@@ -20,6 +20,7 @@ def parse_args():
 	parser.add_argument("--animate", action='store_true')
 	parser.add_argument("-i", "--instance", help="File instance to run simulation on")
 	parser.add_argument("--batch", action='store_true', help="use batch (npy) output instead of interactive (pdf) output")
+	parser.add_argument("--export", action='store_true', help="export IL model to onnx")
 	args = parser.parse_args()
 	return args
 
