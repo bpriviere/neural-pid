@@ -83,10 +83,13 @@ class SingleIntegrator(Env):
 	def render(self):
 		pass
 
-	def step(self, a):
+	def step(self, a, compute_reward = True):
 		self.s = self.next_state(self.s, a)
 		d = self.done()
-		r = self.reward()
+		if compute_reward:
+			r = self.reward()
+		else:
+			r = 0
 		self.time_step += 1
 		return self.s, r, d, {}
 
@@ -585,44 +588,44 @@ class SingleIntegrator(Env):
 		return s0
 
 		
-	def bad_behavior(self):
-
+	def bad_behavior(self, observations):
 		# penalize agent going too slowly when still too far from the goal 
 		v_min = 0.05
-		d_max = 0.5 
-	
-		for agent_i in self.agents:
+		d_max = 0.5
 
-			p_i = agent_i.p
+		# the observation already encodes the closest neighbors (sorted)
+		# => use the observation to check for collisions
 
-			for agent_j in self.agents:
-				if not agent_i.i == agent_j.i:
-					p_j = agent_j.p 
-					d_ji = np.linalg.norm(p_i-p_j)
-					
-					if d_ji < 2*self.r_agent: 
-						print('collision between agents at t = {}'.format(self.param.sim_times[self.time_step]))
-						return [agent_i,agent_j]
+		bad_agents = set()
+		for obs, agent in zip(observations, self.agents):
+			num_neighbors = int(obs[0][0])
+			num_obstacles = int((obs.shape[1]-3-2*num_neighbors)/2)
+			if num_neighbors > 0:
+				closest_neighbor = obs[0,3:5]
+				d_ji = np.linalg.norm(closest_neighbor)
+				if d_ji < 2*self.r_agent:
+					print('collision between agents at t = {}'.format(self.param.sim_times[self.time_step]))
+					# the other agent will be found in another loop iteration efficiently
+					bad_agents.add(agent) 
 
-			for obst_j in self.obstacles:
-				if self.is_collision_circle_rectangle(p_i, self.r_agent, np.array(obst_j), np.array(obst_j) + np.array([1.0,1.0])):
-					print('collision with obstacles at t = {}'.format(self.param.sim_times[self.time_step]))
-					return [agent_i]
+			if num_obstacles > 0:
+				closest_obstacle = obs[0,3+2*num_neighbors:3+2*num_neighbors+2]
+				if self.is_collision_circle_rectangle(
+					np.zeros(2),
+					self.r_agent,
+					closest_obstacle - np.array([0.5,0.5]),
+					closest_obstacle + np.array([0.5,0.5])):
+					print('collision with obstacle at t = {}'.format(self.param.sim_times[self.time_step]))
+					bad_agents.add(agent)
 
-			# if np.linalg.norm(agent.v) < v_min and np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
-			# 	print('agent not moving while far from goal')
-			# 	return True,agent
-
+		# end condition 
 		if self.time_step == self.param.sim_nt-1:
-			# end condition 
-			bad_agents = []
 			for agent in self.agents:
 				if np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
-					bad_agents.append(agent)
 					print('agent {} did not reach goal'.format(agent.i))
-			return bad_agents
+					bad_agents.add(agent)
 
-		return []
+		return list(bad_agents)
 
 
 	# from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection

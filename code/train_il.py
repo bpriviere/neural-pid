@@ -31,7 +31,6 @@ from index import Index
 
 from genRandomInstanceDict import get_random_instance
 import pprint
-import copy 
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -45,11 +44,11 @@ def rollout(model, env, param):
 
 		observation = env.observe()
 		action = model.policy(observation,env.transformations)
-		next_state, _, done, _ = env.step(action)
+		next_state, _, done, _ = env.step(action, compute_reward = False)
 
 		observations.append(observation)
 
-		agents = env.bad_behavior()
+		agents = env.bad_behavior(observation)
 		past_l_observations = []
 		for agent in agents:
 			for past_l_observation in observations[-param.ad_l*param.ad_dl::param.ad_dl]: 
@@ -60,7 +59,6 @@ def rollout(model, env, param):
 
 		if done: 
 			break
-
 
 	print('no bad behavior :)')
 	return [] 
@@ -73,13 +71,19 @@ def get_dynamic_dataset(model, env, param,index):
 	#    - param
 	
 	data = [] 
-	# env_lst = [copy.deepcopy(env) for _ in range(param.ad_n)]
 	print('rollout')
+
 	with concurrent.futures.ProcessPoolExecutor(max_workers = 5) as executor:
 		for observation_i in executor.map(rollout, repeat(model,param.ad_n),repeat(env,param.ad_n),repeat(param,param.ad_n)):
 		# for observation_i in executor.map(rollout, repeat(model,param.ad_n),env_lst,repeat(param,param.ad_n)):
 			data.extend(index.query_lst(observation_i,param.ad_k))
-			print('len(data) ',len(data))
+			# print('len(data) ',len(data))
+
+	# for i in range(param.ad_n):
+	# 	observation_i = rollout(model, env, param)
+	# 	data.extend(index.query_lst(observation_i,param.ad_k))
+
+
 	print('end rollout')
 
 	# print(len(data))

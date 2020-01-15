@@ -41,6 +41,8 @@ class Index:
 				p.add_items(data[:,1:1+dim])
 				p.save_index("{}.index".format(file))
 
+			# p.set_num_threads(1)
+
 			self.P[(num_neighbors,num_obstacles)] = p 
 			self.D[(num_neighbors,num_obstacles)] = data
 			self.stats[(num_neighbors,num_obstacles)] = np.zeros(data.shape[0])
