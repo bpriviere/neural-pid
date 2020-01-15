@@ -111,6 +111,8 @@ class SingleIntegrator(Env):
 			_, neighbor_idx = self.kd_tree_neighbors.query(p_i,
 				k=self.param.max_neighbors+1,
 				distance_upper_bound=self.param.r_comm)
+			if type(neighbor_idx) is not np.ndarray:
+				neighbor_idx = [neighbor_idx]
 			relative_neighbors = []
 			for k in neighbor_idx[1:]: # skip first entry (self)
 				if k < self.positions.shape[0]:
@@ -128,6 +130,12 @@ class SingleIntegrator(Env):
 			for k in obst_idx:
 				if k < self.obstacles_np.shape[0]:
 					relative_obstacles.append(self.obstacles_np[k,:] - p_i)
+					# closest = utilities.min_point_circle_rectangle(
+					# 	p_i,
+					# 	self.param.r_agent,
+					# 	self.obstacles_np[k,:] - np.array([0.5,0.5]),
+					# 	self.obstacles_np[k,:] + np.array([0.5,0.5]))
+					# relative_obstacles.append(closest - p_i)
 				else:
 					break
 
@@ -312,7 +320,7 @@ class SingleIntegrator(Env):
 		reached_goal = set()
 		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
-		for t in range(100,data.shape[0]-1):
+		for t in range(50,data.shape[0]-1):
 			if t%self.param.training_time_downsample != 0:
 				continue
 
@@ -333,6 +341,8 @@ class SingleIntegrator(Env):
 				# if we reached the goal, do not include more datapoints from this trajectory
 				if np.allclose(relative_goal, np.zeros(2)):
 					reached_goal.add(i)
+				#if relative_goal.norm() < 0.5:
+				#	reached_goal.add(i)
 				time_to_goal = data[-1,0] - data[t,0]
 
 
@@ -343,6 +353,8 @@ class SingleIntegrator(Env):
 					s_i[0:2].numpy(),
 					k=self.param.max_neighbors+1,
 					distance_upper_bound=self.param.r_comm)
+				if type(neighbor_idx) is not np.ndarray:
+					neighbor_idx = [neighbor_idx]
 				relative_neighbors = []
 				for k in neighbor_idx[1:]: # skip first entry (self)
 					if k < positions.shape[0]:
@@ -361,6 +373,12 @@ class SingleIntegrator(Env):
 				for k in obst_idx:
 					if k < obstacles.shape[0]:
 						relative_obstacles.append(obstacles[k,:] - s_i[0:2].numpy())
+						# closest = utilities.min_point_circle_rectangle(
+						# 	s_i[0:2].numpy(),
+						# 	self.param.r_agent,
+						# 	obstacles[k,:] - np.array([0.5,0.5]),
+						# 	obstacles[k,:] + np.array([0.5,0.5]))
+						# relative_obstacles.append(closest - s_i[0:2].numpy())
 					else:
 						break
 

@@ -65,7 +65,10 @@ def torch_tile(a, dim, n_tile):
 def rot_mat_2d(th):
 	return np.array([[np.cos(th),np.sin(th)],[-np.sin(th),np.cos(th)]])
 
-
+def min_point_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
+	# Find the closest point to the circle within the rectangle
+	closest = np.clip(circle_pos, rect_tl, rect_br)
+	return closest
 
 def min_dist_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
 	# Find the closest point to the circle within the rectangle
