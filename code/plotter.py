@@ -139,3 +139,7 @@ def plot_ss(env,states):
 	# batch = [o_lst,c_lst,r_lst,op_lst,p_lst,d_lst,s_lst,sp_lst]
 
 
+
+
+
+

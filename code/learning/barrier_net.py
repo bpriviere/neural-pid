@@ -17,7 +17,6 @@ class Barrier_Net(nn.Module):
 
 	def __init__(self,param,learning_module):
 		super(Barrier_Net, self).__init__()
-
 		self.model_neighbors = DeepSet(
 			param.il_phi_network_architecture,
 			param.il_rho_network_architecture,
@@ -30,7 +29,6 @@ class Barrier_Net(nn.Module):
 			param.il_network_activation,
 			param.env_name
 			)
-
 		self.r_agent = param.r_agent
 		self.r_obstacle = param.r_obstacle
 		self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
@@ -45,7 +43,6 @@ class Barrier_Net(nn.Module):
 		self.b_exph = param.b_exph
 		self.phi_min = param.phi_min
 		self.phi_max = param.phi_max
-		# self.a_noise = param.a_noise
 		self.circle_obstacles_on = param.circle_obstacles_on
 
 	def policy(self,x,transformations):
@@ -74,23 +71,13 @@ class Barrier_Net(nn.Module):
 		if self.state_dim_per_agent == 2:
 			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
 			num_obstacles = int((x.size()[1] - 3 - 2*num_neighbors)/2)
-
-			# print("neighbors ", num_neighbors)
-			# print("obs ", num_obstacles)
-
 			rho_neighbors = self.model_neighbors.forward(x[:,3:3+2*num_neighbors])
-			# print("rho_neighbors", rho_neighbors)
 			rho_obstacles = self.model_obstacles.forward(x[:,3+2*num_neighbors:])
 			g = x[:,1:3]
 		elif self.state_dim_per_agent == 4:
 			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
 			num_obstacles = int((x.size()[1] - 5 - 4*num_neighbors)/2)
-
-			# print("neighbors ", num_neighbors)
-			# print("obs ", num_obstacles)
-
 			rho_neighbors = self.model_neighbors.forward(x[:,5:5+4*num_neighbors])
-			# print("rho_neighbors", rho_neighbors)
 			rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
 			g = x[:,1:5]
 		else:
@@ -111,10 +98,11 @@ class Barrier_Net(nn.Module):
 
 	def __call__(self,x):
 		# this fnc is used for training 
-		empty_action = self.scale_empty(self.empty(x))
+
+		empty_action = self.scale(self.empty(x),self.phi_max)
 		barrier_action = self.APF(x)
-		action = empty_action+barrier_action 
-		action = self.scale(action)
+		action = empty_action+barrier_action
+		action = self.scale(action,self.a_max)
 		return action 
 
 		# empty_action = self.empty(x)
@@ -122,7 +110,7 @@ class Barrier_Net(nn.Module):
 		# action = empty_action + barrier_action 
 		# return action
 
-		# empty_action = self.scale_empty(self.empty(x))
+		# empty_action = self.scale(self.empty(x),self.phi_max)
 		# barrier_action = self.APF(x)
 		# action = empty_action + barrier_action
 		# return action
@@ -139,42 +127,9 @@ class Barrier_Net(nn.Module):
 		closest_barrier_mode_on = True
 		if closest_barrier_mode_on:
 
-			# barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
-			# for k in range(len(x)):
-			# 	min_neighbor_dist = np.Inf
-			# 	min_neighbor_mode = 0
-			# 	for j in range(nn):
-			# 		# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-			# 		idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-			# 		relative_neighbor = x[k:k+1,idx].numpy()
-			# 		P_i = -1*relative_neighbor[:,0:2] # pi - pj
-			# 		if np.linalg.norm(P_i) - self.r_agent < min_neighbor_dist: 
-			# 			min_neighbor_p = P_i 
-			# 			min_neighbor_dist = np.linalg.norm(P_i) - self.r_agent
-			# 			min_neighbor_mode = 1 
-
-			# 	for j in range(no):
-			# 		idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
-			# 		P_i = -1*x[k:k+1,idx].numpy() # in nd x state_dim_per_agent
-			# 		closest, dist = min_dist_circle_rectangle(
-			# 			np.zeros(2), self.r_agent,
-			# 			P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
-			# 		if dist[0] < min_neighbor_dist:
-			# 			min_neighbor_p = closest
-			# 			min_neighbor_dist = dist[0]
-			# 			min_neighbor_mode = 2
-
-			# 	# if min_neighbor_dist < self.r_agent + 0.15:
-			# 	if True:
-			# 		if min_neighbor_mode == 1:
-			# 			barrier_action[k:k+1] += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
-			# 		elif min_neighbor_mode == 2:
-			# 			barrier_action[k:k+1] += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)).float()
-
 			# print(barrier_action)
 			# #####
 			barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
-
 
 			# TODO: the KD-Tree outputs data is sorted, so technically no need to loop over everything
 			min_neighbor_dist = np.repeat(np.Inf, len(x))
@@ -203,21 +158,14 @@ class Barrier_Net(nn.Module):
 				min_neighbor_dist[predicate] = dist[predicate]
 				min_neighbor_mode[predicate] = 2
 
-			# print(min_neighbor_dist)
-			# print(min_neighbor_mode)
-			# print(min_neighbor_p)
-
-			predicate = np.logical_and(min_neighbor_mode==1, min_neighbor_dist < self.r_agent + 0.15)
-			# predicate = min_neighbor_mode==1
+			# predicate = np.logical_and(min_neighbor_mode==1, min_neighbor_dist < self.r_agent + 0.15)
+			predicate = min_neighbor_mode==1
 			barrier_action[predicate] += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)[predicate]).float()
 
-			predicate = np.logical_and(min_neighbor_mode==2, min_neighbor_dist < self.r_agent + 0.15)
-			# predicate = min_neighbor_mode==2
+			# predicate = np.logical_and(min_neighbor_mode==2, min_neighbor_dist < self.r_agent + 0.15)
+			predicate = min_neighbor_mode==2
 			barrier_action[predicate] += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)[predicate]).float()
 
-
-			# print(barrier_action)
-			# exit()
 		else:
 
 			# this implementation uses all barriers
@@ -228,18 +176,6 @@ class Barrier_Net(nn.Module):
 				relative_neighbor = x[:,idx].numpy()
 				P_i = -1*relative_neighbor[:,0:2] # pi - pj
 				A_i = self.get_robot_barrier(P_i)
-				
-				# print('x:',x)
-				# print('nd:',nd)
-				# print('nn:',nn)
-				# print('no:',no)
-				# print('j:',j)
-				# print('idx:',idx)
-				# print('x[:,idx]:',x[:,idx])
-				# print('P_i: ', P_i)
-				# print('A_i: ', A_i)
-				# exit()
-
 				barrier_action += torch.from_numpy(A_i).float()
 
 			# print('Obstacles')
@@ -247,25 +183,13 @@ class Barrier_Net(nn.Module):
 				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
 				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
 				A_i = self.get_obstacle_barrier(P_i)
-
-				# print('x:',x)
-				# print('nd:',nd)
-				# print('nn:',nn)
-				# print('no:',no)
-				# print('j:',j)
-				# print('idx:',idx)
-				# print('x[:,idx]:',x[:,idx])
-				# print('P_i: ', P_i)
-				# print('A_i: ', A_i)
-				# exit()
-
 				barrier_action += torch.from_numpy(A_i).float()
 
 		return barrier_action 
 
 
-	def scale(self,action):
-		inv_alpha = action.norm(p=float('inf'),dim=1)/self.a_max 
+	def scale(self,action,value):
+		inv_alpha = action.norm(p=float(2),dim=1)/value
 		inv_alpha = torch.clamp(inv_alpha,min=1)
 		inv_alpha = inv_alpha.unsqueeze(0).T
 		inv_alpha = torch_tile(inv_alpha,1,2)

@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import MultivariateNormal, Categorical
 import numpy as np
+import concurrent
 
 # my package
 from learning.deepset import DeepSet
@@ -45,11 +46,11 @@ class Empty_Net(nn.Module):
 						self.model_obstacles.rho.out_dim - \
 						self.model_neighbors.rho.out_dim
 
-
 	def policy(self,x,transformations):
 
 		# inputs observation from all agents...
 		# outputs policy for all agents
+
 		A = np.empty((len(x),self.action_dim_per_agent))
 		for i,x_i in enumerate(x):
 			R = transformations[i][0]

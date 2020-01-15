@@ -9,13 +9,6 @@ from collections import namedtuple
 from utilities import torch_tile, min_dist_circle_rectangle
 import torch 
 
-
-
-
-
-
-
-
 # consensus policies 
 
 class ZeroPolicy:
@@ -149,12 +142,10 @@ class Empty_Net_wAPF():
 		A = np.empty((len(x),self.action_dim_per_agent))
 		for i,x_i in enumerate(x):
 			R = transformations[i][0]
-			
 			empty_action = self.empty_net(torch.Tensor(x_i))
 			barrier_action = self.APF(x_i)
 			a_i = (barrier_action+empty_action).detach().numpy()
-			a_i = self.scale(barrier_action+empty_action).detach().numpy()
-
+			a_i = self.scale(barrier_action+empty_action,self.a_max).detach().numpy()
 			a_i = np.matmul(R.T,a_i.T).T
 			A[i,:] = a_i
 		return A
@@ -169,7 +160,7 @@ class Empty_Net_wAPF():
 		if not isinstance(x,torch.Tensor):
 			x = torch.from_numpy(x).float()
 
-		closest_barrier_mode_on = False
+		closest_barrier_mode_on = True
 		if closest_barrier_mode_on:
 			min_neighbor_dist = np.Inf 
 			min_neighbor_mode = 0
@@ -224,9 +215,9 @@ class Empty_Net_wAPF():
 		return barrier_action 
 
 
-	def scale(self,action):
+	def scale(self,action,value):
 		# scale 
-		inv_alpha = action.norm(p=float('inf'),dim=1)/self.a_max 
+		inv_alpha = action.norm(p=float('inf'),dim=1)/value
 		inv_alpha = torch.clamp(inv_alpha,min=1)
 		inv_alpha = inv_alpha.unsqueeze(0).T
 		inv_alpha = torch_tile(inv_alpha,1,2)

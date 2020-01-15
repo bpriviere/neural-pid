@@ -91,7 +91,11 @@ class SingleIntegrator(Env):
 		return self.s, r, d, {}
 
 	def done(self):
-		return False
+		
+		for agent in self.agents:
+			if not np.linalg.norm(agent.p - agent.s_g) < 0.05:
+				return False
+		return True
 
 	def observe(self):
 		observations = []
@@ -105,7 +109,7 @@ class SingleIntegrator(Env):
 
 			# query visible neighbors
 			_, neighbor_idx = self.kd_tree_neighbors.query(p_i,
-				k=self.param.max_neighbors,
+				k=self.param.max_neighbors+1,
 				distance_upper_bound=self.param.r_comm)
 			relative_neighbors = []
 			for k in neighbor_idx[1:]: # skip first entry (self)
@@ -168,9 +172,10 @@ class SingleIntegrator(Env):
 
 
 	def reset(self, initial_state=None):
-		self.time_step = 0				
-		if initial_state is None:
+		self.time_step = 0
 
+		# initialize agents
+		if initial_state is None:
 			initial_state = np.zeros((self.n))
 			for agent_i in self.agents:
 				agent_i.s = self.find_collision_free_state('initial')
@@ -182,14 +187,24 @@ class SingleIntegrator(Env):
 			self.s = initial_state
 		else:
 			print(initial_state)
-			self.s = initial_state.start
 
-			# assign goal state 
+			# this will update agents later in 'update_agents'
+			self.s = initial_state.start
+			
+			# make agent list correct
+			self.n_agents = int(len(self.s)/self.state_dim_per_agent)
+			self.n = self.state_dim_per_agent*self.n_agents
+			self.m = self.action_dim_per_agent*self.n_agents			
+			self.agents = []
+			for i in range(self.n_agents):
+				self.agents.append(Agent(i))
+
+			# update goal position
 			for agent in self.agents:
 				idx = self.agent_idx_to_state_idx(agent.i) + \
 					np.arange(0,self.state_dim_per_agent)
-				print(idx)
 				agent.s_g = initial_state.goal[idx]
+				
 
 		self.obstacles_np = np.array([np.array(o) + np.array([0.5,0.5]) for o in self.obstacles])
 		self.kd_tree_obstacles = spatial.KDTree(self.obstacles_np)
@@ -297,7 +312,7 @@ class SingleIntegrator(Env):
 		reached_goal = set()
 		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
-		for t in range(data.shape[0]-1):
+		for t in range(100,data.shape[0]-1):
 			if t%self.param.training_time_downsample != 0:
 				continue
 
@@ -326,7 +341,7 @@ class SingleIntegrator(Env):
 				# query visible neighbors
 				_, neighbor_idx = kd_tree_neighbors.query(
 					s_i[0:2].numpy(),
-					k=self.param.max_neighbors,
+					k=self.param.max_neighbors+1,
 					distance_upper_bound=self.param.r_comm)
 				relative_neighbors = []
 				for k in neighbor_idx[1:]: # skip first entry (self)
@@ -533,4 +548,68 @@ class SingleIntegrator(Env):
 					vis["agent" + str(i)].set_transform(tf.translation_matrix([pos[0], pos[1], 0]))
 				time.sleep(dt)
 
+	def instance_to_initial_state(self,instance):
+
+		InitialState = namedtuple('InitialState', ['start', 'goal'])
+		s,g = [],[]
+		for agent in instance["agents"]:
+			s.extend([agent["start"][0] + 0.5, agent["start"][1] + 0.5])
+			g.extend([agent["goal"][0] + 0.5, agent["goal"][1] + 0.5])
+		s0 = InitialState._make((np.array(s), np.array(g)))
+
+		self.obstacles = instance["map"]["obstacles"]
+		for x in range(-1,instance["map"]["dimensions"][0]+1):
+			self.obstacles.append([x,-1])
+			self.obstacles.append([x,instance["map"]["dimensions"][1]])
+		for y in range(instance["map"]["dimensions"][0]):
+			self.obstacles.append([-1,y])
+			self.obstacles.append([instance["map"]["dimensions"][0],y])
+		return s0
+
+		
+	def bad_behavior(self):
+
+		# penalize agent going too slowly when still too far from the goal 
+		v_min = 0.05
+		d_max = 0.5 
+	
+		for agent in self.agents:
+
+			if self.is_collision(agent):
+				return True,agent
+
+			# if np.linalg.norm(agent.v) < v_min and np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
+			# 	print('agent not moving while far from goal')
+			# 	return True,agent
+
+		return False,None
+
+	def is_collision(self,agent_i):
+		
+		p_i = agent_i.p
+
+		for agent_j in self.agents:
+			if not agent_i.i == agent_j.i:
+				p_j = agent_j.p 
+				d_ji = np.linalg.norm(p_i-p_j)
 				
+				if d_ji < 2*self.r_agent: 
+					print('collision between agents at t = {}'.format(self.param.sim_times[self.time_step]))
+					return True 
+
+		for obst_j in self.obstacles:
+			if self.is_collision_circle_rectangle(p_i, self.r_agent, np.array(obst_j), np.array(obst_j) + np.array([1.0,1.0])):
+				print('collision with obstacles at t = {}'.format(self.param.sim_times[self.time_step]))
+				return True
+
+		return False
+
+	# from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
+	def is_collision_circle_rectangle(self,circle_pos, circle_r, rect_tl, rect_br):
+		# Find the closest point to the circle within the rectangle
+		closest = np.clip(circle_pos, rect_tl, rect_br)
+		# Calculate the distance between the circle's center and this closest point
+		dist = np.linalg.norm(circle_pos - closest)
+		# If the distance is less than the circle's radius, an intersection occurs
+		return dist + 1e-4 < circle_r
+

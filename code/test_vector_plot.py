@@ -22,7 +22,7 @@ plt.rcParams['lines.linewidth'] = 4
 r_comm = 3 
 max_neighbors = 1
 max_obstacles = 1 
-dx = 0.25
+dx = 0.2
 
 
 def plot_policy_vector_field(fig,ax,policy,map_data,data,i):
@@ -110,8 +110,10 @@ if __name__ == '__main__':
 	#   - policy 
 	#   - instance  
 
-	policy = 'barrier'
+	policy = 'empty'
+	# instance = "map_8by8_obst6_agents4_ex0000"
 	instance = "map_8by8_obst6_agents4_ex0002"
+	# instance = "map_8by8_obst6_agents4_ex0010"
 
 	# 
 	if not policy in ['empty','barrier','empty_wAPF']:
@@ -129,7 +131,8 @@ if __name__ == '__main__':
 	num_agents = len(map_data["agents"])
 
 	# load policy
-	policy_fn = '../models/singleintegrator/{}.pt'.format(policy)
+	# policy_fn = '../models/singleintegrator/{}.pt'.format(policy)
+	policy_fn = '../models/singleintegrator/il_current.pt'
 	policy = torch.load(policy_fn)
 
 	# which agent to show 

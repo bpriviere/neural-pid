@@ -30,7 +30,7 @@ class SingleIntegratorParam(Param):
 		self.n_agents = 1
 		self.r_comm = 3. #0.5
 		self.r_obs_sense = 3.
-		self.r_agent = 0.22 #5
+		self.r_agent = 0.15 #5
 		self.r_obstacle = 0.5
 		self.a_max = 0.5
 		self.a_min = -1*self.a_max
@@ -49,8 +49,8 @@ class SingleIntegratorParam(Param):
 		# self.a_noise = 0.002
 
 		# 
-		self.phi_max = 1*self.a_max
-		self.phi_min = -1*self.a_max
+		self.phi_max = self.a_max + self.b_gamma/(0.2-self.r_agent) # 1*self.a_max
+		self.phi_min = -self.phi_max # -1*self.a_max
 		
 		# sim 
 		self.sim_t0 = 0
@@ -61,22 +61,37 @@ class SingleIntegratorParam(Param):
 		self.plots_fn = 'plots.pdf'
 
 		# IL
-		# self.il_load_loader_on = True
 		self.il_load_loader_on = False
-		self.training_time_downsample = 100 #10
+		# self.il_load_loader_on = False
+		self.training_time_downsample = 20 #10
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 512 # 512 #5000
-		self.il_n_epoch = 500
+		self.il_batch_size = 512 #5000
+		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 100000000 # 100000 # 100000000
+		self.il_n_data = 3000000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
+		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		self.il_agent_case = 4
+		self.il_obst_case = 6
 		self.controller_learning_module = 'DeepSet' #
+
+		# adaptive dataset parameters
+		self.adaptive_dataset_on = True
+		self.ad_n = 4 # n number of rollouts
+		self.ad_l = 1 # l prev observations 
+		self.ad_k = 20 # k closest 
+		self.ad_n_epoch = 10
+		self.ad_n_data = 100000
+
+		# self.ad_tf = 25 #25
+		# self.ad_dt = 0.05
+		# self.ad_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)		
+
 
 		# 
 		self.il_empty_model_fn = '../models/singleintegrator/empty.pt'
@@ -107,7 +122,6 @@ class SingleIntegratorParam(Param):
 		self.il_psi_network_architecture = nn.ModuleList([
 			nn.Linear(2*p+2,h),
 			nn.Linear(h,h),
-			nn.Linear(h,h),
 			nn.Linear(h,m)])
 
 		self.il_network_activation = relu
@@ -128,82 +142,50 @@ if __name__ == '__main__':
 		exit()
 
 	set_ic_on = True
-	ring_ex_on = False
-
-
-	# TEMP
-	# param = SingleIntegratorParam()
-	# env = SingleIntegrator(param)			
-	# plotter.plot_barrier_fnc(env)
-	# plotter.save_figs(param.plots_fn)
-	# plotter.open_figs(param.plots_fn)
-	# exit()
 
 	if set_ic_on:
 
-		if ring_ex_on:
-
-			param = SingleIntegratorParam()
-			env = SingleIntegrator(param)			
-
-			InitialState = namedtuple('InitialState', ['start', 'goal'])
-
-			s0 = np.zeros((env.n))
-			r = 4.
-			d_rad = 2*np.pi/env.n_agents
-			for i in range(env.n_agents):
-				idx = env.agent_idx_to_state_idx(i) + \
-						np.arange(0,2)
-				s0[idx] = np.array([r*np.cos(d_rad*i),r*np.sin(d_rad*i)])
-				+ 0.001*np.random.random(size=(1,2))
-			s0 = InitialState._make((s0, -s0))
-
+		import yaml
+		if args.instance:
+			with open(args.instance) as map_file:
+				map_data = yaml.load(map_file)
 		else:
-
-			import yaml
+			# test map 
 			ex = '0001' # 4 is hard 
-			
-			if args.instance:
-				with open(args.instance) as map_file:
-					map_data = yaml.load(map_file)
-			else:
-				# test map 
-				with open("../results/singleintegrator/instances/map_8by8_obst6_agents4_ex{}.yaml".format(ex)) as map_file:
+			with open("../results/singleintegrator/instances/map_8by8_obst6_agents4_ex{}.yaml".format(ex)) as map_file:
+			# test map test dataset
+				map_data = yaml.load(map_file)
 
-				# test map test dataset
+		s = []
+		g = []
+		for agent in map_data["agents"]:
+			s.extend([agent["start"][0] + 0.5, agent["start"][1] + 0.5])
+			g.extend([agent["goal"][0] + 0.5, agent["goal"][1] + 0.5])
 
-					map_data = yaml.load(map_file)
+		InitialState = namedtuple('InitialState', ['start', 'goal'])
+		s0 = InitialState._make((np.array(s), np.array(g)))
 
-			s = []
-			g = []
-			for agent in map_data["agents"]:
-				s.extend([agent["start"][0] + 0.5, agent["start"][1] + 0.5])
-				g.extend([agent["goal"][0] + 0.5, agent["goal"][1] + 0.5])
+		param = SingleIntegratorParam()
+		param.n_agents = len(map_data["agents"])
+		env = SingleIntegrator(param)
 
-			InitialState = namedtuple('InitialState', ['start', 'goal'])
-			s0 = InitialState._make((np.array(s), np.array(g)))
-
-			param = SingleIntegratorParam()
-			param.n_agents = len(map_data["agents"])
-			env = SingleIntegrator(param)
-
-			env.obstacles = map_data["map"]["obstacles"]
-			for x in range(-1,map_data["map"]["dimensions"][0]+1):
-				env.obstacles.append([x,-1])
-				env.obstacles.append([x,map_data["map"]["dimensions"][1]])
-			for y in range(map_data["map"]["dimensions"][0]):
-				env.obstacles.append([-1,y])
-				env.obstacles.append([map_data["map"]["dimensions"][0],y])
+		env.obstacles = map_data["map"]["obstacles"]
+		for x in range(-1,map_data["map"]["dimensions"][0]+1):
+			env.obstacles.append([x,-1])
+			env.obstacles.append([x,map_data["map"]["dimensions"][1]])
+		for y in range(map_data["map"]["dimensions"][0]):
+			env.obstacles.append([-1,y])
+			env.obstacles.append([map_data["map"]["dimensions"][0],y])
 
 	else:
 		s0 = env.reset()
 
 	controllers = {
-		# 'IL':	torch.load(param.sim_il_model_fn),
+		'IL':	torch.load(param.sim_il_model_fn),
 		# 'APF': APF(param,env)
 		# 'empty': torch.load(param.il_empty_model_fn),
-		'empty_wAPF' : Empty_Net_wAPF(param,env),
-		'barrier' : torch.load(param.il_barrier_model_fn)
+		# 'empty_wAPF' : Empty_Net_wAPF(param,env),
+		# 'barrier' : torch.load(param.il_barrier_model_fn)
 	}
 
 	if args.batch:
@@ -225,9 +207,9 @@ if __name__ == '__main__':
 			output_file = "{}/{}.npy".format(folder_name, basename)
 			with open(output_file, "wb") as f:
 				np.save(f, result, allow_pickle=False)
-	elif args.export:
-		model = torch.load(param.il_train_model_fn)
-		model.export_to_onnx("IL")
+	# elif args.export:
+	# 	model = torch.load(param.il_train_model_fn)
+	# 	model.export_to_onnx("IL")
 	else:
 		run(param, env, controllers, s0, args)
 

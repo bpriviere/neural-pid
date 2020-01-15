@@ -33,8 +33,6 @@ def run_sim(param, env, controller, initial_state):
 			observation = env.unpack_observations(observation)
 
 		action = controller.policy(observation,env.transformations)
-		# action = controller.policy(observation)
-		
 		next_state, r, done, _ = env.step(action)
 		reward += r
 		
@@ -95,8 +93,8 @@ def sim(param, env, controllers, initial_state, visualize):
 
 				plotter.plot_circle(result.states[1,env.agent_idx_to_state_idx(agent.i)],
 					result.states[1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
-				plotter.plot_square(result.states[-1,env.agent_idx_to_state_idx(agent.i)],
-					result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
+				# plotter.plot_square(result.states[-1,env.agent_idx_to_state_idx(agent.i)],
+				# 	result.states[-1,env.agent_idx_to_state_idx(agent.i)+1],param.r_agent,fig=fig,ax=ax,color=color)
 				plotter.plot_square(agent.s_g[0],agent.s_g[1],param.r_agent,angle=45,fig=fig,ax=ax,color=color)
 
 			# draw state for each time step (single integrator)
