@@ -4,20 +4,11 @@ import os
 import subprocess
 import numpy as np
 import argparse
+import concurrent.futures
 
 
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--orca", action='store_true')
-  parser.add_argument("--central", action='store_true')
-  parser.add_argument("--il", action='store_true')
-  args = parser.parse_args()
+def rollout_instance(file):
 
-
-  # for file in sorted(glob.glob("instances/*agents1_*")):
-  # for file in sorted(glob.glob("instances/*agents4_*")):
-  # for file in sorted(glob.glob("instances/*")):
-  for file in sorted(glob.glob("instances/*agents4_ex000*")):
     basename = os.path.splitext(os.path.basename(file))[0]
     print(basename)
     if args.central:
@@ -42,3 +33,16 @@ if __name__ == "__main__":
       subprocess.run("python3 examples/run_singleintegrator.py -i {} --batch".format(os.path.abspath(file)),
         cwd="../../code",
         shell=True)
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--orca", action='store_true')
+  parser.add_argument("--central", action='store_true')
+  parser.add_argument("--il", action='store_true')
+  args = parser.parse_args()
+
+
+  datadir = sorted(glob.glob("instances/*agents4_ex000*"))
+  with concurrent.futures.ProcessPoolExecutor(max_workers = 5) as executor:
+    for _ in executor.map(rollout_instance, datadir):
+      pass

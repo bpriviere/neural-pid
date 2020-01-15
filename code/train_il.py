@@ -31,6 +31,7 @@ from index import Index
 
 from genRandomInstanceDict import get_random_instance
 import pprint
+import copy 
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -38,7 +39,7 @@ def rollout(model, env, param):
 	instance = get_random_instance(param.il_agent_case,param.il_obst_case)
 	initial_state = env.instance_to_initial_state(instance)
 
-	past_l_observations = [] 
+	observations = [] 
 	env.reset(initial_state)
 	for step, time in enumerate(param.sim_times[:-1]):
 
@@ -46,20 +47,20 @@ def rollout(model, env, param):
 		action = model.policy(observation,env.transformations)
 		next_state, _, done, _ = env.step(action)
 
-		past_l_observations.append(observation)
-		if len(past_l_observations) > param.ad_l:
-			past_l_observations = past_l_observations[-param.ad_l:]
+		observations.append(observation)
 
-		found,agent = env.bad_behavior()
-		if found:
-			agent_i_past_l_observations = [] 
-			for past_l_observation in past_l_observations: 
-				agent_i_past_l_observations.append(past_l_observation[agent.i])
-			# print('step: ', step)
-			return agent_i_past_l_observations
+		agents = env.bad_behavior()
+		past_l_observations = []
+		for agent in agents:
+			for past_l_observation in observations[-param.ad_l*param.ad_dl::param.ad_dl]: 
+				past_l_observations.append(past_l_observation[agent.i])
+
+		if len(agents) > 0:
+			return past_l_observations
 
 		if done: 
 			break
+
 
 	print('no bad behavior :)')
 	return [] 
@@ -70,16 +71,16 @@ def get_dynamic_dataset(model, env, param,index):
 	#    - model
 	#    - environment
 	#    - param
-
 	
 	data = [] 
-	with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
+	# env_lst = [copy.deepcopy(env) for _ in range(param.ad_n)]
+	print('rollout')
+	with concurrent.futures.ProcessPoolExecutor(max_workers = 5) as executor:
 		for observation_i in executor.map(rollout, repeat(model,param.ad_n),repeat(env,param.ad_n),repeat(param,param.ad_n)):
-			# print('len(observation_i):',len(observation_i))
-
-			# observations.extend(observation_i)
+		# for observation_i in executor.map(rollout, repeat(model,param.ad_n),env_lst,repeat(param,param.ad_n)):
 			data.extend(index.query_lst(observation_i,param.ad_k))
-
+			print('len(data) ',len(data))
+	print('end rollout')
 
 	# print(len(data))
 	# exit()
@@ -275,6 +276,8 @@ def train_il(param, env):
 				loader_test  = load_loader("test",param.il_batch_size)
 
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
+	adaptive_dataset_len_lst = []
+	num_unique_points_lst = []
 	if param.adaptive_dataset_on:
 
 		index = Index()
@@ -283,9 +286,12 @@ def train_il(param, env):
 
 			data = get_dynamic_dataset(model,env,param,index)
 			adaptive_dataset.extend(data)
-			print('len(adaptive_dataset): ', len(adaptive_dataset))
-			index.print_total_stats()
+			adaptive_dataset_len_lst.append(len(adaptive_dataset))
+			num_unique_points_lst.append(index.get_total_stats())
 
+			print('len(adaptive_dataset): ', len(adaptive_dataset))
+			print('total number of unique points: ', index.get_total_stats())
+			
 			loader_train = make_loader(
 				env,
 				dataset=adaptive_dataset,
@@ -312,6 +318,7 @@ def train_il(param, env):
 						torch.save(model,param.il_train_model_fn)
 
 		index.print_stats()
+		np.save()
 
 		best_test_loss = Inf
 		scheduler = ReduceLROnPlateau(optimizer, 'min')

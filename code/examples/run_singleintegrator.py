@@ -61,7 +61,7 @@ class SingleIntegratorParam(Param):
 		self.plots_fn = 'plots.pdf'
 
 		# IL
-		self.il_load_loader_on = False
+		self.il_load_loader_on = True
 		# self.il_load_loader_on = False
 		self.training_time_downsample = 20 #10
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
@@ -75,22 +75,23 @@ class SingleIntegratorParam(Param):
 		self.il_n_data = 3000000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
 		self.il_agent_case = 4
 		self.il_obst_case = 6
 		self.controller_learning_module = 'DeepSet' #
 
 		# adaptive dataset parameters
 		self.adaptive_dataset_on = True
-		self.ad_n = 4 # n number of rollouts
-		self.ad_l = 1 # l prev observations 
+		self.ad_n = 10 # n number of rollouts
+		self.ad_l = 20 # l prev observations 
 		self.ad_k = 20 # k closest 
 		self.ad_n_epoch = 10
 		self.ad_n_data = 100000
+		self.ad_dl = 50 # every . timesteps  
 
 		# self.ad_tf = 25 #25
 		# self.ad_dt = 0.05
-		# self.ad_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)		
+		# self.ad_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
 
 		# 
@@ -129,8 +130,9 @@ class SingleIntegratorParam(Param):
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
-		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
+		# plots
+		self.vector_plot_dx = 0.5 
 
 if __name__ == '__main__':
 
@@ -181,25 +183,27 @@ if __name__ == '__main__':
 		s0 = env.reset()
 
 	controllers = {
-		'IL':	torch.load(param.sim_il_model_fn),
+		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'APF': APF(param,env)
 		# 'empty': torch.load(param.il_empty_model_fn),
 		# 'empty_wAPF' : Empty_Net_wAPF(param,env),
-		# 'barrier' : torch.load(param.il_barrier_model_fn)
+		'barrier' : torch.load(param.il_barrier_model_fn)
 	}
 
 	if args.batch:
+				
 		for name, controller in controllers.items():
 			print("Running simulation with " + name)
-			states, observations, actions, step = run_sim(param, env, controller, s0)
-			states_and_actions = np.zeros((actions.shape[0], states.shape[1] + actions.shape[1]), dtype=states.dtype)
-			states_and_actions[:,0::4] = states[:-1,0::2]
-			states_and_actions[:,1::4] = states[:-1,1::2]
-			states_and_actions[:,2::4] = actions[:,0::2]
-			states_and_actions[:,3::4] = actions[:,1::2]
 
-			result = np.hstack((param.sim_times[0:-1].reshape(-1,1), states_and_actions))
-			# store in binary format
+			states, observations, actions, step = run_sim(param, env, controller, s0)
+			states_and_actions = np.zeros((step, states.shape[1] + actions.shape[1]), dtype=states.dtype)
+			states_and_actions[:,0::4] = states[:step,0::2]
+			states_and_actions[:,1::4] = states[:step,1::2]
+			states_and_actions[:,2::4] = actions[:step,0::2]
+			states_and_actions[:,3::4] = actions[:step,1::2]
+
+			result = np.hstack((param.sim_times[0:step].reshape(-1,1), states_and_actions))
+
 			basename = os.path.splitext(os.path.basename(args.instance))[0]
 			folder_name = "../results/singleintegrator/{}".format(name)
 			if not os.path.exists(folder_name):
@@ -207,9 +211,11 @@ if __name__ == '__main__':
 			output_file = "{}/{}.npy".format(folder_name, basename)
 			with open(output_file, "wb") as f:
 				np.save(f, result, allow_pickle=False)
+
 	# elif args.export:
 	# 	model = torch.load(param.il_train_model_fn)
 	# 	model.export_to_onnx("IL")
+
 	else:
 		run(param, env, controllers, s0, args)
 

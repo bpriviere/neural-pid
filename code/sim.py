@@ -16,15 +16,15 @@ from learning.ppo_v2 import PPO
 
 
 def run_sim(param, env, controller, initial_state):
-	states = np.zeros((len(param.sim_times), env.n))
-	actions = np.zeros((len(param.sim_times)-1,env.m))
+	states = np.empty((len(param.sim_times), env.n))
+	actions = np.empty((len(param.sim_times)-1,env.m))
 	observations = [] 
 	reward = 0 
 
 	env.reset(initial_state)
 	states[0] = np.copy(env.s)
 	for step, time in enumerate(param.sim_times[:-1]):
-		print('t: {}/{}'.format(time,param.sim_times[-1]))
+		# print('t: {}/{}'.format(time,param.sim_times[-1]))
 
 		state = states[step]
 		observation = env.observe()

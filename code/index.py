@@ -2,7 +2,9 @@ import glob
 import numpy as np
 import hnswlib
 import os
+import matplotlib
 import matplotlib.pyplot as plt
+# matplotlib.use('Agg')
 from matplotlib.patches import Rectangle, Circle
 from matplotlib.backends.backend_pdf import PdfPages
 plt.rcParams.update({'font.size': 18})
@@ -53,7 +55,8 @@ class Index:
 			stats[l] += 1
 		# return [self.D[(num_neighbors,num_obstacles)][l] for l in labels[0]]
 
-		if (distances[0][0] > 2 or distances[0][-1] > 4) and self.fileidx < 100:
+		# if (distances[0][0] > 2 or distances[0][-1] > 4) and self.fileidx < 100:
+		if False:
 			pp = PdfPages("index_query_{}.pdf".format(self.fileidx))
 			self.plot_obs(pp, obs[0], "input", has_action = False)
 			for k, l in enumerate(labels[0]):
@@ -82,11 +85,11 @@ class Index:
 			total += np.count_nonzero(stat)
 		print('total: ', total)
 
-	def print_total_stats(self):
+	def get_total_stats(self):
 		total = 0
 		for key, stat in self.stats.items():
 			total += np.count_nonzero(stat)
-		print('total number of unique points: ', total)
+		return total 
 
 
 	def plot_obs(self, pp, observation,title=None, has_action = True):

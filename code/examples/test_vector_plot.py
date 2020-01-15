@@ -1,18 +1,26 @@
 
-
-import glob
+# standard 
+import sys
 import os
-import stats
+import glob
 import numpy as np
 import yaml
-
+import argparse
 import torch 
-
+import matplotlib 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import Rectangle, Circle
 from matplotlib.backends.backend_pdf import PdfPages
 
+# hack for package import 
+sys.path.insert(1, os.path.join(os.getcwd(),'.'))
+print(os.getcwd())
+
+# my packages
+import stats
+from other_policy import APF, Empty_Net_wAPF
+from run_singleintegrator import SingleIntegratorParam 
 
 plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
@@ -23,7 +31,6 @@ r_comm = 3
 max_neighbors = 1
 max_obstacles = 1 
 dx = 0.2
-
 
 def plot_policy_vector_field(fig,ax,policy,map_data,data,i):
 	
@@ -48,7 +55,12 @@ def plot_policy_vector_field(fig,ax,policy,map_data,data,i):
 				V[i_y,i_x] = a[0][1]
 				C[i_y,i_x] = np.linalg.norm( np.array([a[0][0],a[0][1]]))
 
-	ax.quiver(X,Y,U,V,C)
+	# normalize arrow length
+	U = U / np.sqrt(U**2 + V**2);
+	V = V / np.sqrt(U**2 + V**2);
+
+	im = ax.quiver(X,Y,U,V,C,scale_units='xy')
+	fig.colorbar(im)
 
 
 def collision(p,o_lst):
@@ -110,10 +122,12 @@ if __name__ == '__main__':
 	#   - policy 
 	#   - instance  
 
-	policy = 'empty'
+	policy = 'barrier'
 	# instance = "map_8by8_obst6_agents4_ex0000"
 	instance = "map_8by8_obst6_agents4_ex0002"
 	# instance = "map_8by8_obst6_agents4_ex0010"
+
+	param = SingleIntegratorParam()
 
 	# 
 	if not policy in ['empty','barrier','empty_wAPF']:
@@ -131,9 +145,14 @@ if __name__ == '__main__':
 	num_agents = len(map_data["agents"])
 
 	# load policy
-	# policy_fn = '../models/singleintegrator/{}.pt'.format(policy)
 	policy_fn = '../models/singleintegrator/il_current.pt'
 	policy = torch.load(policy_fn)
+
+	# if policy in ['empty','barrier']:
+	# 	policy_fn = '../models/singleintegrator/{}.pt'.format(policy)
+	# 	policy = torch.load(policy_fn)
+	# elif policy in ['empty_wAPF']:
+	# 	policy = Empty_Net_wAPF(param,env)
 
 	# which agent to show 
 	i = 0 
@@ -141,30 +160,6 @@ if __name__ == '__main__':
 	t_idx = np.arange(0,data.shape[0],100)
 	# t_array = data[t_idx,0]
 	t_array = [0]
-
-	# fig,ax = plt.subplots()
-	# ax.set_aspect('equal')
-	# ax.set_xlim((-1,9))
-	# ax.set_ylim((-1,9))
-	# for o in map_data["map"]["obstacles"]:
-	# 	ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
-	# for x in range(-1,map_data["map"]["dimensions"][0]+1):
-	# 	ax.add_patch(Rectangle([x,-1], 1.0, 1.0, facecolor='gray', alpha=0.5))
-	# 	ax.add_patch(Rectangle([x,map_data["map"]["dimensions"][1]], 1.0, 1.0, facecolor='gray', alpha=0.5))
-	# for y in range(map_data["map"]["dimensions"][0]):
-	# 	ax.add_patch(Rectangle([-1,y], 1.0, 1.0, facecolor='gray', alpha=0.5))
-	# 	ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
-	# for j in range(num_agents):
-	# 	if not i == j:
-	# 		color = 'blue'
-	# 	else:
-	# 		color='black'
-	# 	idx = 1 + 4*j + np.arange(0,2)
-	# 	line = ax.plot(data[:,idx[0]],data[:,idx[1]],color=color)
-	# 	start = np.array(map_data["agents"][j]["start"])
-	# 	goal = np.array(map_data["agents"][j]["goal"])
-	# 	ax.add_patch(Circle(start + np.array([0.5,0.5]), 0.2, alpha=0.5, color=color))
-	# 	ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))		
 
 	for t in t_array:
 

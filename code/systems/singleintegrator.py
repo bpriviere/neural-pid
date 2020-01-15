@@ -186,7 +186,7 @@ class SingleIntegrator(Env):
 				initial_state[idx] = agent_i.s
 			self.s = initial_state
 		else:
-			print(initial_state)
+			# print(initial_state)
 
 			# this will update agents later in 'update_agents'
 			self.s = initial_state.start
@@ -573,36 +573,39 @@ class SingleIntegrator(Env):
 		v_min = 0.05
 		d_max = 0.5 
 	
-		for agent in self.agents:
+		for agent_i in self.agents:
 
-			if self.is_collision(agent):
-				return True,agent
+			p_i = agent_i.p
+
+			for agent_j in self.agents:
+				if not agent_i.i == agent_j.i:
+					p_j = agent_j.p 
+					d_ji = np.linalg.norm(p_i-p_j)
+					
+					if d_ji < 2*self.r_agent: 
+						print('collision between agents at t = {}'.format(self.param.sim_times[self.time_step]))
+						return [agent_i,agent_j]
+
+			for obst_j in self.obstacles:
+				if self.is_collision_circle_rectangle(p_i, self.r_agent, np.array(obst_j), np.array(obst_j) + np.array([1.0,1.0])):
+					print('collision with obstacles at t = {}'.format(self.param.sim_times[self.time_step]))
+					return [agent_i]
 
 			# if np.linalg.norm(agent.v) < v_min and np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
 			# 	print('agent not moving while far from goal')
 			# 	return True,agent
 
-		return False,None
+		if self.time_step == self.param.sim_nt-1:
+			# end condition 
+			bad_agents = []
+			for agent in self.agents:
+				if np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
+					bad_agents.append(agent)
+					print('agent {} did not reach goal'.format(agent.i))
+			return bad_agents
 
-	def is_collision(self,agent_i):
-		
-		p_i = agent_i.p
+		return []
 
-		for agent_j in self.agents:
-			if not agent_i.i == agent_j.i:
-				p_j = agent_j.p 
-				d_ji = np.linalg.norm(p_i-p_j)
-				
-				if d_ji < 2*self.r_agent: 
-					print('collision between agents at t = {}'.format(self.param.sim_times[self.time_step]))
-					return True 
-
-		for obst_j in self.obstacles:
-			if self.is_collision_circle_rectangle(p_i, self.r_agent, np.array(obst_j), np.array(obst_j) + np.array([1.0,1.0])):
-				print('collision with obstacles at t = {}'.format(self.param.sim_times[self.time_step]))
-				return True
-
-		return False
 
 	# from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
 	def is_collision_circle_rectangle(self,circle_pos, circle_r, rect_tl, rect_br):
