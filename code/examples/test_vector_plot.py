@@ -21,21 +21,17 @@ print(os.getcwd())
 import stats
 from other_policy import APF, Empty_Net_wAPF
 from run_singleintegrator import SingleIntegratorParam 
+from systems.singleintegrator import SingleIntegrator
 
 plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
 
-# some parameters
-r_comm = 3 
-max_neighbors = 1
-max_obstacles = 1 
-dx = 0.2
-
-def plot_policy_vector_field(fig,ax,policy,map_data,data,i):
+def plot_policy_vector_field(fig,ax,policy,map_data,data,i,param):
 	
 	obstacles = map_data["map"]["obstacles"]
 	transformation = [[np.eye(2)]]
+	dx = param.vector_plot_dx
 
 	X = np.arange(0,map_data["map"]["dimensions"][0]+dx,dx)
 	Y = np.arange(0,map_data["map"]["dimensions"][1]+dx,dx)
@@ -48,7 +44,7 @@ def plot_policy_vector_field(fig,ax,policy,map_data,data,i):
 		for i_y,y in enumerate(Y):
 			if not collision((x,y),obstacles):
 
-				o_xy = get_observation_i_at_xy_from_data(data,map_data,x,y,i)
+				o_xy = get_observation_i_at_xy_from_data(data,map_data,x,y,i,param)
 				a = policy.policy(o_xy,transformation)
 
 				U[i_y,i_x] = a[0][0]
@@ -56,8 +52,8 @@ def plot_policy_vector_field(fig,ax,policy,map_data,data,i):
 				C[i_y,i_x] = np.linalg.norm( np.array([a[0][0],a[0][1]]))
 
 	# normalize arrow length
-	U = U / np.sqrt(U**2 + V**2);
-	V = V / np.sqrt(U**2 + V**2);
+	# U = U / np.sqrt(U**2 + V**2);
+	# V = V / np.sqrt(U**2 + V**2);
 
 	im = ax.quiver(X,Y,U,V,C,scale_units='xy')
 	fig.colorbar(im)
@@ -67,7 +63,7 @@ def collision(p,o_lst):
 	return False
 
 
-def get_observation_i_at_xy_from_data(data,map_data,x,y,i):
+def get_observation_i_at_xy_from_data(data,map_data,x,y,i,param):
 
 	# o = [#n, g^i-(x,y), {p^j - (x,y)}_neighbors, {p^j - (x,y)}_obstaclescenter ]
 	# data = [ t, {(s,a)}_agents ] 
@@ -75,6 +71,9 @@ def get_observation_i_at_xy_from_data(data,map_data,x,y,i):
 	p = np.array([x,y])
 	nn = len(map_data["agents"])
 	no = len(map_data["map"]["obstacles"])
+	r_comm = param.r_comm 
+	max_neighbors = param.max_neighbors
+	max_obstacles = param.max_obstacles
 
 	goal = np.array(map_data["agents"][i]["goal"])
 	relative_goal = goal - p + 0.5
@@ -115,48 +114,67 @@ def get_observation_i_at_xy_from_data(data,map_data,x,y,i):
 	return observation
 
 
+def parse_args():
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-barrier", action='store_true')
+	parser.add_argument("-empty", action='store_true')
+	parser.add_argument("-empty_wAPF", action='store_true')
+	parser.add_argument("-current", action='store_true')
+	parser.add_argument("-i", "--instance")
+	parser.add_argument("-a","--agent")
+	args = parser.parse_args()
+	return args
 
 if __name__ == '__main__':
 
+	args = parse_args()
+
 	# input:
 	#   - policy 
-	#   - instance  
-
-	policy = 'barrier'
-	# instance = "map_8by8_obst6_agents4_ex0000"
-	instance = "map_8by8_obst6_agents4_ex0002"
-	# instance = "map_8by8_obst6_agents4_ex0010"
+	#   - instance
 
 	param = SingleIntegratorParam()
+	env = SingleIntegrator(param)
 
-	# 
-	if not policy in ['empty','barrier','empty_wAPF']:
-		exit('policy not recognized: {}'.format(policy))
+	if args.barrier:
+		policy_fn = '../models/singleintegrator/barrier.pt'
+		policy = torch.load(policy_fn)
+	elif args.empty:
+		policy_fn = '../models/singleintegrator/empty.pt'
+		policy = torch.load(policy_fn)
+	elif args.current:
+		policy_fn = '../models/singleintegrator/il_current.pt'
+		policy = torch.load(policy_fn)
+	elif args.empty_wAPF:
+		policy = Empty_Net_wAPF(param,env)
+	else:
+		exit('no policy recognized')
 
-	# load data
-	data_fn = "../results/singleintegrator/{}/{}.npy".format(policy,instance)
-	data = np.load(data_fn)
-	
-	# load map 
+	if args.instance:
+		instance = args.instance
+	else:
+		# instance = "map_8by8_obst6_agents4_ex0000"
+		instance = "map_8by8_obst6_agents4_ex0002"		
+		# instance = "map_8by8_obst6_agents4_ex0010"
+		print('default instance file: {}'.format(instance))
 	instance_fn = "../results/singleintegrator/instances/{}.yaml".format(instance)
+
 	with open(instance_fn) as map_file:
 		map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
-	print(map_data)
 	num_agents = len(map_data["agents"])
 
-	# load policy
-	policy_fn = '../models/singleintegrator/il_current.pt'
-	policy = torch.load(policy_fn)
 
-	# if policy in ['empty','barrier']:
-	# 	policy_fn = '../models/singleintegrator/{}.pt'.format(policy)
-	# 	policy = torch.load(policy_fn)
-	# elif policy in ['empty_wAPF']:
-	# 	policy = Empty_Net_wAPF(param,env)
+	if args.agent:
+		agent = args.agent
+	else:
+		agent = 0 
+		print('default agent index {}'.format(agent))
 
-	# which agent to show 
-	i = 0 
 
+	# load data
+	data_fn = "../results/singleintegrator/{}/{}.npy".format('central',instance)
+	data = np.load(data_fn)
+	
 	t_idx = np.arange(0,data.shape[0],100)
 	# t_array = data[t_idx,0]
 	t_array = [0]
@@ -168,7 +186,7 @@ if __name__ == '__main__':
 		ax.set_xlim((-1,9))
 		ax.set_ylim((-1,9))
 
-		plot_policy_vector_field(fig,ax,policy,map_data,data[t,:],i)
+		plot_policy_vector_field(fig,ax,policy,map_data,data[t,:],agent,param)
 
 		for o in map_data["map"]["obstacles"]:
 			ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
@@ -180,12 +198,12 @@ if __name__ == '__main__':
 			ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
 
 		for j in range(num_agents):
-			if not i == j:
+			if not agent == j:
 				color = 'blue'
 			else:
 				color = 'black'
-				start = np.array(map_data["agents"][i]["start"])
-				goal = np.array(map_data["agents"][i]["goal"])
+				start = np.array(map_data["agents"][agent]["start"])
+				goal = np.array(map_data["agents"][agent]["goal"])
 				ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))
 
 			idx = 1 + 4*j + np.arange(0,2)
