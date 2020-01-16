@@ -50,6 +50,10 @@ class Index:
 	def query(self,obs,k):
 		num_neighbors = int(obs[0,0])
 		num_obstacles = int((obs.shape[1] - 1 - state_dim_per_agent - num_neighbors*state_dim_per_agent) / 2)
+
+		if (num_neighbors,num_obstacles) not in self.P:
+			return []
+
 		p = self.P[(num_neighbors,num_obstacles)]
 		stats = self.stats[(num_neighbors,num_obstacles)]
 		labels, distances = p.knn_query(obs[:,1:], k=min(k, stats.shape[0]) )

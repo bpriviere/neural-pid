@@ -276,8 +276,8 @@ def train_il(param, env):
 					name = "test")
 
 			else:
-				loader_train = load_loader("train",param.il_batch_size)
-				# loader_train = load_loader("adaptive",param.il_batch_size)
+				# loader_train = load_loader("train",param.il_batch_size)
+				loader_train = load_loader("adaptive",param.il_batch_size)
 				loader_test  = load_loader("test",param.il_batch_size)
 
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
@@ -285,8 +285,28 @@ def train_il(param, env):
 	num_unique_points_lst = []
 	if param.adaptive_dataset_on:
 
+		# first, train on the whole dataset
+		best_test_loss = Inf
+		scheduler = ReduceLROnPlateau(optimizer, 'min')
+		for epoch in range(1,param.il_n_epoch+1):
+						
+			train_epoch_loss = train(param,env,model,optimizer,loader_train)
+			test_epoch_loss = test(param,env,model,loader_test)
+			scheduler.step(test_epoch_loss)
+
+			if epoch%param.il_log_interval==0:
+				print('epoch: ', epoch)
+				print('   Train Epoch Loss: ', train_epoch_loss)
+				print('   Test Epoch Loss: ', test_epoch_loss)
+				if test_epoch_loss < best_test_loss:
+					best_test_loss = test_epoch_loss
+					print('      saving @ best test loss:', best_test_loss)
+					torch.save(model,param.il_train_model_fn)
+
 		index = Index()
-		adaptive_dataset = []
+		adaptive_dataset = train_dataset
+		# best_train_loss = Inf
+		scheduler = ReduceLROnPlateau(optimizer, 'min')
 		while len(adaptive_dataset)<param.ad_n_data:
 
 			data = get_dynamic_dataset(model,env,param,index)
@@ -305,42 +325,42 @@ def train_il(param, env):
 				n_data=param.il_n_data,
 				name = "adaptive")
 
-			best_test_loss = Inf
-			scheduler = ReduceLROnPlateau(optimizer, 'min')
+			# best_test_loss = Inf
+			# scheduler = ReduceLROnPlateau(optimizer, 'min')
 			for epoch in range(1,param.ad_n_epoch+1):
 				
 				train_epoch_loss = train(param,env,model,optimizer,loader_train)
 				test_epoch_loss = test(param,env,model,loader_test)
-				scheduler.step(test_epoch_loss)
+				scheduler.step(train_epoch_loss)
 
 				if epoch%param.il_log_interval==0:
 					print('epoch: ', epoch)
 					print('   Train Epoch Loss: ', train_epoch_loss)
 					print('   Test Epoch Loss: ', test_epoch_loss)
-					if test_epoch_loss < best_test_loss:
-						best_test_loss = test_epoch_loss
-						print('      saving @ best test loss:', best_test_loss)
-						torch.save(model,param.il_train_model_fn)
+				# 	if train_epoch_loss < best_train_loss:
+						# best_test_loss = test_epoch_loss
+						# print('      saving @ best test loss:', best_test_loss)
+			torch.save(model,param.ad_train_model_fn)
 
 		# index.print_stats()
 		# np.save()
 
-		best_test_loss = Inf
-		scheduler = ReduceLROnPlateau(optimizer, 'min')
-		for epoch in range(1,param.il_n_epoch+1):
+		# best_test_loss = Inf
+		# scheduler = ReduceLROnPlateau(optimizer, 'min')
+		# for epoch in range(1,param.il_n_epoch+1):
 						
-			train_epoch_loss = train(param,env,model,optimizer,loader_train)
-			test_epoch_loss = test(param,env,model,loader_test)
-			scheduler.step(test_epoch_loss)
+		# 	train_epoch_loss = train(param,env,model,optimizer,loader_train)
+		# 	test_epoch_loss = test(param,env,model,loader_test)
+		# 	scheduler.step(test_epoch_loss)
 
-			if epoch%param.il_log_interval==0:
-				print('epoch: ', epoch)
-				print('   Train Epoch Loss: ', train_epoch_loss)
-				print('   Test Epoch Loss: ', test_epoch_loss)
-				if test_epoch_loss < best_test_loss:
-					best_test_loss = test_epoch_loss
-					print('      saving @ best test loss:', best_test_loss)
-					torch.save(model,param.il_train_model_fn)						
+		# 	if epoch%param.il_log_interval==0:
+		# 		print('epoch: ', epoch)
+		# 		print('   Train Epoch Loss: ', train_epoch_loss)
+		# 		print('   Test Epoch Loss: ', test_epoch_loss)
+		# 		if test_epoch_loss < best_test_loss:
+		# 			best_test_loss = test_epoch_loss
+		# 			print('      saving @ best test loss:', best_test_loss)
+		# 			torch.save(model,param.il_train_model_fn)
 
 	else:
 
