@@ -88,6 +88,7 @@ class SingleIntegratorParam(Param):
 		self.ad_n_epoch = 10
 		self.ad_n_data = 100000
 		self.ad_dl = 50 # every . timesteps  
+		self.ad_train_model_fn = '../models/singleintegrator/ad_current.pt'
 
 		# self.ad_tf = 25 #25
 		# self.ad_dt = 0.05
