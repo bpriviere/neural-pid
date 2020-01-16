@@ -43,6 +43,11 @@ if __name__ == "__main__":
 
 
   datadir = sorted(glob.glob("instances/*agents4_ex000*"))
-  with concurrent.futures.ProcessPoolExecutor(max_workers = 5) as executor:
-    for _ in executor.map(rollout_instance, datadir):
-      pass
+  # ORCA and Central cannot be run in parallel (they use temporary files)
+  if args.orca or args.central:
+    for file in datadir:
+      rollout_instance(file)
+  else:
+    with concurrent.futures.ProcessPoolExecutor(max_workers = 5) as executor:
+      for _ in executor.map(rollout_instance, datadir):
+        pass
