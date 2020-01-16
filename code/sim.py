@@ -33,7 +33,7 @@ def run_sim(param, env, controller, initial_state):
 			observation = env.unpack_observations(observation)
 
 		action = controller.policy(observation,env.transformations)
-		next_state, r, done, _ = env.step(action)
+		next_state, r, done, _ = env.step(action, compute_reward = False)
 		reward += r
 		
 		states[step + 1] = next_state

@@ -311,10 +311,10 @@ def train_il(param, env):
 
 			data = get_dynamic_dataset(model,env,param,index)
 			adaptive_dataset.extend(data)
-			adaptive_dataset_len_lst.append(len(adaptive_dataset))
+			adaptive_dataset_len_lst.append(len(adaptive_dataset)-len(train_dataset))
 			num_unique_points_lst.append(index.get_total_stats())
 
-			print('len(adaptive_dataset): ', len(adaptive_dataset))
+			print('len(adaptive_dataset): ', len(adaptive_dataset)-len(train_dataset))
 			print('total number of unique points: ', index.get_total_stats())
 			
 			loader_train = make_loader(
