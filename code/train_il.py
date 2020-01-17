@@ -79,7 +79,7 @@ def get_dynamic_dataset(model, env, param,index):
 	data = [] 
 	print('rollout')
 
-	with concurrent.futures.ProcessPoolExecutor(max_workers = 5) as executor:
+	with concurrent.futures.ProcessPoolExecutor() as executor:
 		for observation_i in executor.map(rollout, repeat(model,param.ad_n),repeat(env,param.ad_n),repeat(param,param.ad_n)):
 		# for observation_i in executor.map(rollout, repeat(model,param.ad_n),env_lst,repeat(param,param.ad_n)):
 			data.extend(index.query_lst(observation_i,param.ad_k))
@@ -239,7 +239,7 @@ def train_il(param, env):
 				datadir = glob.glob("../data/singleintegrator/central/*obst{}_agents{}_ex*.npy".format(param.il_obst_case,num_agent))
 
 				len_case = 0
-				with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
+				with concurrent.futures.ProcessPoolExecutor() as executor:
 					for dataset in executor.map(env.load_dataset_action_loss, datadir):
 						if np.random.uniform(0, 1) <= param.il_test_train_ratio:
 							train_dataset.extend(dataset)
@@ -301,7 +301,7 @@ def train_il(param, env):
 					torch.save(model,param.il_train_model_fn)
 
 		index = Index()
-		adaptive_dataset = train_dataset
+		adaptive_dataset = list(train_dataset)
 		# best_train_loss = Inf
 		scheduler = ReduceLROnPlateau(optimizer, 'min')
 		while len(adaptive_dataset)<param.ad_n_data:

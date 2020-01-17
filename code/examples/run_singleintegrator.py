@@ -61,9 +61,9 @@ class SingleIntegratorParam(Param):
 		self.plots_fn = 'plots.pdf'
 
 		# IL
+		# self.il_load_loader_on = True
 		self.il_load_loader_on = False
-		# self.il_load_loader_on = False
-		self.training_time_downsample = 20 #10
+		self.training_time_downsample = 100
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
@@ -72,14 +72,15 @@ class SingleIntegratorParam(Param):
 		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 100000 # 100000 # 100000000
+		self.il_n_data = 500000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier',
 		
 		self.datadict = dict()
 		self.datadict["4"] = self.il_n_data
-		self.datadict["10"] = self.il_n_data
+		self.datadict["20"] = self.il_n_data
+
 		self.il_obst_case = 6
 		self.controller_learning_module = 'DeepSet' #
 
@@ -89,7 +90,7 @@ class SingleIntegratorParam(Param):
 		self.ad_l = 2 # l prev observations 
 		self.ad_k = 20 # k closest 
 		self.ad_n_epoch = 10
-		self.ad_n_data = 200000
+		self.ad_n_data = 2000000
 		self.ad_dl = 10 # every . timesteps  
 		self.ad_train_model_fn = '../models/singleintegrator/ad_current.pt'
 
