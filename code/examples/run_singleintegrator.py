@@ -72,7 +72,7 @@ class SingleIntegratorParam(Param):
 		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 10000 # 100000 # 100000000
+		self.il_n_data = 100000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier',
@@ -85,11 +85,11 @@ class SingleIntegratorParam(Param):
 
 		# adaptive dataset parameters
 		self.adaptive_dataset_on = True
-		self.ad_n = 20 # n number of rollouts
-		self.ad_l = 8 # l prev observations 
+		self.ad_n = 100 # n number of rollouts
+		self.ad_l = 2 # l prev observations 
 		self.ad_k = 20 # k closest 
 		self.ad_n_epoch = 10
-		self.ad_n_data = 2000000
+		self.ad_n_data = 200000
 		self.ad_dl = 10 # every . timesteps  
 		self.ad_train_model_fn = '../models/singleintegrator/ad_current.pt'
 

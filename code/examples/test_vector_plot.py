@@ -119,6 +119,7 @@ def parse_args():
 	parser.add_argument("-empty", action='store_true')
 	parser.add_argument("-empty_wAPF", action='store_true')
 	parser.add_argument("-current", action='store_true')
+	parser.add_argument("-currenta", action='store_true')
 	parser.add_argument("-i", "--instance")
 	parser.add_argument("-a","--agent")
 	args = parser.parse_args()
@@ -143,6 +144,9 @@ if __name__ == '__main__':
 		policy = torch.load(policy_fn)
 	elif args.current:
 		policy_fn = '../models/singleintegrator/il_current.pt'
+		policy = torch.load(policy_fn)
+	elif args.currenta:
+		policy_fn = '../models/singleintegrator/ad_current.pt'
 		policy = torch.load(policy_fn)
 	elif args.empty_wAPF:
 		policy = Empty_Net_wAPF(param,env)

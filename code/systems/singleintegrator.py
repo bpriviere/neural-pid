@@ -259,6 +259,7 @@ class SingleIntegrator(Env):
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			p_idx = np.arange(idx,idx+2)
 			sp1[p_idx] = self.s[p_idx] + a[agent_i.i,:]*dt
+			agent_i.v = a[agent_i.i,:]
 			# sp1[v_idx] = np.clip(a[agent_i.i,:],self.a_max,self.a_min)
 
 		self.update_agents(sp1)
@@ -284,7 +285,7 @@ class SingleIntegrator(Env):
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			agent_i.p = s[idx:idx+2]
-			agent_i.v = s[idx+2:idx+4]
+			# agent_i.v = s[idx+2:idx+4]
 			agent_i.s = agent_i.p
 
 		self.positions = np.array([agent_i.p for agent_i in self.agents])
@@ -590,7 +591,7 @@ class SingleIntegrator(Env):
 		
 	def bad_behavior(self, observations):
 		# penalize agent going too slowly when still too far from the goal 
-		v_min = 0.05
+		v_min = 0.2
 		d_max = 0.5
 
 		# the observation already encodes the closest neighbors (sorted)
@@ -617,6 +618,12 @@ class SingleIntegrator(Env):
 					closest_obstacle + np.array([0.5,0.5])):
 					print('collision with obstacle at t = {}'.format(self.param.sim_times[self.time_step]))
 					bad_agents.add(agent)
+
+		# low velocity and not at goal?
+		for agent in self.agents:
+			if np.linalg.norm(agent.v) < v_min and np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
+				print('agent {} too slow (v={})'.format(agent.i, np.linalg.norm(agent.v)))
+				bad_agents.add(agent)
 
 		# end condition 
 		if self.time_step == self.param.sim_nt-1:
