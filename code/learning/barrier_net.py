@@ -99,10 +99,11 @@ class Barrier_Net(nn.Module):
 	def __call__(self,x):
 		# this fnc is used for training 
 
-		empty_action = self.scale(self.empty(x),self.phi_max)
+		empty_action = self.empty(x)
+		empty_action = self.scale(empty_action, self.phi_min, self.phi_max)
 		barrier_action = self.APF(x)
-		action = empty_action+barrier_action
-		action = self.scale(action,self.a_max)
+		action = empty_action+barrier_action 
+		action = self.scale(action, self.a_min, self.a_max)
 		return action 
 
 		# empty_action = self.empty(x)
@@ -115,6 +116,8 @@ class Barrier_Net(nn.Module):
 		# action = empty_action + barrier_action
 		# return action
 
+		# empty_action = self.scale_empty(self.empty(x))
+		# return empty_action
 
 	def APF(self,x):
 		barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
@@ -188,13 +191,16 @@ class Barrier_Net(nn.Module):
 		return barrier_action 
 
 
-	def scale(self,action,value):
-		inv_alpha = action.norm(p=float(2),dim=1)/value
-		inv_alpha = torch.clamp(inv_alpha,min=1)
-		inv_alpha = inv_alpha.unsqueeze(0).T
-		inv_alpha = torch_tile(inv_alpha,1,2)
-		action = action*inv_alpha.pow_(-1)
-		return action 
+	def scale(self,x, min_value, max_value):
+		x = torch.tanh(x) # x \in [-1,1]
+		x = (x+1.)/2.*torch.tensor((max_value-min_value)).float()+torch.tensor((min_value)).float() #, x \in [amin,amax]
+		return x
+		# inv_alpha = action.norm(p=float('inf'),dim=1)/self.a_max 
+		# inv_alpha = torch.clamp(inv_alpha,min=1)
+		# inv_alpha = inv_alpha.unsqueeze(0).T
+		# inv_alpha = torch_tile(inv_alpha,1,2)
+		# action = action*inv_alpha.pow_(-1)
+		# return action 
 
 
 	def get_robot_barrier(self,P):

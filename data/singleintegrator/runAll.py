@@ -15,8 +15,8 @@ if __name__ == "__main__":
 
 
 
-  # for file in sorted(glob.glob("instances/*obst6*.yaml")):
-  for file in sorted(glob.glob("instances/*primitive*.yaml")):
+  for file in sorted(glob.glob("instances/*obst6_agents4*.yaml")):
+  # for file in sorted(glob.glob("instances/*agents2_*.yaml")):
     basename = os.path.splitext(os.path.basename(file))[0]
     print(basename)
     if args.central:

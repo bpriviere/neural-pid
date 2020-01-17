@@ -180,12 +180,12 @@ const float* nn_eval(const float goal[2])
 	temp1[0] = empty[0];
 	temp1[1] = empty[1];
 
-	APF(temp1);
+	// APF(temp1);
 
-	float inv_alpha = fmaxf(fabsf(temp1[0]), fabsf(temp1[1])) / max_v;
-	inv_alpha = fmaxf(inv_alpha, 1.0);
-	temp1[0] /= inv_alpha;
-	temp1[1] /= inv_alpha;
+	// float inv_alpha = fmaxf(fabsf(temp1[0]), fabsf(temp1[1])) / max_v;
+	// inv_alpha = fmaxf(inv_alpha, 1.0);
+	// temp1[0] /= inv_alpha;
+	// temp1[1] /= inv_alpha;
 
 	return temp1;
 }
