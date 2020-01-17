@@ -14,6 +14,7 @@ def rollout_instance(file):
     if args.central:
       # Centralized planner
       if not os.path.exists(os.path.abspath("central/"+basename+".npy")):
+        exit()
         subprocess.run("./run.sh {} {}".format(
           os.path.abspath(file),
           os.path.abspath("central/"+basename+".npy")),
@@ -42,12 +43,18 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
 
-  datadir = sorted(glob.glob("instances/*agents4_ex000*"))
+  # datadir = sorted(glob.glob("instances/*"))
+  datadir = list(glob.glob("instances/*agents10*"))
+  datadir.extend(glob.glob("instances/*agents20*"))
+  datadir.extend(glob.glob("instances/*agents30*"))
+  datadir.extend(glob.glob("instances/*agents40*"))
+  datadir = sorted(datadir)
+
   # ORCA and Central cannot be run in parallel (they use temporary files)
   if args.orca or args.central:
     for file in datadir:
       rollout_instance(file)
-  else:
+  elif args.il:
     with concurrent.futures.ProcessPoolExecutor(max_workers = 5) as executor:
       for _ in executor.map(rollout_instance, datadir):
         pass

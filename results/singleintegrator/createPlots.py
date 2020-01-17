@@ -28,15 +28,12 @@ def add_line_plot_agg(pp,key,title):
 	for _,results in result_by_instance.items():
 		for r in results:
 			num_agents.add(r["num_agents"])
-	num_agent_array = np.array(list(num_agents))		
+	num_agent_array = np.array(sorted(list(num_agents)))
 
 	# result:
 	result_array = np.zeros(( len(solvers), len(num_agents), 2))
 
 	for i_s,solver in enumerate(solvers):
-
-		if solver not in ['central']:
-			continue
 
 		for i_a,num_agent in enumerate(num_agents):
 			
@@ -62,6 +59,9 @@ def add_line_plot_agg(pp,key,title):
 			result_array[i_s,:,0]+result_array[i_s,:,1],
 			color=line.get_color(),
 			alpha=0.5)
+
+	if key == "num_agents_success":
+		ax.set_ylim([0,1])
 
 	plt.legend()
 	pp.savefig(fig)
@@ -187,12 +187,36 @@ if __name__ == '__main__':
 	result_by_instance = dict()
 
 	# files = list(glob.glob("**/*obst6_agents4_ex000*.npy", recursive=True))
-	files = list(glob.glob("**/*obst6*.npy", recursive=True))
+	# files = list(glob.glob("orca/*obst6*.npy", recursive=True))
+	# files = list(glob.glob("**/*obst6_agents30_*.npy", recursive=True))
+
+	# files = list(glob.glob("orca/*obst6_agents10_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst6_agents20_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst6_agents30_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst6_agents40_*.npy", recursive=True))
+	# files = sorted(files)
+
+	# files = list(glob.glob("orca/*obst9_agents10_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst9_agents20_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst9_agents30_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst9_agents40_*.npy", recursive=True))
+	# files = sorted(files)
+
+	files = list(glob.glob("orca/*obst12_agents10_*.npy", recursive=True))
+	files.extend(glob.glob("orca/*obst12_agents20_*.npy", recursive=True))
+	files.extend(glob.glob("orca/*obst12_agents30_*.npy", recursive=True))
+	files.extend(glob.glob("orca/*obst12_agents40_*.npy", recursive=True))
+	files = sorted(files)
+
 
 	for file in sorted(files):
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)
+
+		if result["solver"] not in ['orca']:
+			continue
+
 		if instance in result_by_instance:
 			result_by_instance[instance].append(result)
 		else:
@@ -202,14 +226,16 @@ if __name__ == '__main__':
 	pp = PdfPages("results.pdf")
 
 	add_line_plot_agg(pp,"num_agents_success", "# robots success")
+	# add_line_plot_agg(pp,"control_effort", "control effort")
 
+	
 	pp.close()
 	exit()
 
-	add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
-	add_bar_agg_succeeded_agents(pp, result_by_instance, "control_effort", "total control effort")
-	add_scatter(pp, result_by_instance, "percent_agents_reached_goal", "% reached goal")
-	add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+	# add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
+	# add_bar_agg_succeeded_agents(pp, result_by_instance, "control_effort", "total control effort")
+	# add_scatter(pp, result_by_instance, "percent_agents_reached_goal", "% reached goal")
+	# add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
 
 	
 
