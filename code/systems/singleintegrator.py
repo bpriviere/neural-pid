@@ -591,7 +591,7 @@ class SingleIntegrator(Env):
 		
 	def bad_behavior(self, observations):
 		# penalize agent going too slowly when still too far from the goal 
-		v_min = 0.2
+		v_min = 0.1
 		d_max = 0.5
 
 		# the observation already encodes the closest neighbors (sorted)

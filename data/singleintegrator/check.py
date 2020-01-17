@@ -10,7 +10,7 @@ if __name__ == '__main__':
 	if not os.path.exists("central_invalid"):
 		os.mkdir("central_invalid")
 
-	for file in sorted(glob.glob("central/*obst6_agents4_ex*.npy", recursive=True)):
+	for file in sorted(glob.glob("central/*.npy", recursive=True)):
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)

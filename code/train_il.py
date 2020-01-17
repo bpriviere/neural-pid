@@ -39,7 +39,7 @@ def rollout(model, env, param):
 	keys = list(param.datadict.keys())
 	p = np.array([param.datadict[k] for k in keys])
 	p = p / np.sum(p)
-	agent_case = np.random.choice(keys,p=p)
+	agent_case = int(np.random.choice(keys,p=p))
 
 	instance = get_random_instance(agent_case,param.il_obst_case)
 	initial_state = env.instance_to_initial_state(instance)
@@ -79,11 +79,12 @@ def get_dynamic_dataset(model, env, param,index):
 	data = [] 
 	print('rollout')
 
-	with concurrent.futures.ProcessPoolExecutor() as executor:
-		for observation_i in executor.map(rollout, repeat(model,param.ad_n),repeat(env,param.ad_n),repeat(param,param.ad_n)):
-		# for observation_i in executor.map(rollout, repeat(model,param.ad_n),env_lst,repeat(param,param.ad_n)):
-			data.extend(index.query_lst(observation_i,param.ad_k))
-			# print('len(data) ',len(data))
+	while len(data) < param.ad_n_data_per_rollout:
+		with concurrent.futures.ProcessPoolExecutor() as executor:
+			for observation_i in executor.map(rollout, repeat(model,param.ad_n),repeat(env,param.ad_n),repeat(param,param.ad_n)):
+			# for observation_i in executor.map(rollout, repeat(model,param.ad_n),env_lst,repeat(param,param.ad_n)):
+				data.extend(index.query_lst(observation_i,param.ad_k))
+				print('rollout data: ',len(data))
 
 	# for i in range(param.ad_n):
 	# 	observation_i = rollout(model, env, param)
