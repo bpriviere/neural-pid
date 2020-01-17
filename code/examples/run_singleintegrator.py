@@ -61,7 +61,7 @@ class SingleIntegratorParam(Param):
 		self.plots_fn = 'plots.pdf'
 
 		# IL
-		self.il_load_loader_on = True
+		self.il_load_loader_on = False
 		# self.il_load_loader_on = False
 		self.training_time_downsample = 20 #10
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
@@ -72,32 +72,42 @@ class SingleIntegratorParam(Param):
 		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 3000000 # 100000 # 100000000
+		self.il_n_data = 10000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
-		self.il_agent_case = 4
+		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		
+		self.datadict = dict()
+		self.datadict["4"] = self.il_n_data
+		self.datadict["10"] = self.il_n_data
 		self.il_obst_case = 6
 		self.controller_learning_module = 'DeepSet' #
 
 		# adaptive dataset parameters
 		self.adaptive_dataset_on = True
-		self.ad_n = 10 # n number of rollouts
-		self.ad_l = 20 # l prev observations 
+		self.ad_n = 20 # n number of rollouts
+		self.ad_l = 8 # l prev observations 
 		self.ad_k = 20 # k closest 
 		self.ad_n_epoch = 10
-		self.ad_n_data = 100000
-		self.ad_dl = 50 # every . timesteps  
+		self.ad_n_data = 2000000
+		self.ad_dl = 10 # every . timesteps  
 		self.ad_train_model_fn = '../models/singleintegrator/ad_current.pt'
+
+		# Sim
+		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
+		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
+
+		# plots
+		self.vector_plot_dx = 0.25 		
 
 		# self.ad_tf = 25 #25
 		# self.ad_dt = 0.05
 		# self.ad_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
-
 		# 
 		self.il_empty_model_fn = '../models/singleintegrator/empty.pt'
 		self.il_barrier_model_fn = '../models/singleintegrator/barrier.pt'
+		self.il_adaptive_model_fn = '../models/singleintegrator/adaptive.pt'
 
 		# learning hyperparameters
 		n,m,h,l,p = 2,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
@@ -128,13 +138,6 @@ class SingleIntegratorParam(Param):
 
 		self.il_network_activation = relu
 
-		# Sim
-		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
-		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
-
-		# plots
-		self.vector_plot_dx = 0.5 
-
 if __name__ == '__main__':
 
 	args = parse_args()
@@ -151,7 +154,7 @@ if __name__ == '__main__':
 		import yaml
 		if args.instance:
 			with open(args.instance) as map_file:
-				map_data = yaml.load(map_file)
+				map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 		else:
 			# test map 
 			ex = '0001' # 4 is hard 
@@ -187,7 +190,8 @@ if __name__ == '__main__':
 		# 'IL':	torch.load(param.sim_il_model_fn),
 		# 'APF': APF(param,env)
 		# 'empty': torch.load(param.il_empty_model_fn),
-		# 'empty_wAPF' : Empty_Net_wAPF(param,env),
+		# 'adaptive':torch.load(param.il_adaptive_model_fn),
+		'emptywAPF' : Empty_Net_wAPF(param,env),
 		'barrier' : torch.load(param.il_barrier_model_fn)
 	}
 
