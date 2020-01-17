@@ -13,11 +13,11 @@ plt.rcParams['lines.linewidth'] = 4
 
 if __name__ == '__main__':
 
-	pp = PdfPages("results.pdf")
+	pp = PdfPages("results_obst6_agents10.pdf")
 
-	# for file in sorted(glob.glob("orca/*obst6*.npy")):
+	for file in sorted(glob.glob("central/*obst6_agents10*.npy")):
 	# for file in sorted(glob.glob("central_single_case_2/*.npy")):
-	for file in sorted(glob.glob("central/*primitive*")):
+	# for file in sorted(glob.glob("central/*agents2_*")):
 		instance = os.path.splitext(os.path.basename(file))[0]
 		print(instance)
 		map_filename = "instances/{}.yaml".format(instance)

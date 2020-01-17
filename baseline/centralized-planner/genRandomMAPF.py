@@ -120,10 +120,10 @@ if __name__ == "__main__":
 
     # map_size = [32, 32]
     map_size = [8, 8]
-    num_agents_lst = [4]
+    num_agents_lst = range(2,21)
     # num_groups = num_agents
     num_obstacles = int(map_size[0] * map_size[1] * 0.1)
-    cases = range(10,100)
+    cases = range(40,50)
     # cases = [7]
 
     for num_agents in num_agents_lst:
@@ -132,6 +132,7 @@ if __name__ == "__main__":
         for i in cases:
           print(i)
           groups, obstacles = randAgents1(map_size, num_agents, num_agents, num_obstacles)
+          # writeFile(obstacles, map_size, groups, "map_{0:02}by{1:02}_obst{2:03}_agents{3:03}_ex{4:06}.yaml".format(
           writeFile(obstacles, map_size, groups, "map_{0}by{1}_obst{2}_agents{3}_ex{4:04}.yaml".format(
               map_size[0],
               map_size[1],
