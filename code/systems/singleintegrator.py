@@ -342,10 +342,10 @@ class SingleIntegrator(Env):
 				# print(s_g, data[-1,i*4+1:i*4+5])
 				relative_goal = s_g - s_i   # relative goal
 				# if we reached the goal, do not include more datapoints from this trajectory
-				if np.allclose(relative_goal, np.zeros(2)):
+				# if np.allclose(relative_goal, np.zeros(2)):
+					# reached_goal.add(i)
+				if relative_goal.norm() < 0.5:
 					reached_goal.add(i)
-				#if relative_goal.norm() < 0.5:
-				#	reached_goal.add(i)
 				time_to_goal = data[-1,0] - data[t,0]
 
 

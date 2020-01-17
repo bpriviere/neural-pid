@@ -18,7 +18,6 @@ sys.path.insert(1, os.path.join(os.getcwd(),'.'))
 print(os.getcwd())
 
 # my packages
-import stats
 from other_policy import APF, Empty_Net_wAPF
 from run_singleintegrator import SingleIntegratorParam 
 from systems.singleintegrator import SingleIntegrator
