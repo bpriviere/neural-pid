@@ -118,9 +118,9 @@ class WMSR_Policy:
 
 class Empty_Net_wAPF():
 
-	def __init__(self,param,env):
+	def __init__(self,param,env,empty_net):
 
-		self.empty_net = torch.load(param.il_empty_model_fn)
+		self.empty_net = empty_net
 
 		self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
 		self.state_dim_per_agent = param.il_phi_network_architecture[0].in_features
