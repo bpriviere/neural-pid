@@ -123,8 +123,8 @@ def make_loader(
 				batch_y.append(data[-2:])
 
 			# store all the data for this nn/no-pair in a file
-			batch_x = np.array(batch_x)
-			batch_y = np.array(batch_y)
+			batch_x = np.array(batch_x, dtype=np.float32)
+			batch_y = np.array(batch_y, dtype=np.float32)
 
 			print(name, " neighbors ", num_neighbors, " obstacles ", num_obstacles, " ex. ", batch_x.shape[0])
 

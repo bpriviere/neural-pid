@@ -211,7 +211,7 @@ if __name__ == '__main__':
 				os.mkdir(folder_name)
 			output_file = "{}/{}.npy".format(folder_name, basename)
 			with open(output_file, "wb") as f:
-				np.save(f, result, allow_pickle=False)
+				np.save(f, result.astype(np.float32), allow_pickle=False)
 
 	# elif args.export:
 	# 	model = torch.load(param.il_train_model_fn)
