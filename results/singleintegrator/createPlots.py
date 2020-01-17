@@ -12,6 +12,63 @@ plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
 
+def add_line_plot_agg(pp,key,title):
+	fig,ax = plt.subplots()
+	ax.set_title(title)
+
+	# find set of solvers
+	solvers = set()
+	for _, results in result_by_instance.items():
+		for r in results:
+			solvers.add(r["solver"])
+
+	# find set of num agent cases
+	num_agents = set()
+
+	for _,results in result_by_instance.items():
+		for r in results:
+			num_agents.add(r["num_agents"])
+	num_agent_array = np.array(list(num_agents))		
+
+	# result:
+	result_array = np.zeros(( len(solvers), len(num_agents), 2))
+
+	for i_s,solver in enumerate(solvers):
+
+		if solver not in ['central']:
+			continue
+
+		for i_a,num_agent in enumerate(num_agents):
+			
+			num_models = set()
+			case_count = 0
+			curr = dict()
+			for _,results in result_by_instance.items():
+				for r in results:
+					if r["num_agents"] == num_agent and r["solver"] == solver:
+						if r["num_model"] in num_models:
+							curr[r["num_model"]] += r[key]
+						else:
+							curr[r["num_model"]] = r[key]
+							num_models.add(r["num_model"])
+
+			curr = np.array(list(curr.values())) / num_agent / 10
+			result_array[i_s,i_a,0] = np.mean(curr)
+			result_array[i_s,i_a,1] = np.std(curr)
+
+		line = ax.plot(num_agent_array, result_array[i_s,:,0], label=solver)[0]
+		ax.fill_between(num_agent_array,
+			result_array[i_s,:,0]-result_array[i_s,:,1],
+			result_array[i_s,:,0]+result_array[i_s,:,1],
+			color=line.get_color(),
+			alpha=0.5)
+
+	plt.legend()
+	pp.savefig(fig)
+	plt.close(fig)
+
+
+
 def add_scatter(pp, results, key, title):
 	fig, ax = plt.subplots()
 	ax.set_title(title)
@@ -57,8 +114,6 @@ def add_bar_agg(pp, results, key, title):
 		for r in results:
 			solvers.add(r["solver"])
 
-	# x = []
-	# y = []
 	for k, solver in enumerate(sorted(solvers)):
 
 		agg = 0
@@ -67,10 +122,6 @@ def add_bar_agg(pp, results, key, title):
 				if r["solver"] == solver:
 					agg += r[key]
 		ax.bar(k, agg)
-		# x.append(k)
-		# y.append(agg)
-	# print(y)
-	# ax.bar(x, y)
 
 	ax.set_xticks(np.arange(len(solvers)))
 	ax.set_xticklabels([solver for solver in sorted(solvers)])
@@ -135,15 +186,13 @@ if __name__ == '__main__':
 
 	result_by_instance = dict()
 
-	for file in glob.glob("**/*obst6_agents4_ex000*.npy", recursive=True):
-	# for file in glob.glob("**/*.npy", recursive=True):
-		solver = os.path.dirname(file)
-		# if solver not in ["EN", "ENwAPF", "orca"]:
-		# 	continue
+	# files = list(glob.glob("**/*obst6_agents4_ex000*.npy", recursive=True))
+	files = list(glob.glob("**/*obst6*.npy", recursive=True))
+
+	for file in sorted(files):
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)
-		result["solver"] = solver
 		if instance in result_by_instance:
 			result_by_instance[instance].append(result)
 		else:
@@ -152,10 +201,17 @@ if __name__ == '__main__':
 
 	pp = PdfPages("results.pdf")
 
+	add_line_plot_agg(pp,"num_agents_success", "# robots success")
+
+	pp.close()
+	exit()
+
 	add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
 	add_bar_agg_succeeded_agents(pp, result_by_instance, "control_effort", "total control effort")
 	add_scatter(pp, result_by_instance, "percent_agents_reached_goal", "% reached goal")
 	add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+
+	
 
 	for instance in sorted(result_by_instance):
 		print(instance)

@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 import yaml
+import os
 
 robot_radius = 0.15
 goal_dist = 0.5 # minimum distance to count as goal
@@ -16,6 +17,7 @@ def is_collision_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
 
 
 def stats(map_filename, schedule_filename):
+
 	data = np.load(schedule_filename)
 
 	with open(map_filename) as map_file:
@@ -97,10 +99,19 @@ def stats(map_filename, schedule_filename):
 	result["num_agent_agent_collisions"] = num_agent_agent_collisions
 	result["num_agent_obstacle_collisions"] = num_agent_obstacle_collisions
 	result["num_collisions"] = num_agent_agent_collisions + num_agent_obstacle_collisions
-
 	result["num_agents_success"] = num_agents_success
-
 	result["agents_succeeded"] = agents_reached_goal - agents_collided
+
+
+	solver = os.path.dirname(schedule_filename)
+	if '_' in solver:
+		solver,num_model = solver.split('_')
+	else:
+		num_model = 0
+
+	result["num_agents"] = num_agents
+	result["solver"] = solver
+	result["num_model"] = num_model
 
 	return result
 
