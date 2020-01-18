@@ -147,8 +147,8 @@ def make_loader(
 			for idx in np.arange(0, batch_x.shape[0], batch_size):
 				last_idx = min(idx + batch_size, batch_x.shape[0])
 				# print("Batch of size ", last_idx - idx)
-				x_data = batch_xy_torch[idx:list_idx, 0:-2]
-				y_data = batch_xy_torch[idx:list_idx, -2:]
+				x_data = batch_xy_torch[idx:last_idx, 0:-2]
+				y_data = batch_xy_torch[idx:last_idx, -2:]
 				loader.append([x_data, y_data])
 
 		return loader
@@ -216,15 +216,6 @@ def train_il(param, env, device):
 	seed(1) # numpy random gen seed 
 	torch.manual_seed(1)    # pytorch 
 
-	# init model
-	if param.il_controller_class is 'Barrier':
-		model = Barrier_Net(param,param.controller_learning_module)
-	elif param.il_controller_class is 'Empty':
-		model = Empty_Net(param,param.controller_learning_module) 
-	else:
-		print('Error in Train Gains, programmatic controller not recognized')
-		exit()
-
 	print("Case: ",param.env_case)
 	print("Controller: ",param.il_controller_class)
 
@@ -267,7 +258,8 @@ def train_il(param, env, device):
 				shuffle=True,
 				batch_size=param.il_batch_size,
 				n_data=param.il_n_data,
-				name = "train")
+				name = "train",
+				device=device)
 
 			loader_test = make_loader(
 				env,
@@ -275,13 +267,22 @@ def train_il(param, env, device):
 				shuffle=True,
 				batch_size=param.il_batch_size,
 				n_data=param.il_n_data,
-				name = "test")
+				name = "test",
+				device=device)
 
 		else:
 			loader_train = load_loader("train",param.il_batch_size)
 			# loader_train = load_loader("adaptive",param.il_batch_size)
 			loader_test  = load_loader("test",param.il_batch_size)
 
+	# init model
+	if param.il_controller_class is 'Barrier':
+		model = Barrier_Net(param,param.controller_learning_module).to(device)
+	elif param.il_controller_class is 'Empty':
+		model = Empty_Net(param,param.controller_learning_module).to(device)
+	else:
+		print('Error in Train Gains, programmatic controller not recognized')
+		exit()
 
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
 	adaptive_dataset_len_lst = []
@@ -304,7 +305,8 @@ def train_il(param, env, device):
 				if test_epoch_loss < best_test_loss:
 					best_test_loss = test_epoch_loss
 					print('      saving @ best test loss:', best_test_loss)
-					torch.save(model,param.il_train_model_fn)
+					torch.save(model.to('cpu'), param.il_train_model_fn)
+					model.to(device)
 
 		index = Index()
 		adaptive_dataset = list(train_dataset)

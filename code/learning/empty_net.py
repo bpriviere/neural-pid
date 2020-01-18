@@ -46,6 +46,12 @@ class Empty_Net(nn.Module):
 						self.model_obstacles.rho.out_dim - \
 						self.model_neighbors.rho.out_dim
 
+	def to(self, device):
+		self.model_neighbors.to(device)
+		self.model_obstacles.to(device)
+		self.psi.to(device)
+		return super().to(device)
+
 	def policy(self,x,transformations):
 
 		# inputs observation from all agents...

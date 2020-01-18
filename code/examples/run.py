@@ -24,14 +24,13 @@ def parse_args():
 	parser.add_argument("--export", action='store_true', help="export IL model to onnx")
 
 	parser.add_argument('--disable-cuda', action='store_true', help='Disable CUDA')
+	args = parser.parse_args()
 	return args
 
 
 def run(param, env, controllers, initial_state = None, args = None):
 	if args is None:
 		args = parse_args()
-
-	args = parser.parse_args()
 
 	if not args.disable_cuda and torch.cuda.is_available():
 		device = torch.device('cuda')

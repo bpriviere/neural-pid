@@ -16,6 +16,13 @@ class DeepSet(nn.Module):
 		self.phi = FeedForward(phi_layers,activation)
 		self.rho = FeedForward(rho_layers,activation)
 		self.env_name = env_name
+		self.device = torch.device('cpu')
+
+	def to(self, device):
+		self.device = device
+		self.phi.to(device)
+		self.rho.to(device)
+		return super().to(device)
 
 	def export_to_onnx(self, filename):
 		self.phi.export_to_onnx("{}_phi".format(filename))
@@ -55,7 +62,7 @@ class DeepSet(nn.Module):
 
 	def si_forward(self,x):
 		# print(x)
-		X = torch.zeros((len(x),self.rho.in_dim))
+		X = torch.zeros((len(x),self.rho.in_dim), device=self.device)
 		num_elements = int(x.size()[1] / self.phi.in_dim)
 		for i in range(num_elements):
 			X += self.phi(x[:,i*self.phi.in_dim:(i+1)*self.phi.in_dim])

@@ -44,6 +44,13 @@ class Barrier_Net(nn.Module):
 		self.phi_min = param.phi_min
 		self.phi_max = param.phi_max
 		self.circle_obstacles_on = param.circle_obstacles_on
+		self.device = torch.device('cpu')
+
+	def to(self, device):
+		self.device = device
+		self.model_neighbors.to(device)
+		self.model_obstacles.to(device)
+		return super().to(device)
 
 	def policy(self,x,transformations):
 		# this fnc is only used at runtime 
@@ -120,19 +127,19 @@ class Barrier_Net(nn.Module):
 		# return empty_action
 
 	def APF(self,x):
-		barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
 		nd = x.shape[0] # number of data points in batch 
 		nn = int(x[0,0].item()) # number of neighbors
 		no = int( (x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
-		
-		# this implementation uses only the closest barrier 
-		
+			
 		closest_barrier_mode_on = True
 		if closest_barrier_mode_on:
+			# this implementation uses only the closest barrier 
+			barrier_action = torch.zeros((len(x),self.action_dim_per_agent), device=self.device)
 
-			# print(barrier_action)
-			# #####
-			barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
+			# The KD-Tree output is sorted, so we only need to check if we are closer to obstacle or neighbor
+			# TODO: 
+			#  1. switch numpy -> torch
+			#  2. switch to full on-device cuda computation
 
 			# TODO: the KD-Tree outputs data is sorted, so technically no need to loop over everything
 			min_neighbor_dist = np.repeat(np.Inf, len(x))
@@ -141,7 +148,7 @@ class Barrier_Net(nn.Module):
 			for j in range(nn):
 				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
 				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-				relative_neighbor = x[:,idx].numpy()
+				relative_neighbor = x[:,idx].to(torch.device('cpu')).numpy()
 				P_i = -1*relative_neighbor[:,0:2] # pi - pj
 				dist = np.linalg.norm(P_i, axis=1) - self.r_agent
 				predicate = dist < min_neighbor_dist
@@ -151,7 +158,7 @@ class Barrier_Net(nn.Module):
 
 			for j in range(no):
 				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
-				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
+				P_i = -1*x[:,idx].to(torch.device('cpu')).numpy() # in nd x state_dim_per_agent
 				closest, dist = min_dist_circle_rectangle(
 					np.zeros(2), self.r_agent,
 					P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
@@ -163,15 +170,15 @@ class Barrier_Net(nn.Module):
 
 			# predicate = np.logical_and(min_neighbor_mode==1, min_neighbor_dist < self.r_agent + 0.15)
 			predicate = min_neighbor_mode==1
-			barrier_action[predicate] += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)[predicate]).float()
+			barrier_action[predicate] += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)[predicate]).float().to(self.device)
 
 			# predicate = np.logical_and(min_neighbor_mode==2, min_neighbor_dist < self.r_agent + 0.15)
 			predicate = min_neighbor_mode==2
-			barrier_action[predicate] += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)[predicate]).float()
+			barrier_action[predicate] += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)[predicate]).float().to(self.device)
 
 		else:
-
 			# this implementation uses all barriers
+			barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
 			# print('Neighbors')
 			for j in range(nn):
 				# j+1 to skip relative goal entries, +1 to skip number of neighbors column

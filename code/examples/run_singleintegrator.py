@@ -28,7 +28,7 @@ class SingleIntegratorParam(Param):
 
 		# orca param
 		self.n_agents = 1
-		self.r_comm = 3. #0.5
+		self.r_comm = 3. #0.5sta
 		self.r_obs_sense = 3.
 		self.r_agent = 0.15 #5
 		self.r_obstacle = 0.5
@@ -68,18 +68,20 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 512 #5000
+		self.il_batch_size = 10000 #512 #5000
 		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 500000 # 100000 # 100000000
+		self.il_n_data = 1000000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
 		
 		self.datadict = dict()
-		self.datadict["4"] = self.il_n_data
-		self.datadict["20"] = self.il_n_data
+		self.datadict["4"] = 1000000 #self.il_n_data
+		# self.datadict["4"] = 5000000 #750000 #self.il_n_data
+		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
+		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 
 		self.il_obst_case = 6
 		self.controller_learning_module = 'DeepSet' #
@@ -87,6 +89,7 @@ class SingleIntegratorParam(Param):
 		# adaptive dataset parameters
 		self.adaptive_dataset_on = True
 		self.ad_n = 100 # n number of rollouts
+		self.ad_n_data_per_rollout = 100000 # repeat rollout until at least this amount of data was added
 		self.ad_l = 2 # l prev observations 
 		self.ad_k = 20 # k closest 
 		self.ad_n_epoch = 10
@@ -139,6 +142,13 @@ class SingleIntegratorParam(Param):
 
 		self.il_network_activation = relu
 
+		# Sim
+		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
+		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
+
+		# plots
+		self.vector_plot_dx = 0.3 
+
 if __name__ == '__main__':
 
 	args = parse_args()
@@ -188,13 +198,18 @@ if __name__ == '__main__':
 		s0 = env.reset()
 
 	controllers = {
-		'IL':	torch.load(param.il_train_model_fn),
-		'AD':	torch.load(param.ad_train_model_fn),
-		# 'empty':	torch.load('../models/singleintegrator/empty.pt'),
-		# 'barrier':	torch.load('../models/singleintegrator/barrier.pt'),
-		# 'ILwAPF': Empty_Net_wAPF(param, env, torch.load(param.il_train_model_fn)),
-		# 'ADwAPF': Empty_Net_wAPF(param, env, torch.load(param.ad_train_model_fn)),
-		# 'APF': APF(param,env)
+		# 'il':	torch.load(param.sim_il_model_fn),
+		'ilAPF': Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn)),
+		# 'empty': torch.load(param.il_empty_model_fn),
+		# 'ad':torch.load(param.ad_train_model_fn),
+		# 'adAPF': Empty_Net_wAPF(param,env,torch.load(param.ad_train_model_fn)),
+		#'emptywAPF' : Empty_Net_wAPF(param,env),
+		#'barrier' : torch.load(param.il_barrier_model_fn)
+		# 'e1M': torch.load('../models/singleintegrator/empty_1M_agent4_data.pt'),
+		# 'ad1M': torch.load('../models/singleintegrator/ad_current.pt'),
+		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
+		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
+		# 'barrier' : torch.load(param.il_barrier_model_fn)
 	}
 
 	if args.batch:
