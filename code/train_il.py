@@ -104,9 +104,10 @@ def make_loader(
 	n_data=None,
 	shuffle=False,
 	batch_size=None,
-	name=None):
+	name=None,
+	device=None):
 
-	def batch_loader(env, dataset):
+	def batch_loader(env, dataset, device):
 		# break by observation size
 		dataset_dict = dict()
 
@@ -132,18 +133,22 @@ def make_loader(
 			# store all the data for this nn/no-pair in a file
 			batch_x = np.array(batch_x, dtype=np.float32)
 			batch_y = np.array(batch_y, dtype=np.float32)
+			batch_xy = np.hstack((batch_x, batch_y))
 
 			print(name, " neighbors ", num_neighbors, " obstacles ", num_obstacles, " ex. ", batch_x.shape[0])
 
 			with open("../preprocessed_data/batch_{}_nn{}_no{}.npy".format(name,num_neighbors, num_obstacles), "wb") as f:
-				np.save(f, np.hstack((batch_x, batch_y)), allow_pickle=False)
+				np.save(f, batch_xy, allow_pickle=False)
+
+			# convert to torch
+			batch_xy_torch = torch.from_numpy(batch_xy).float().to(device)
 
 			# split data by batch size
 			for idx in np.arange(0, batch_x.shape[0], batch_size):
 				last_idx = min(idx + batch_size, batch_x.shape[0])
 				# print("Batch of size ", last_idx - idx)
-				x_data = torch.from_numpy(batch_x[idx:last_idx]).float()
-				y_data = torch.from_numpy(batch_y[idx:last_idx]).float()
+				x_data = batch_xy_torch[idx:list_idx, 0:-2]
+				y_data = batch_xy_torch[idx:list_idx, -2:]
 				loader.append([x_data, y_data])
 
 		return loader
@@ -158,7 +163,7 @@ def make_loader(
 	if n_data is not None and n_data < len(dataset):
 		dataset = dataset[0:n_data]
 
-	loader = batch_loader(env, dataset)
+	loader = batch_loader(env, dataset, device)
 
 	return loader
 
@@ -206,7 +211,7 @@ def test(param,env,model,loader):
 	return epoch_loss/(step+1)
 
 
-def train_il(param, env):
+def train_il(param, env, device):
 
 	seed(1) # numpy random gen seed 
 	torch.manual_seed(1)    # pytorch 

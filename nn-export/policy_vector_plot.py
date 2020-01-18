@@ -92,7 +92,8 @@ if __name__ == '__main__':
 	instance = "map_8by8_obst6_agents4_ex0002"
 
 	# load map 
-	instance_fn = "../results/singleintegrator/instances/{}.yaml".format(instance)
+	# instance_fn = "../results/singleintegrator/instances/{}.yaml".format(instance)
+	instance_fn = "flighttest.yaml"
 	with open(instance_fn) as map_file:
 		map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 	print(map_data)

@@ -28,21 +28,27 @@ def add_line_plot_agg(pp,key,title):
 	for _,results in result_by_instance.items():
 		for r in results:
 			num_agents.add(r["num_agents"])
-	num_agent_array = np.array(sorted(list(num_agents)))
+	num_agents_array = np.array(sorted(list(num_agents)))
+	# print(num_agents_array)
 
 	# result:
 	result_array = np.zeros(( len(solvers), len(num_agents), 2))
 
 	for i_s,solver in enumerate(solvers):
 
-		for i_a,num_agent in enumerate(num_agents):
+		for i_a,num_agent in enumerate(num_agents_array):
 			
 			num_models = set()
 			case_count = 0
 			curr = dict()
-			for _,results in result_by_instance.items():
+
+			for instance,results in result_by_instance.items():
 				for r in results:
 					if r["num_agents"] == num_agent and r["solver"] == solver:
+
+						# print(instance)
+						# print(r[key])
+
 						if r["num_model"] in num_models:
 							curr[r["num_model"]] += r[key]
 						else:
@@ -50,11 +56,13 @@ def add_line_plot_agg(pp,key,title):
 							num_models.add(r["num_model"])
 
 			curr = np.array(list(curr.values())) / num_agent / 10
+			print(curr)
+			# print(num_models)
 			result_array[i_s,i_a,0] = np.mean(curr)
 			result_array[i_s,i_a,1] = np.std(curr)
 
-		line = ax.plot(num_agent_array, result_array[i_s,:,0], label=solver)[0]
-		ax.fill_between(num_agent_array,
+		line = ax.plot(num_agents_array, result_array[i_s,:,0], label=solver)[0]
+		ax.fill_between(num_agents_array,
 			result_array[i_s,:,0]-result_array[i_s,:,1],
 			result_array[i_s,:,0]+result_array[i_s,:,1],
 			color=line.get_color(),
@@ -62,6 +70,8 @@ def add_line_plot_agg(pp,key,title):
 
 	if key == "num_agents_success":
 		ax.set_ylim([0,1])
+
+	print(result_array)
 
 	plt.legend()
 	pp.savefig(fig)
@@ -202,14 +212,27 @@ if __name__ == '__main__':
 	# files.extend(glob.glob("orca/*obst9_agents40_*.npy", recursive=True))
 	# files = sorted(files)
 
-	files = list(glob.glob("orca/*obst12_agents10_*.npy", recursive=True))
-	files.extend(glob.glob("orca/*obst12_agents20_*.npy", recursive=True))
-	files.extend(glob.glob("orca/*obst12_agents30_*.npy", recursive=True))
-	files.extend(glob.glob("orca/*obst12_agents40_*.npy", recursive=True))
+	# files = list(glob.glob("orca/*obst12_agents10_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst12_agents20_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst12_agents30_*.npy", recursive=True))
+	# files.extend(glob.glob("orca/*obst12_agents40_*.npy", recursive=True))
+	# files = sorted(files)
+
+
+	obst_lst = [6]
+	agents_lst = np.arange(10,150,10,dtype=int)
+
+	files = []
+	for obst in obst_lst:
+		for agent in agents_lst:
+			files.extend( glob.glob("orca/*obst{}_agents{}_*.npy".format(obst,agent), recursive=True))
 	files = sorted(files)
 
 
 	for file in sorted(files):
+
+		print(file)
+
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)

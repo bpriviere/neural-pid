@@ -188,12 +188,13 @@ if __name__ == '__main__':
 		s0 = env.reset()
 
 	controllers = {
-		# 'IL':	torch.load(param.sim_il_model_fn),
+		'IL':	torch.load(param.il_train_model_fn),
+		'AD':	torch.load(param.ad_train_model_fn),
+		# 'empty':	torch.load('../models/singleintegrator/empty.pt'),
+		# 'barrier':	torch.load('../models/singleintegrator/barrier.pt'),
+		# 'ILwAPF': Empty_Net_wAPF(param, env, torch.load(param.il_train_model_fn)),
+		# 'ADwAPF': Empty_Net_wAPF(param, env, torch.load(param.ad_train_model_fn)),
 		# 'APF': APF(param,env)
-		# 'empty': torch.load(param.il_empty_model_fn),
-		# 'adaptive':torch.load(param.il_adaptive_model_fn),
-		'emptywAPF' : Empty_Net_wAPF(param,env),
-		'barrier' : torch.load(param.il_barrier_model_fn)
 	}
 
 	if args.batch:
