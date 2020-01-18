@@ -32,7 +32,7 @@ class DeepSet(nn.Module):
 
 		if self.env_name == 'Consensus':
 			return self.consensus_forward(x)
-		elif self.env_name in ['SingleIntegrator','DoubleIntegrator']:
+		elif self.env_name in ['SingleIntegrator','DoubleIntegrator','SingleIntegratorVelSensing']:
 			return self.si_forward(x)
 
 	def consensus_forward(self,x):

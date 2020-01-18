@@ -74,7 +74,7 @@ class Empty_Net(nn.Module):
 	def __call__(self,x):
 		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
 		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
-		if self.dim_g == 2:
+		if self.dim_g == 2 and self.model_neighbors.phi.in_dim == 2:
 			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
 			num_obstacles = int((x.size()[1] - 3 - 2*num_neighbors)/2)
 
@@ -85,7 +85,7 @@ class Empty_Net(nn.Module):
 			# print("rho_neighbors", rho_neighbors)
 			rho_obstacles = self.model_obstacles.forward(x[:,3+2*num_neighbors:])
 			g = x[:,1:3]
-		elif self.dim_g == 4:
+		elif self.dim_g == 4 and self.model_neighbors.phi.in_dim == 4:
 			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
 			num_obstacles = int((x.size()[1] - 5 - 4*num_neighbors)/2)
 
@@ -96,10 +96,19 @@ class Empty_Net(nn.Module):
 			# print("rho_neighbors", rho_neighbors)
 			rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
 			g = x[:,1:5]
+		elif self.dim_g == 2 and self.model_neighbors.phi.in_dim == 4:
+			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
+			num_obstacles = int((x.size()[1] - 3 - 4*num_neighbors)/2)
+
+			rho_neighbors = self.model_neighbors.forward(x[:,3:3+4*num_neighbors])
+			# print("rho_neighbors", rho_neighbors)
+			rho_obstacles = self.model_obstacles.forward(x[:,3+4*num_neighbors:])
+			g = x[:,1:3]
 		else:
 			assert(False)
 		# g_norm = g.norm(dim=1,keepdim=True)
 		# time_to_goal = x[:,4:5]
+
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)
 		x = self.psi(x)
 
