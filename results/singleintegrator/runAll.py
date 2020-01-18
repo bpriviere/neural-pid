@@ -44,10 +44,14 @@ if __name__ == "__main__":
 
 
   # datadir = sorted(glob.glob("instances/*"))
-  datadir = list(glob.glob("instances/*agents10*"))
-  datadir.extend(glob.glob("instances/*agents20*"))
-  datadir.extend(glob.glob("instances/*agents30*"))
-  datadir.extend(glob.glob("instances/*agents40*"))
+
+  agents_lst = np.arange(10,150,10,dtype=int)
+  obst_lst = [6]
+
+  datadir = []
+  for agents in agents_lst:
+    for obst in obst_lst:
+      datadir.extend(glob.glob("instances/*obst{}_agents{}_*".format(obst,agents)))
   datadir = sorted(datadir)
 
   # ORCA and Central cannot be run in parallel (they use temporary files)

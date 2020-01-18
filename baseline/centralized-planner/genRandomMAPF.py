@@ -10,6 +10,8 @@ import yaml
 import numpy as np 
 
 
+r_agent = 0.15
+
 def reachable(map_size, start, goal, obstacles):
     visited = set()
     stack = [tuple(start)]
@@ -27,13 +29,43 @@ def reachable(map_size, start, goal, obstacles):
 
 def check_collision(agent_loc,obstacles):
     x,y = agent_loc[:]
+
     collision = False
     for o in obstacles:
-        if x  > o[0]-0.5 and x < o[0]+0.5 and \
-            y  > o[1]-0.5 and y  < o[1]+0.5:
+        if x > o[0]-0.5 and x < o[0]+0.5 and \
+            y  > o[1]-0.5 and y < o[1]+0.5:
             collision = True
             break
     return collision
+
+
+def check_obst_and_agents_collision(agent_loc,agents,obstacles,start):
+    x,y = agent_loc[:]
+
+    x_min = x - r_agent
+    x_max = x + r_agent
+    y_min = y - r_agent
+    y_max = y + r_agent
+
+    collision = False
+    for o in obstacles:
+        if x_max > o[0]-0.5 and x_min < o[0]+0.5 and \
+            y_max  > o[1]-0.5 and y_min < o[1]+0.5:
+            return True
+
+    for agent_j in agents:
+
+        if start:
+            p_j = agent_j.start[0]
+        else:
+            p_j = agent_j.goal[0]
+
+        if x_max > p_j[0] - r_agent and x_min < p_j[0] + r_agent and \
+            y_max  > p_j[1] - r_agent and y_min < p_j[1] + r_agent:
+            return True
+
+    return False 
+
 
 def interesting(map_size, start, goal, obstacles):
 
@@ -52,51 +84,83 @@ def interesting(map_size, start, goal, obstacles):
 
 
 def randAgents1(map_size, num_agents, num_groups, num_obstacles):
-    locations = [(x, y) for x in range(0, map_size[0]) for y in range(0, map_size[1])]
+    
 
-    random.shuffle(locations)
+    while True:
+        locations = [(x, y) for x in range(0, map_size[0]) for y in range(0, map_size[1])]
 
-    #
-    Group = collections.namedtuple('Group', 'start goal')
-    groups = []
-    obstacles = []
+        random.shuffle(locations)
 
-    # assign obstacles
-    for agentIdx in range(0, num_obstacles):
-        location = locations[0]
-        obstacles.append(location)
-        del locations[0]
+        #
+        Group = collections.namedtuple('Group', 'start goal')
+        groups = []
+        obstacles = []
 
-    locationsE = copy.deepcopy(locations) #list(locations)
-    random.shuffle(locationsE)
+        # assign obstacles
+        for agentIdx in range(0, num_obstacles):
+            location = locations[0]
+            obstacles.append(location)
+            del locations[0]
 
-    # different number of agents; fixed agents per group
-    for groupIdx in range(0, num_groups):
-        group = Group(start=[], goal=[])
-        groups.append(group)
+        locationsE = copy.deepcopy(locations) #list(locations)
+        random.shuffle(locationsE)
 
-    for agentIdx in range(0, num_agents):
-        groupIdx = agentIdx % num_groups
+        # different number of agents; fixed agents per group
+        for groupIdx in range(0, num_groups):
+            group = Group(start=[], goal=[])
+            groups.append(group)
 
-        while True:
-            locationS = locations[0]
-            locationE = locationsE[0]
+        success = np.zeros(num_agents,dtype=bool)
+        for agentIdx in range(0, num_agents):
+            groupIdx = agentIdx % num_groups
 
-            if reachable(map_size, locationS, locationE, obstacles) and \
-               interesting(map_size, locationS,locationE, obstacles):
-                groups[groupIdx].start.append(locationS)
-                groups[groupIdx].goal.append(locationE)
-                del locations[0]
-                del locationsE[0]
-                # print("reachable!")
-                break
-            else:
-                # print("not reachable!")
-                random.shuffle(locations)
-                random.shuffle(locationsE)
-                # try again...
+            for _ in range(5000):
 
-    return groups, obstacles
+                if continuous:
+
+                    # print(len(groups))
+
+                    locationS = (np.random.uniform()*(map_size[0]-1)+r_agent,np.random.uniform()*(map_size[1]-1)-r_agent)
+                    while check_obst_and_agents_collision(locationS, groups[0:groupIdx], obstacles,1):
+                        locationS = (np.random.uniform()*(map_size[0]-1)+r_agent,np.random.uniform()*(map_size[1]-1)-r_agent)
+
+                    locationE = (np.random.uniform()*(map_size[0]-1),np.random.uniform()*(map_size[1]-1))
+                    while check_obst_and_agents_collision(locationE, groups[0:groupIdx],obstacles,0):
+                        locationE = (np.random.uniform()*(map_size[0]-1)+r_agent,np.random.uniform()*(map_size[1]-1)-r_agent)
+
+                    if interesting(map_size, locationS,locationE, obstacles):
+                        groups[groupIdx].start.append(locationS)
+                        groups[groupIdx].goal.append(locationE)
+                        success[agentIdx] = True
+                        break
+                    else:
+                        # print("not reachable!")
+                        random.shuffle(locations)
+                        random.shuffle(locationsE)
+                        # try again...
+
+                else:
+                    locationS = locations[0]
+                    locationE = locationsE[0]
+
+                    if reachable(map_size, locationS, locationE, obstacles) and \
+                       interesting(map_size, locationS,locationE, obstacles):
+                    # if interesting(map_size, locationS,locationE, obstacles):
+                        groups[groupIdx].start.append(locationS)
+                        groups[groupIdx].goal.append(locationE)
+                        success[agentIdx] = True
+                        del locations[0]
+                        del locationsE[0]
+                        # print("reachable!")
+                        break
+                    else:
+                        # print("not reachable!")
+                        random.shuffle(locations)
+                        random.shuffle(locationsE)
+                        # try again...                    
+    
+        if success.all():
+            return groups, obstacles
 
 def writeFile(obstacles, map_size, groups, file_name):
     data = dict()
@@ -109,8 +173,10 @@ def writeFile(obstacles, map_size, groups, file_name):
         for agentIdx in range(0, len(group.start)):
             agent = dict()
             agent["name"] = "agent" + str(i)
-            agent["start"] = (np.array(group.start[agentIdx])+np.random.uniform(-0.3, 0.3, 2)).tolist()
-            agent["goal"] = (np.array(group.goal[agentIdx])+np.random.uniform(-0.3, 0.3, 2)).tolist()
+            # agent["start"] = (np.array(group.start[agentIdx])+np.random.uniform(-0.3, 0.3, 2)).tolist()
+            # agent["goal"] = (np.array(group.goal[agentIdx])+np.random.uniform(-0.3, 0.3, 2)).tolist()
+            agent["start"] = (np.array(group.start[agentIdx])).tolist()
+            agent["goal"] = (np.array(group.goal[agentIdx])).tolist()
             i += 1
             data["agents"].append(agent)
     with open(file_name, "w") as f:
@@ -119,23 +185,25 @@ def writeFile(obstacles, map_size, groups, file_name):
 if __name__ == "__main__":
 
     # map_size = [32, 32]
+    continuous = False
     map_size = [8, 8]
-    num_agents_lst = range(2,21)
+    num_agents_lst = np.arange(50,51,10,dtype=int) # [35] 
     # num_groups = num_agents
-    num_obstacles = int(map_size[0] * map_size[1] * 0.1)
-    cases = range(40,50)
-    # cases = [7]
+    num_obstacles_lst = [6] #int(map_size[0] * map_size[1] * 0.1)
+    cases = range(10)
+    # cases = []
 
     for num_agents in num_agents_lst:
-    # for num_agents in range(15, 21):
-    # for num_agents in [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]:
-        for i in cases:
-          print(i)
-          groups, obstacles = randAgents1(map_size, num_agents, num_agents, num_obstacles)
-          # writeFile(obstacles, map_size, groups, "map_{0:02}by{1:02}_obst{2:03}_agents{3:03}_ex{4:06}.yaml".format(
-          writeFile(obstacles, map_size, groups, "map_{0}by{1}_obst{2}_agents{3}_ex{4:04}.yaml".format(
-              map_size[0],
-              map_size[1],
-              num_obstacles,
-              num_agents,
-              i))
+        print('num_agents: ', num_agents)
+        for num_obstacles in num_obstacles_lst:
+            print('   num_obstacles: ', num_obstacles)
+
+            for i in cases:
+              print('      ',i)
+              groups, obstacles = randAgents1(map_size, num_agents, num_agents, num_obstacles)
+              writeFile(obstacles, map_size, groups, "map_{0}by{1}_obst{2}_agents{3}_ex{4:04}.yaml".format(
+                  map_size[0],
+                  map_size[1],
+                  num_obstacles,
+                  num_agents,
+                  i))
