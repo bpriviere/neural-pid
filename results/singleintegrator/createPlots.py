@@ -73,6 +73,10 @@ def add_line_plot_agg(pp,key,title):
 
 	print(result_array)
 
+	ax.set_xscale('log')
+	ax.set_xticks(num_agents_array)
+	ax.set_xticklabels(num_agents_array)
+
 	plt.legend()
 	pp.savefig(fig)
 	plt.close(fig)
@@ -104,6 +108,7 @@ def add_scatter(pp, results, key, title):
 			idx += 1
 		# ax.scatter(x,y,label=solver)
 		ax.bar(np.array(x)+k*width, y, width, label=solver)
+
 
 	ax.set_xticks(np.arange(len(result_by_instance)))
 	# ax.set_xticklabels([instance for instance, _ in result_by_instance.items()])
@@ -219,8 +224,9 @@ if __name__ == '__main__':
 	# files = sorted(files)
 
 
-	obst_lst = [6]
-	agents_lst = np.arange(10,150,10,dtype=int)
+	agents_lst = [2,4,8,16,32,64,128]
+	obst_lst = [12] #,9,12] #int(map_size[0] * map_size[1] * 0.1)
+
 
 	files = []
 	for obst in obst_lst:
