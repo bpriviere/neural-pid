@@ -185,17 +185,16 @@ def writeFile(obstacles, map_size, groups, file_name):
 if __name__ == "__main__":
 
     # map_size = [32, 32]
-    continuous = False
+    continuous = True
     map_size = [8, 8]
-    num_agents_lst = [12] #np.arange(50,51,10,dtype=int) # [35] 
-    # num_groups = num_agents
-    num_obstacles_lst = [12] #int(map_size[0] * map_size[1] * 0.1)
-    cases = range(10000)
+    agents_lst = [128] #[2,4,8,16,32] #,64] #[4,10,20,30] [40,50,100] # np.arange(50,51,10,dtype=int) # [35] 
+    obst_lst = [6,9,12] #int(map_size[0] * map_size[1] * 0.1)
+    cases = range(10)
     # cases = []
 
-    for num_agents in num_agents_lst:
+    for num_agents in agents_lst:
         print('num_agents: ', num_agents)
-        for num_obstacles in num_obstacles_lst:
+        for num_obstacles in obst_lst:
             print('   num_obstacles: ', num_obstacles)
 
             for i in cases:

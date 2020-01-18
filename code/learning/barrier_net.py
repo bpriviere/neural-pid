@@ -129,7 +129,7 @@ class Barrier_Net(nn.Module):
 	def APF(self,x):
 		nd = x.shape[0] # number of data points in batch 
 		nn = int(x[0,0].item()) # number of neighbors
-		no = int( (x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
+		no = int( (x.shape[1] - 1 - 2 - nn*self.state_dim_per_agent) / 2)  # number of obstacles 
 			
 		closest_barrier_mode_on = True
 		if closest_barrier_mode_on:
@@ -147,7 +147,7 @@ class Barrier_Net(nn.Module):
 			min_neighbor_mode = np.repeat(0, len(x))
 			for j in range(nn):
 				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
+				idx = 1+2+self.state_dim_per_agent*j+np.arange(0,self.state_dim_per_agent,dtype=int)
 				relative_neighbor = x[:,idx].to(torch.device('cpu')).numpy()
 				P_i = -1*relative_neighbor[:,0:2] # pi - pj
 				dist = np.linalg.norm(P_i, axis=1) - self.r_agent
@@ -157,7 +157,7 @@ class Barrier_Net(nn.Module):
 				min_neighbor_mode[predicate] = 1
 
 			for j in range(no):
-				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
+				idx = 1+2+self.state_dim_per_agent*nn+j*2+np.arange(0,2,dtype=int)
 				P_i = -1*x[:,idx].to(torch.device('cpu')).numpy() # in nd x state_dim_per_agent
 				closest, dist = min_dist_circle_rectangle(
 					np.zeros(2), self.r_agent,
