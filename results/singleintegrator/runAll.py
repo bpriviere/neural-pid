@@ -45,8 +45,8 @@ if __name__ == "__main__":
 
   # datadir = sorted(glob.glob("instances/*"))
 
-  agents_lst = np.arange(10,150,10,dtype=int)
-  obst_lst = [6]
+  agents_lst = [128] #[2,4,8,16,32,64]
+  obst_lst = [6,9,12] #int(map_size[0] * map_size[1] * 0.1)
 
   datadir = []
   for agents in agents_lst:
