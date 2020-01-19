@@ -384,7 +384,8 @@ def train_il(param, env, device):
 				if test_epoch_loss < best_test_loss:
 					best_test_loss = test_epoch_loss
 					print('      saving @ best test loss:', best_test_loss)
-					torch.save(model,param.il_train_model_fn)
+					torch.save(model.to('cpu'), param.il_train_model_fn)
+					model.to(device)
 
 		# # debug loading memory usage
 		# snapshot = tracemalloc.take_snapshot()
