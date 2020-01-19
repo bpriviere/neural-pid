@@ -2,17 +2,11 @@
 import yaml
 import argparse
 
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("input_problem", help="input file containing problem")
-  parser.add_argument("input_schedule", help="input file containing schedule")
-  parser.add_argument("output", help="output file with post-processed schedule")
-  args = parser.parse_args()
-
-  with open(args.input_problem) as input_file:
+def discretePostProcessing(input_problem, input_schedule, output):
+  with open(input_problem) as input_file:
     data_problem = yaml.load(input_file, Loader=yaml.SafeLoader)
 
-  with open(args.input_schedule) as input_file:
+  with open(input_schedule) as input_file:
     data = yaml.load(input_file, Loader=yaml.SafeLoader)
 
   for k, agent_name in enumerate(data["schedule"]):
@@ -50,5 +44,15 @@ if __name__ == "__main__":
 
     data["schedule"][agent_name] = path
 
-  with open(args.output, 'w') as output_file:
+  with open(output, 'w') as output_file:
     yaml.dump(data, output_file)
+
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument("input_problem", help="input file containing problem")
+  parser.add_argument("input_schedule", help="input file containing schedule")
+  parser.add_argument("output", help="output file with post-processed schedule")
+  args = parser.parse_args()
+
+  discretePostProcessing(args.input_problem, args.input_schedule, args.output)

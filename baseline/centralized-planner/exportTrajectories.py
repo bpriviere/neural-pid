@@ -66,19 +66,12 @@ def findStretchtime(file, vmax, amax):
     else:
       L = middle
 
+def exportTrajectories(folder, typesFile, agentsFile, outputFile):
 
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("folder", type=str, help="input folder containing csv files")
-  parser.add_argument("typesFile", help="types file for agent types (yaml)")
-  parser.add_argument("agentsFile", help="agents file with agents (yaml)")
-  parser.add_argument("outputFile", help="output file (npy)")
-  args = parser.parse_args()
-
-  with open(args.typesFile) as file:
+  with open(typesFile) as file:
     types = yaml.load(file, Loader=yaml.SafeLoader)
 
-  with open(args.agentsFile) as file:
+  with open(agentsFile) as file:
     agents = yaml.load(file, Loader=yaml.SafeLoader)
 
   agentTypes = dict()
@@ -94,40 +87,47 @@ if __name__ == "__main__":
       agentType = agentTypes["ground"]
     vmax = agentType["v_max"]
     amax = agentType["a_max"]
-    stretchtime = findStretchtime(os.path.join(args.folder, name + ".csv"), vmax, amax)
+    stretchtime = findStretchtime(os.path.join(folder, name + ".csv"), vmax, amax)
     print(name, stretchtime)
     result = max(result, stretchtime)
 
   print("common stretchtime: {}".format(result))
 
   # export file
-  with open('central.csv', 'w') as file:
-    file.write("t")
-    i = 0
-    for _ in agents["agents"]:
-      file.write(",x{},y{},vx{},vy{}".format(i,i,i,i))
-      i += 1
-    file.write("\n")
-    # find total duration
-    T = 0
-    trajs = []
-    for agent in agents["agents"]:
-      name = agent["name"]
-      traj = uav_trajectory.Trajectory()
-      traj.loadcsv(os.path.join(args.folder, name + ".csv"))
-      traj.stretchtime(result)
-      T = max(T, traj.duration)
-      trajs.append(traj)
-    # write sampled data
-    for t in np.arange(0, T, 0.01):
-      file.write(str(t))
-      for traj in trajs:
-        e = traj.eval(t)
-        file.write(",{},{},{},{}".format(e.pos[0], e.pos[1], e.vel[0], e.vel[1]))
-      file.write("\n")
+  # find total duration
+  T = 0
+  trajs = []
+  for agent in agents["agents"]:
+    name = agent["name"]
+    traj = uav_trajectory.Trajectory()
+    traj.loadcsv(os.path.join(folder, name + ".csv"))
+    traj.stretchtime(result)
+    T = max(T, traj.duration)
+    trajs.append(traj)
 
-  # load file and convert to binary
-  data = np.loadtxt("central.csv", delimiter=',', skiprows=1, dtype=np.float32)
+  ts = np.arange(0, T, 0.01)
+  data = np.empty((len(ts), 1+4*len(trajs)), dtype=np.float32)
+  # write sampled data
+  for k, t in enumerate(ts):
+    data[k, 0] = t
+    for a, traj in enumerate(trajs):
+      e = traj.eval(t)
+      data[k,1+4*a+0] = e.pos[0]
+      data[k,1+4*a+1] = e.pos[1]
+      data[k,1+4*a+2] = e.vel[0]
+      data[k,1+4*a+3] = e.vel[1]
+
   # store in binary format
-  with open(args.outputFile, "wb") as f:
+  with open(outputFile, "wb") as f:
     np.save(f, data, allow_pickle=False)
+
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument("folder", type=str, help="input folder containing csv files")
+  parser.add_argument("typesFile", help="types file for agent types (yaml)")
+  parser.add_argument("agentsFile", help="agents file with agents (yaml)")
+  parser.add_argument("outputFile", help="output file (npy)")
+  args = parser.parse_args()
+
+  exportTrajectories(args.folder, args.typesFile, args.agentsFile, args.outputFile)
