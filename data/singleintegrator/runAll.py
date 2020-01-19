@@ -5,6 +5,7 @@ import subprocess
 import numpy as np
 import argparse
 import concurrent.futures
+import tempfile
 
 def rollout_instance(file):
   basename = os.path.splitext(os.path.basename(file))[0]
@@ -20,12 +21,16 @@ def rollout_instance(file):
 
   if args.orca:
     # ORCA
-    subprocess.run("../../baseline/orca/build/orca -i {}".format(file), shell=True)
-    # load file and convert to binary
-    data = np.loadtxt("orca.csv", delimiter=',', skiprows=1, dtype=np.float32)
-    # store in binary format
-    with open("orca/{}.npy".format(basename), "wb") as f:
-        np.save(f, data, allow_pickle=False)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+      output_file = tmpdirname + "/orca.csv"
+      subprocess.run("../../baseline/orca/build/orca -i {} -o {}".format(file, output_file), shell=True)
+      # load file and convert to binary
+      data = np.loadtxt(output_file, delimiter=',', skiprows=1, dtype=np.float32)
+      # store in binary format
+      if not os.path.exists("orca"):
+        os.mkdir("orca")
+      with open("orca/{}.npy".format(basename), "wb") as f:
+          np.save(f, data, allow_pickle=False)
 
   if args.il:
     subprocess.run("python3 examples/run_singleintegrator.py -i {} --batch".format(os.path.abspath(file)),
@@ -41,11 +46,11 @@ if __name__ == "__main__":
 
   datadir = glob.glob("instances/*")
 
-  # ORCA cannot be run in parallel (they use temporary files)
-  if args.orca:
-    for file in datadir:
-      rollout_instance(file)
-  elif args.il or args.central:
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-      for _ in executor.map(rollout_instance, datadir):
-        pass
+  # Serial version
+  # for file in datadir:
+  #   rollout_instance(file)
+
+  # parallel version
+  with concurrent.futures.ThreadPoolExecutor() as executor:
+    for _ in executor.map(rollout_instance, datadir):
+      pass

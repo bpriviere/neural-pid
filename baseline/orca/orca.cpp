@@ -23,10 +23,10 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
 
   /* Specify the default parameters for agents that are subsequently added. */
   sim->setAgentDefaults(
-    /* neighborDist*/ 1.0f,
-    /* maxNeighbors*/ 30,
-    /* timeHorizon*/ 2.0f,
-    /* timeHorizonObst*/ 2.0f,
+    /* neighborDist*/ 3.0f,
+    /* maxNeighbors*/ 5,
+    /* timeHorizon*/ 1.0f,
+    /* timeHorizonObst*/ 1.0f,
     /* radius*/ 0.2f,
     /* maxSpeed*/ 0.5f);
 
@@ -197,7 +197,7 @@ bool reachedGoal(RVO::RVOSimulator *sim)
 
 int main(int argc, char** argv)
 {
-  std::string inputFile;
+  std::string inputFile, outputFile;
 
   namespace po = boost::program_options;
 
@@ -205,6 +205,7 @@ int main(int argc, char** argv)
   desc.add_options()
     ("help", "produce help message")
     ("input,i", po::value<std::string>(&inputFile)->required(),"input file (YAML)")
+    ("output,o", po::value<std::string>(&outputFile)->required(),"output file (csv)")
   ;
 
   try
@@ -231,7 +232,7 @@ int main(int argc, char** argv)
   /* Set up the scenario. */
   setupScenario(&sim, inputFile);
 
-  std::ofstream output("orca.csv");
+  std::ofstream output(outputFile);
   output << "t";
   for (size_t i = 0; i < sim.getNumAgents(); ++i) {
     output << ",x" << i << ",y" << i << ",vx" << i << ",vy" << i;
