@@ -174,9 +174,9 @@ if __name__ == '__main__':
 		InitialState = namedtuple('InitialState', ['start', 'goal'])
 		s0 = InitialState._make((np.array(s), np.array(g)))
 
-		param = SingleIntegratorParam()
+		param = SingleIntegratorVelSensingParam()
 		param.n_agents = len(map_data["agents"])
-		env = SingleIntegrator(param)
+		env = SingleIntegratorVelSensing(param)
 
 		env.obstacles = map_data["map"]["obstacles"]
 		for x in range(-1,map_data["map"]["dimensions"][0]+1):

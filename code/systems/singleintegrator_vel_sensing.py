@@ -21,7 +21,7 @@ class Agent:
 		self.i = i 
 		self.s = None
 		self.p = None
-		self.v = None
+		self.v = np.zeros(2)
 		self.s_g = None
 
 class SingleIntegratorVelSensing(Env):
