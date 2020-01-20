@@ -167,23 +167,24 @@ def make_loader(
 
 	return loader
 
-def load_loader(name,batch_size):
+def load_loader(name,batch_size,device):
 
 	loader = []
 	datadir = glob.glob("../preprocessed_data/batch_{}*.npy".format(name))
 	for file in datadir: 
 		
-		batch = np.load(file)
-		batch_x = batch[:,0:-2]
-		batch_y = batch[:,-2:]
+		batch_xy = np.load(file)
+		# convert to torch
+		batch_xy_torch = torch.from_numpy(batch_xy).float().to(device)
 
 		# split data by batch size
-		for idx in np.arange(0, batch_x.shape[0], batch_size):
-			last_idx = min(idx + batch_size, batch_x.shape[0])
+		for idx in np.arange(0, batch_xy.shape[0], batch_size):
+			last_idx = min(idx + batch_size, batch_xy.shape[0])
 			# print("Batch of size ", last_idx - idx)
-			x_data = torch.from_numpy(batch_x[idx:last_idx]).float()
-			y_data = torch.from_numpy(batch_y[idx:last_idx]).float()
+			x_data = batch_xy_torch[idx:last_idx, 0:-2]
+			y_data = batch_xy_torch[idx:last_idx, -2:]
 			loader.append([x_data, y_data])
+
 	return loader
 
 
@@ -233,7 +234,8 @@ def train_il(param, env, device):
 			os.mkdir('../preprocessed_data')
 
 			for num_agent,num_data in param.datadict.items():
-				datadir = glob.glob("../data/singleintegrator/central/*obst{}_agents{}_ex*.npy".format(param.il_obst_case,num_agent))
+				# datadir = glob.glob("../data/singleintegrator/central/*obst{}_agents{}_ex*.npy".format(param.il_obst_case,num_agent))
+				datadir = glob.glob("../data/si_lr/central/*_agents{}_ex*.npy".format(num_agent))
 
 				len_case = 0
 				with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -271,9 +273,9 @@ def train_il(param, env, device):
 				device=device)
 
 		else:
-			loader_train = load_loader("train",param.il_batch_size)
+			loader_train = load_loader("train",param.il_batch_size,device=device)
 			# loader_train = load_loader("adaptive",param.il_batch_size)
-			loader_test  = load_loader("test",param.il_batch_size)
+			loader_test  = load_loader("test",param.il_batch_size,device=device)
 
 	# init model
 	if param.il_controller_class is 'Barrier':
