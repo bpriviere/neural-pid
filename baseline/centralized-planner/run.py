@@ -100,7 +100,8 @@ def run(input_fn, output_fn, use_grid_planner = True):
 				"-o", os.path.join(tmpdirname, "roadmap.yaml"),
 				"-a", os.path.join(tmpdirname, "addVertices.yaml"),
 				"-c", "config/roadmapConfigTypeGround.yaml",
-				"--type", "SPARS",
+				# "--type", "SPARS",
+				"--type", "Grid",
 				"--dimension", "2",
 				"--fixedZ", "0.23"])
 

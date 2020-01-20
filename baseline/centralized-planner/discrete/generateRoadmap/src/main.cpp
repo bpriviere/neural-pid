@@ -291,6 +291,9 @@ int main(int argc, char** argv) {
   if (genType == GenerationType::Grid) {
     auto node = cfg["grid"];
     const float gridSize = node["gridSize"].as<float>();
+    const float xOffset = node["xOffset"].as<float>();
+    const float yOffset = node["yOffset"].as<float>();
+    const float zOffset = node["zOffset"].as<float>();
     float zmin = bbox[2].min + bbox2[2].min + gridSize/2;
     float zmax = bbox[2].max;
     if (dimension == 2) {
@@ -298,9 +301,9 @@ int main(int argc, char** argv) {
       zmax = fixedZ + gridSize / 2.0;
     }
 
-    for (float x = bbox[0].min + bbox2[0].min + gridSize/2; x < bbox[0].max; x += gridSize) {
-      for (float y = bbox[1].min + bbox2[1].min + gridSize/2; y < bbox[1].max; y += gridSize) {
-        for (float z = zmin; z < zmax; z += gridSize) {
+    for (float x = bbox[0].min + bbox2[0].min + gridSize/2 + xOffset; x < bbox[0].max; x += gridSize) {
+      for (float y = bbox[1].min + bbox2[1].min + gridSize/2 + yOffset; y < bbox[1].max; y += gridSize) {
+        for (float z = zmin + zOffset; z < zmax; z += gridSize) {
           fcl::Transform3f robot_tf(Vec3f(x, y, z));
           CollisionRequest request;
           CollisionResult result;
