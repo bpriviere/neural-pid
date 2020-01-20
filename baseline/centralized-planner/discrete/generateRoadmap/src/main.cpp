@@ -252,6 +252,7 @@ int main(int argc, char** argv) {
 
   Timer timer;
   searchGraph_t roadmap;
+  std::set<std::string> addVerticesNames;
 
   size_t addEdgesForVertices = 0;
   if (addVerticesFile.size() > 0) {
@@ -264,6 +265,7 @@ int main(int argc, char** argv) {
         pos[1].as<float>(),
         pos[2].as<float>());
       std::string name = node["name"].as<std::string>();
+      addVerticesNames.insert(name);
 
       fcl::Transform3f robot_tf(toVec3f(p));
       CollisionRequest request;
@@ -550,7 +552,8 @@ int main(int argc, char** argv) {
       // totalNeighbors += ret_matches.size() - 1;
 
       for (const auto& match : ret_matches) {
-        if (i != match.first) {
+        // only remove vertices that were not manually added
+        if (i != match.first && addVerticesNames.find(roadmap[match.first].name) == addVerticesNames.end()) {
           vertexDuplicates[match.first] = true;
           ++totalDuplicates;
           // std::cout << "duplicate: " << getVertexName(match.first, vertexNames) << std::endl;
