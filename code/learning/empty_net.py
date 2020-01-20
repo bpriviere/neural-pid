@@ -45,8 +45,10 @@ class Empty_Net(nn.Module):
 		self.dim_g = param.il_psi_network_architecture[0].in_features - \
 						self.model_obstacles.rho.out_dim - \
 						self.model_neighbors.rho.out_dim
+		self.device = torch.device('cpu')
 
 	def to(self, device):
+		self.device = device
 		self.model_neighbors.to(device)
 		self.model_obstacles.to(device)
 		self.psi.to(device)
@@ -82,6 +84,9 @@ class Empty_Net(nn.Module):
 			# print("obs ", num_obstacles)
 
 			rho_neighbors = self.model_neighbors.forward(x[:,3:3+2*num_neighbors])
+			
+			# rho_neighbors = torch.zeros((len(x),16), device=self.device)
+
 			# print("rho_neighbors", rho_neighbors)
 			rho_obstacles = self.model_obstacles.forward(x[:,3+2*num_neighbors:])
 			g = x[:,1:3]
