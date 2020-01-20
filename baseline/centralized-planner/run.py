@@ -146,4 +146,4 @@ if __name__ == '__main__':
 	parser.add_argument("output", help="output file (npy)")
 	args = parser.parse_args()
 
-	run(args.input, args.output, False)
+	run(args.input, args.output, True)
