@@ -319,9 +319,22 @@ class SingleIntegrator(Env):
 		obstacles = np.array(obstacles)
 		kd_tree_obstacles = spatial.KDTree(obstacles)
 
+		# find goal times
+		goal_idxs = []
+		for i, agent in enumerate(map_data["agents"]):
+			goal = np.array([0.5,0.5]) + np.array(agent["goal"])
+			distances = np.linalg.norm(data[:,(i*4+1):(i*4+3)] - goal, axis=1)
+			goalIdx = np.argwhere(distances > 0.1)
+			if len(goalIdx) == 0:
+				goalIdx = np.array([0])
+			lastIdx = np.max(goalIdx)
+			if lastIdx < data.shape[0] - 1:
+				goal_idxs.append(lastIdx)
+			else:
+				goal_idxs.append(data.shape[0] - 1)
+
 		num_agents = int((data.shape[1] - 1) / 4)
 		dataset = []
-		reached_goal = set()
 		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 		for t in range(50,data.shape[0]-1):
@@ -334,7 +347,7 @@ class SingleIntegrator(Env):
 
 			for i in range(num_agents):
 				# skip datapoints where agents are just sitting at goal
-				if i in reached_goal:
+				if t >= goal_idxs[i]:
 					continue
 
 				s_i = data[t,i*4+1:i*4+3]   # state i 
@@ -342,15 +355,7 @@ class SingleIntegrator(Env):
 				s_g = torch.Tensor(map_data["agents"][i]["goal"]) + torch.Tensor([0.5,0.5])
 				# print(s_g, data[-1,i*4+1:i*4+5])
 				relative_goal = s_g - s_i   # relative goal
-				# if we reached the goal, do not include more datapoints from this trajectory
-				# if np.allclose(relative_goal, np.zeros(2)):
-					# reached_goal.add(i)
-				if relative_goal.norm() < 0.5:
-					reached_goal.add(i)
 				time_to_goal = data[-1,0] - data[t,0]
-
-
-				# here! 
 
 				# query visible neighbors
 				_, neighbor_idx = kd_tree_neighbors.query(

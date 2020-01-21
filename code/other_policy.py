@@ -160,7 +160,7 @@ class Empty_Net_wAPF():
 		if not isinstance(x,torch.Tensor):
 			x = torch.from_numpy(x).float()
 
-		closest_barrier_mode_on = True
+		closest_barrier_mode_on = False
 		if closest_barrier_mode_on:
 			min_neighbor_dist = np.Inf 
 			min_neighbor_mode = 0

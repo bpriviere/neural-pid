@@ -27,7 +27,7 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
     /* maxNeighbors*/ 5,
     /* timeHorizon*/ 1.0f,
     /* timeHorizonObst*/ 1.0f,
-    /* radius*/ 0.2f,
+    /* radius*/ 0.16f,
     /* maxSpeed*/ 0.5f);
 
 

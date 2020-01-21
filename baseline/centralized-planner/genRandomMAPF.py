@@ -10,7 +10,7 @@ import yaml
 import numpy as np 
 
 
-r_agent = 0.15
+r_agent = 0.2
 
 def reachable(map_size, start, goal, obstacles):
     visited = set()
