@@ -214,8 +214,12 @@ def test(param,env,model,loader):
 
 def train_il(param, env, device):
 
-	seed(1) # numpy random gen seed 
-	torch.manual_seed(1)    # pytorch 
+	folder = os.path.dirname(param.il_train_model_fn)
+	if not os.path.exists(folder):
+		os.mkdir(folder)
+
+	# seed(1) # numpy random gen seed 
+	# torch.manual_seed(1)    # pytorch 
 
 	print("Case: ",param.env_case)
 	print("Controller: ",param.il_controller_class)
@@ -235,7 +239,7 @@ def train_il(param, env, device):
 
 			for num_agent,num_data in param.datadict.items():
 				# datadir = glob.glob("../data/singleintegrator/central/*obst{}_agents{}_ex*.npy".format(param.il_obst_case,num_agent))
-				datadir = glob.glob("../data/si_lr/central/*_agents{}_ex*.npy".format(num_agent))
+				datadir = glob.glob("../data/singleintegrator/central/*_agents{}_ex*.npy".format(num_agent))
 
 				len_case = 0
 				with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -396,6 +400,10 @@ def train_il(param, env, device):
 		# print("[ Top 10 ]")
 		# for stat in top_stats[:10]:
 		# 	print(stat)
+
+	del model
+	torch.cuda.empty_cache()
+	print(torch.cuda.memory_stats())
 
 
 

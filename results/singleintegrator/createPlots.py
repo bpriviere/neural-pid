@@ -12,7 +12,7 @@ plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
 
-def add_line_plot_agg(pp,key,title):
+def add_line_plot_agg(pp,result_by_instance,key,title):
 	fig,ax = plt.subplots()
 	ax.set_title(title)
 
@@ -34,7 +34,7 @@ def add_line_plot_agg(pp,key,title):
 	# result:
 	result_array = np.zeros(( len(solvers), len(num_agents), 2))
 
-	for i_s,solver in enumerate(solvers):
+	for i_s,solver in enumerate(sorted(solvers)):
 
 		for i_a,num_agent in enumerate(num_agents_array):
 			
@@ -83,7 +83,7 @@ def add_line_plot_agg(pp,key,title):
 
 
 
-def add_scatter(pp, results, key, title):
+def add_scatter(pp, result_by_instance, key, title):
 	fig, ax = plt.subplots()
 	ax.set_title(title)
 
@@ -119,7 +119,7 @@ def add_scatter(pp, results, key, title):
 	plt.close(fig)
 
 
-def add_bar_agg(pp, results, key, title):
+def add_bar_agg(pp, result_by_instance, key, title):
 	fig, ax = plt.subplots()
 	ax.set_title(title)
 
@@ -144,7 +144,7 @@ def add_bar_agg(pp, results, key, title):
 	pp.savefig(fig)
 	plt.close(fig)
 
-def add_bar_agg_succeeded_agents(pp, results, key, title):
+def add_bar_agg_succeeded_agents(pp, result_by_instance, key, title):
 	fig, ax = plt.subplots()
 	ax.set_title(title)
 

@@ -9,7 +9,7 @@ def is_collision_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
 	# Calculate the distance between the circle's center and this closest point
 	dist = np.linalg.norm(circle_pos - closest, axis=1)
 	# If the distance is less than the circle's radius, an intersection occurs
-	return dist + 1e-4 < circle_r
+	return dist + 1e-4 < circle_r, dist
 
 def print_collision_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
 	# Find the closest point to the circle within the rectangle
@@ -72,6 +72,7 @@ def stats(map_filename, schedule_filename):
 			inc = np.count_nonzero(distances < 0.4 - 1e-4)
 			num_agent_agent_collisions += inc
 			if inc > 0:
+				print("a2a ", np.min(distances))
 				agents_collided.add(i)
 				agents_collided.add(j)
 
@@ -80,13 +81,14 @@ def stats(map_filename, schedule_filename):
 	for i in range(num_agents):
 		pos_i = data[:,(i*4+1):(i*4+3)]
 		for o in map_data["map"]["obstacles"]:
-			coll = is_collision_circle_rectangle(pos_i, 0.2, np.array(o), np.array(o) + np.array([1.0,1.0]))
+			coll,dist = is_collision_circle_rectangle(pos_i, 0.2, np.array(o), np.array(o) + np.array([1.0,1.0]))
 			inc = np.count_nonzero(coll)
 
 			# distances = np.linalg.norm(pos_i - (np.array(o) + np.array([0.5,0.5])), axis=1)
 			# inc = np.count_nonzero(distances < 0.5+0.2 - 1e-4)
 			num_agent_obstacle_collisions += inc
 			if inc > 0:
+				print("a2o, ", np.min(dist))
 				# print_collision_circle_rectangle(pos_i, 0.2, np.array(o), np.array(o) + np.array([1.0,1.0]))
 				agents_collided.add(i)
 

@@ -13,7 +13,7 @@ def is_collision_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
 	# Calculate the distance between the circle's center and this closest point
 	dist = np.linalg.norm(circle_pos - closest, axis=1)
 	# If the distance is less than the circle's radius, an intersection occurs
-	return dist + 1e-4 < circle_r
+	return dist + 1e-4 < circle_r, dist
 
 
 def stats(map_filename, schedule_filename):
@@ -54,8 +54,10 @@ def stats(map_filename, schedule_filename):
 	# control effort (here: single integrator => velocity)
 	control_effort = np.zeros(num_agents)
 	for i, agent in enumerate(map_data["agents"]):
-		control_effort[i] += np.sum(np.abs(data[:,i*4+3]))
-		control_effort[i] += np.sum(np.abs(data[:,i*4+4]))
+		# print(np.linalg.norm(data[:,i*4+3:i*4+5], axis=1))
+		control_effort[i] += np.sum(np.linalg.norm(data[:,i*4+3:i*4+5], axis=1))
+		# np.sum(np.abs(data[:,i*4+3]))
+		# control_effort[i] += np.sum(np.abs(data[:,i*4+4]))
 	control_effort *= (data[1,0] - data[0,0])
 
 	# Collisions
@@ -70,6 +72,7 @@ def stats(map_filename, schedule_filename):
 			inc = np.count_nonzero(distances < 2 * robot_radius - 1e-4)
 			num_agent_agent_collisions += inc
 			if inc > 0:
+				print("a2a, ", np.min(distances))
 				agents_collided.add(i)
 				agents_collided.add(j)
 
@@ -78,13 +81,14 @@ def stats(map_filename, schedule_filename):
 	for i in range(num_agents):
 		pos_i = data[:,(i*4+1):(i*4+3)]
 		for o in map_data["map"]["obstacles"]:
-			coll = is_collision_circle_rectangle(pos_i, robot_radius, np.array(o), np.array(o) + np.array([1.0,1.0]))
+			coll, dist = is_collision_circle_rectangle(pos_i, robot_radius, np.array(o), np.array(o) + np.array([1.0,1.0]))
 			inc = np.count_nonzero(coll)
 
 			# distances = np.linalg.norm(pos_i - (np.array(o) + np.array([0.5,0.5])), axis=1)
 			# inc = np.count_nonzero(distances < 0.5+0.2 - 1e-4)
 			num_agent_obstacle_collisions += inc
 			if inc > 0:
+				print("a2o, ", np.min(dist))
 				agents_collided.add(i)
 
 	num_agents_success = len(agents_reached_goal - agents_collided)
@@ -94,6 +98,7 @@ def stats(map_filename, schedule_filename):
 	result["sum_time"] = soc
 	result["makespan"] = makespan
 	result["control_effort"] = control_effort
+	result["control_effort_sum"] = np.sum(control_effort)
 	result["num_agents_reached_goal"] = num_agents_reached_goal
 	result["percent_agents_reached_goal"] = num_agents_reached_goal / num_agents * 100
 	result["num_agent_agent_collisions"] = num_agent_agent_collisions
