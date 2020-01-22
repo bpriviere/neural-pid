@@ -27,7 +27,9 @@ class Agent:
 class SingleIntegrator(Env):
 
 	def __init__(self, param):
+		self.reset_param(param)
 
+	def reset_param(self, param):
 		# init
 		self.times = param.sim_times
 		self.state = None

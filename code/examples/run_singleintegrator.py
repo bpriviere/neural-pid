@@ -149,9 +149,10 @@ class SingleIntegratorParam(Param):
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 
 		# plots
-		self.vector_plot_dx = 0.3 
+		self.vector_plot_dx = 0.3
 
-def run_batch(instance, controllers):
+
+def load_instance(param, env, instance):
 	import yaml
 	if instance:
 		with open(instance) as map_file:
@@ -172,9 +173,8 @@ def run_batch(instance, controllers):
 	InitialState = namedtuple('InitialState', ['start', 'goal'])
 	s0 = InitialState._make((np.array(s), np.array(g)))
 
-	param = SingleIntegratorParam()
 	param.n_agents = len(map_data["agents"])
-	env = SingleIntegrator(param)
+	env.reset_param(param)
 
 	env.obstacles = map_data["map"]["obstacles"]
 	for x in range(-1,map_data["map"]["dimensions"][0]+1):
@@ -184,6 +184,10 @@ def run_batch(instance, controllers):
 		env.obstacles.append([-1,y])
 		env.obstacles.append([map_data["map"]["dimensions"][0],y])
 
+	return s0
+
+
+def run_batch(param, env, instance, controllers):
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
 
@@ -207,9 +211,10 @@ def run_batch(instance, controllers):
 if __name__ == '__main__':
 
 	args = parse_args()
+	param = SingleIntegratorParam()
+	env = SingleIntegrator(param)
+
 	if args.il:
-		param = SingleIntegratorParam()
-		env = SingleIntegrator(param)
 		run(param, env, None, None, args)
 		exit()
 
@@ -228,8 +233,10 @@ if __name__ == '__main__':
 		# 'barrier' : torch.load(param.il_barrier_model_fn)
 	}
 
+	s0 = load_instance(param, env, args.instance)
+
 	if args.batch:
-		run_batch(args.instance, controllers)
+		run_batch(param, env, args.instance, controllers)
 
 	# elif args.export:
 	# 	model = torch.load(param.il_train_model_fn)
