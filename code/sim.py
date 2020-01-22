@@ -83,8 +83,21 @@ def sim(param, env, controllers, initial_state, visualize):
 			for agent in env.agents:
 				
 				line = ax.plot(result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)], 
-					result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1])
+					result.states[0:result.steps,env.agent_idx_to_state_idx(agent.i)+1],alpha=0.5)
 				color = line[0].get_color()
+
+				# plot velocity vectors:
+				X = []
+				Y = []
+				U = []
+				V = []
+				for k in np.arange(0,result.steps,100):
+					X.append(result.states[k,env.agent_idx_to_state_idx(agent.i)])
+					Y.append(result.states[k,env.agent_idx_to_state_idx(agent.i)+1])
+					U.append(result.actions[k,2*agent.i+0])
+					V.append(result.actions[k,2*agent.i+1])
+
+				ax.quiver(X,Y,U,V,angles='xy', scale_units='xy',scale=0.5,color=color,width=0.005)
 
 				# num_obstacles = (result.observations.shape[1] - result.observations[0][0] - 5) / 2
 				# print(num_obstacles)

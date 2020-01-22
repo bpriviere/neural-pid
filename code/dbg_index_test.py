@@ -9,12 +9,13 @@ plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
 state_dim_per_agent = 2
+Rsense = 1
 
 def plot_obs(pp, observation, title=None):
 	fig, ax = plt.subplots()
 	ax.set_aspect('equal')
-	ax.set_xlim(-3,3)
-	ax.set_ylim(-3,3)
+	ax.set_xlim(-Rsense,Rsense)
+	ax.set_ylim(-Rsense,Rsense)
 	ax.set_autoscalex_on(False)
 	ax.set_autoscaley_on(False)
 	ax.set_title(title)
@@ -47,7 +48,7 @@ def plot_obs(pp, observation, title=None):
 	# plot action
 	plt.arrow(0,0,observation[-2],observation[-1])
 
-	ax.add_patch(Circle(robot_pos, 3.0, facecolor='gray', edgecolor='black', alpha=0.1))
+	ax.add_patch(Circle(robot_pos, Rsense, facecolor='gray', edgecolor='black', alpha=0.1))
 
 	# plt.show()
 	pp.savefig(fig)
@@ -75,15 +76,20 @@ for file in datadir:
 		p.save_index("{}.index".format(file))
 
 	print("Index ready")
-	obs = data[10,1:1+dim]
-	labels, distances = p.knn_query(obs, k=5)
+	obs = data[0,1:1+dim]
+	labels, distances = p.knn_query(obs, k=min(5, data.shape[0]))
 	print(labels, distances)
 
 	data2 = np.lib.format.open_memmap(file, mode='r')
 	print(data2.dtype)
-	for k, l in enumerate(labels[0]):
-		print(l,data[l], data2[l])
-		plot_obs(pp, data[l], str(k))
+	for k, (l, dist) in enumerate(zip(labels[0], distances[0])):
+		print(l,data[l], data2[l], dist)
+		plot_obs(pp, data[l], "k={0} dist={1:02}".format(k, dist))
+
+
+
+	# break
+
 
 pp.close()
 
