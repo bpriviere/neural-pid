@@ -297,7 +297,6 @@ class SingleIntegrator(Env):
 
 	def load_dataset_action_loss(self, filename):
 		data = np.load(filename)
-		data = torch.from_numpy(data)
 
 		# load map
 		instance = os.path.splitext(os.path.basename(filename))[0]
@@ -332,6 +331,8 @@ class SingleIntegrator(Env):
 				goal_idxs.append(lastIdx)
 			else:
 				goal_idxs.append(data.shape[0] - 1)
+
+		data = torch.from_numpy(data)
 
 		num_agents = int((data.shape[1] - 1) / 4)
 		dataset = []
