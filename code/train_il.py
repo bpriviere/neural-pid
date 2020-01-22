@@ -11,6 +11,7 @@ import yaml
 import utilities
 import concurrent.futures
 from itertools import repeat
+import time
 
 from numpy import array, zeros, Inf
 from numpy.random import uniform,seed
@@ -375,23 +376,27 @@ def train_il(param, env, device):
 
 	else:
 
-		best_test_loss = Inf
-		scheduler = ReduceLROnPlateau(optimizer, 'min')
-		for epoch in range(1,param.il_n_epoch+1):
+		with open(param.il_train_model_fn + ".csv", 'w') as log_file:
+			log_file.write("time,epoch,train_loss,test_loss\n")
+			start_time = time.time()
+			best_test_loss = Inf
+			scheduler = ReduceLROnPlateau(optimizer, 'min')
+			for epoch in range(1,param.il_n_epoch+1):
 
-			train_epoch_loss = train(param,env,model,optimizer,loader_train)
-			test_epoch_loss = test(param,env,model,loader_test)
-			scheduler.step(test_epoch_loss)
+				train_epoch_loss = train(param,env,model,optimizer,loader_train)
+				test_epoch_loss = test(param,env,model,loader_test)
+				scheduler.step(test_epoch_loss)
 
-			if epoch%param.il_log_interval==0:
-				print('epoch: ', epoch)
-				print('   Train Epoch Loss: ', train_epoch_loss)
-				print('   Test Epoch Loss: ', test_epoch_loss)
-				if test_epoch_loss < best_test_loss:
-					best_test_loss = test_epoch_loss
-					print('      saving @ best test loss:', best_test_loss)
-					torch.save(model.to('cpu'), param.il_train_model_fn)
-					model.to(device)
+				if epoch%param.il_log_interval==0:
+					print('epoch: ', epoch)
+					print('   Train Epoch Loss: ', train_epoch_loss)
+					print('   Test Epoch Loss: ', test_epoch_loss)
+					if test_epoch_loss < best_test_loss:
+						best_test_loss = test_epoch_loss
+						print('      saving @ best test loss:', best_test_loss)
+						torch.save(model.to('cpu'), param.il_train_model_fn)
+						model.to(device)
+				log_file.write("{},{},{},{}\n".format(time.time() - start_time, epoch, train_epoch_loss, test_epoch_loss))
 
 		# # debug loading memory usage
 		# snapshot = tracemalloc.take_snapshot()
@@ -401,9 +406,9 @@ def train_il(param, env, device):
 		# for stat in top_stats[:10]:
 		# 	print(stat)
 
-	del model
-	torch.cuda.empty_cache()
-	print(torch.cuda.memory_stats())
+	# del model
+	# torch.cuda.empty_cache()
+	# print(torch.cuda.memory_stats())
 
 
 
