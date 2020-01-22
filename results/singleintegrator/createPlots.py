@@ -12,7 +12,7 @@ plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
 
-def add_line_plot_agg(pp,result_by_instance,key,title):
+def add_line_plot_agg(pp,result_by_instance,key,title, group_by="num_agents"):
 	fig,ax = plt.subplots()
 	ax.set_title(title)
 
@@ -23,59 +23,61 @@ def add_line_plot_agg(pp,result_by_instance,key,title):
 			solvers.add(r["solver"])
 
 	# find set of num agent cases
-	num_agents = set()
+	group_by_set = set()
 
 	for _,results in result_by_instance.items():
 		for r in results:
-			num_agents.add(r["num_agents"])
-	num_agents_array = np.array(sorted(list(num_agents)))
-	# print(num_agents_array)
+			group_by_set.add(r[group_by])
+	x_array = np.array(sorted(list(group_by_set)))
 
-	# result:
-	result_array = np.zeros(( len(solvers), len(num_agents), 2))
+	result_array = np.zeros(( len(solvers), len(x_array), 2))
 
 	for i_s,solver in enumerate(sorted(solvers)):
 
-		for i_a,num_agent in enumerate(num_agents_array):
+		for i_a,x in enumerate(x_array):
 			
 			num_models = set()
 			case_count = 0
 			curr = dict()
+			curr_count = dict()
 
 			for instance,results in result_by_instance.items():
 				for r in results:
-					if r["num_agents"] == num_agent and r["solver"] == solver:
+					if r[group_by] == x and r["solver"] == solver:
 
 						# print(instance)
 						# print(r[key])
 
 						if r["num_model"] in num_models:
 							curr[r["num_model"]] += r[key]
+							curr_count[r["num_model"]] += 1
 						else:
 							curr[r["num_model"]] = r[key]
+							curr_count[r["num_model"]] = 1
 							num_models.add(r["num_model"])
 
-			curr = np.array(list(curr.values())) / num_agent / 10
+			# curr = np.array(list(curr.values())) / num_agent / 10
+			curr = np.array([x / curr_count[key] for key, x in curr.items()])
 			print(curr)
 			# print(num_models)
 			result_array[i_s,i_a,0] = np.mean(curr)
 			result_array[i_s,i_a,1] = np.std(curr)
 
-		line = ax.plot(num_agents_array, result_array[i_s,:,0], label=solver)[0]
-		ax.fill_between(num_agents_array,
+		line = ax.plot(x_array, result_array[i_s,:,0], label=solver)[0]
+		ax.fill_between(x_array,
 			result_array[i_s,:,0]-result_array[i_s,:,1],
 			result_array[i_s,:,0]+result_array[i_s,:,1],
 			color=line.get_color(),
 			alpha=0.5)
 
-	if key == "num_agents_success":
-		ax.set_ylim([0,1])
+	if key == "percent_agents_success":
+		ax.set_ylim([0,100])
 
-	print(result_array)
-
-	ax.set_xscale('log')
-	ax.set_xticks(num_agents_array)
-	ax.set_xticklabels(num_agents_array)
+	if group_by == "num_agents":
+		ax.set_xscale('log')
+	
+	ax.set_xticks(x_array)
+	ax.set_xticklabels(x_array)
 
 	plt.legend()
 	pp.savefig(fig)
@@ -224,27 +226,22 @@ if __name__ == '__main__':
 	# files = sorted(files)
 
 
-	agents_lst = [2,4,8,16,32,64,128]
-	obst_lst = [12] #,9,12] #int(map_size[0] * map_size[1] * 0.1)
+	agents_lst = [2,4,8,16,32]
+	obst_lst = [6] #,9,12] #int(map_size[0] * map_size[1] * 0.1)
 
+	# solvers = ['il', 'ilAPF', 'ad', 'adAPF']
+	# solvers = ['orca', 'ilvsAPF', 'ilAPF']
+	solvers = ['orca', 'ilAPF', 'central', 'barrier']
 
 	files = []
-	for obst in obst_lst:
-		for agent in agents_lst:
-			files.extend( glob.glob("orca/*obst{}_agents{}_*.npy".format(obst,agent), recursive=True))
-	files = sorted(files)
-
-
-	for file in sorted(files):
-
-		print(file)
-
+	for solver in solvers:
+		for obst in obst_lst:
+			for agent in agents_lst:
+				files.extend( glob.glob("{}/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
+	for file in files:
 		instance = os.path.splitext(os.path.basename(file))[0]
 		map_filename = "instances/{}.yaml".format(instance)
 		result = stats.stats(map_filename, file)
-
-		if result["solver"] not in ['orca']:
-			continue
 
 		if instance in result_by_instance:
 			result_by_instance[instance].append(result)
@@ -254,18 +251,16 @@ if __name__ == '__main__':
 
 	pp = PdfPages("results.pdf")
 
-	add_line_plot_agg(pp,"num_agents_success", "# robots success")
-	# add_line_plot_agg(pp,"control_effort", "control effort")
+	add_line_plot_agg(pp, result_by_instance, "num_agents_success", "# robots success")
+	add_line_plot_agg(pp, result_by_instance, "control_effort_sum", "control effort")
 
-	
-	pp.close()
-	exit()
-
-	# add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
+	add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
 	# add_bar_agg_succeeded_agents(pp, result_by_instance, "control_effort", "total control effort")
 	# add_scatter(pp, result_by_instance, "percent_agents_reached_goal", "% reached goal")
-	# add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+	add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
 
+	pp.close()
+	exit()
 	
 
 	for instance in sorted(result_by_instance):

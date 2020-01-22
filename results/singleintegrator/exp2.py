@@ -39,36 +39,38 @@ if __name__ == "__main__":
   else:
     device = torch.device('cpu')
 
-  agents_lst = [2,4,8,16,32]
-  obst_lst = [6,9,12]
+  agents_lst = [2,4,8] #[2,4,8,16,32]
+  obst_lst = [6] #[6,9,12]
+  radii = [1,2,3,4]
 
   if args.plot:
-    solvers = ['orca', 'exp1Empty', 'central', 'exp1Barrier']
-    solver_names = ['ORCA', 'APF', 'Central', 'Barrier']
 
     for obst in obst_lst:
-      files = []
       result_by_instance = dict()
-      for solver in solvers:
+      for r in radii:
         for agent in agents_lst:
-          files.extend( glob.glob("singleintegrator/{}*/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
-      for file in files:
-        instance = os.path.splitext(os.path.basename(file))[0]
-        map_filename = "singleintegrator/instances/{}.yaml".format(instance)
-        result = stats.stats(map_filename, file)
-        result["solver"] = os.path.basename(result["solver"])
+          files = glob.glob("singleintegrator/exp2EmptyR{}*/*obst{}_agents{}_*.npy".format(r,obst,agent), recursive=True)
+     
+          for file in files:
+            instance = os.path.splitext(os.path.basename(file))[0]
+            map_filename = "singleintegrator/instances/{}.yaml".format(instance)
+            result = stats.stats(map_filename, file)
+            result["solver"] = "Empty"
+            result["Rsense"] = r
 
-        if instance in result_by_instance:
-          result_by_instance[instance].append(result)
-        else:
-          result_by_instance[instance] = [result]
+            if instance in result_by_instance:
+              result_by_instance[instance].append(result)
+            else:
+              result_by_instance[instance] = [result]
 
       # create plots
-      pp = PdfPages("exp1_{}.pdf".format(obst))
+      pp = PdfPages("exp2_{}.pdf".format(obst))
 
-      add_line_plot_agg(pp, result_by_instance, "percent_agents_success", "% robots success")
-      add_line_plot_agg(pp, result_by_instance, "control_effort_mean", "control effort")
-      add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+
+      # add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
+      add_line_plot_agg(pp, result_by_instance, "percent_agents_success", "% robots success", group_by="Rsense")
+      # add_line_plot_agg(pp, result_by_instance, "control_effort_sum", "control effort")
+      # add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
 
       pp.close()
     exit()
@@ -79,25 +81,31 @@ if __name__ == "__main__":
       datadir.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*".format(obst,agents)))
   instances = sorted(datadir)
 
-
-
-  for i in range(10):
-      # train policy
-      param = run_singleintegrator.SingleIntegratorParam()
-      env = SingleIntegrator(param)
+  for i in range(1):
+    # train policy
+    param = run_singleintegrator.SingleIntegratorParam()
+    env = SingleIntegrator(param)
+    for r in radii:
       if args.train:
-        for cc in ['Empty', 'Barrier']:
+        for cc in ['Empty']: #['Empty', 'Barrier']:
           param = run_singleintegrator.SingleIntegratorParam()
+          param.il_load_loader_on = False
           param.il_controller_class = cc
-          param.il_train_model_fn = 'singleintegrator/exp1{}_{}/il_current.pt'.format(cc,i)
+
+          param.r_comm = r
+          param.r_obs_sense = r
+          param.max_neighbors = 5
+          param.max_obstacles = 5
+
+          param.il_train_model_fn = 'singleintegrator/exp2{}R{}_{}/il_current.pt'.format(cc,r,i)
           env = SingleIntegrator(param)
           train_il(param, env, device)
 
       elif args.sim:
         # evaluate policy
         controllers = {
-          'exp1Empty_{}'.format(i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp1Empty_{}/il_current.pt'.format(i))),
-          'exp1Barrier_{}'.format(i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(i))
+          'exp2EmptyR{}_{}'.format(r,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp2EmptyR{}_{}/il_current.pt'.format(r,i))),
+          # 'exp1Barrier_{}'.format(i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(i))
         }
 
         # for instance in instances:

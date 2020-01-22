@@ -99,12 +99,14 @@ def stats(map_filename, schedule_filename):
 	result["makespan"] = makespan
 	result["control_effort"] = control_effort
 	result["control_effort_sum"] = np.sum(control_effort)
+	result["control_effort_mean"] = np.mean(control_effort)
 	result["num_agents_reached_goal"] = num_agents_reached_goal
 	result["percent_agents_reached_goal"] = num_agents_reached_goal / num_agents * 100
 	result["num_agent_agent_collisions"] = num_agent_agent_collisions
 	result["num_agent_obstacle_collisions"] = num_agent_obstacle_collisions
 	result["num_collisions"] = num_agent_agent_collisions + num_agent_obstacle_collisions
 	result["num_agents_success"] = num_agents_success
+	result["percent_agents_success"] = num_agents_success / num_agents * 100
 	result["agents_succeeded"] = agents_reached_goal - agents_collided
 
 
