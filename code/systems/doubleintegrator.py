@@ -27,7 +27,9 @@ class Agent:
 class DoubleIntegrator(Env):
 
 	def __init__(self, param):
+		self.reset_param(param)
 
+	def reset_param(self, param):
 		# init
 		self.times = param.sim_times
 		self.state = None
@@ -100,7 +102,7 @@ class DoubleIntegrator(Env):
 	def done(self):
 		
 		for agent in self.agents:
-			if not np.linalg.norm(agent.p - agent.s_g) < 0.05:
+			if not np.linalg.norm(agent.s - agent.s_g) < 0.05:
 				return False
 		return True
 
@@ -305,7 +307,6 @@ class DoubleIntegrator(Env):
 
 	def load_dataset_action_loss(self, filename):
 		data = np.load(filename)
-		data = torch.from_numpy(data)
 
 		# load map
 		instance = os.path.splitext(os.path.basename(filename))[0]
@@ -327,9 +328,24 @@ class DoubleIntegrator(Env):
 		obstacles = np.array(obstacles)
 		kd_tree_obstacles = spatial.KDTree(obstacles)
 
+		# find goal times
+		goal_idxs = []
+		for i, agent in enumerate(map_data["agents"]):
+			goal = np.array([0.5,0.5,0,0]) + np.array(agent["goal"] + [0,0])
+			distances = np.linalg.norm(data[:,(i*4+1):(i*4+5)] - goal, axis=1)
+			goalIdx = np.argwhere(distances > 0.1)
+			if len(goalIdx) == 0:
+				goalIdx = np.array([0])
+			lastIdx = np.max(goalIdx)
+			if lastIdx < data.shape[0] - 1:
+				goal_idxs.append(lastIdx)
+			else:
+				goal_idxs.append(data.shape[0] - 1)
+
+		data = torch.from_numpy(data)
+
 		num_agents = int((data.shape[1] - 1) / 4)
 		dataset = []
-		reached_goal = set()
 		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
 		for t in range(50,data.shape[0]-1):
@@ -342,7 +358,7 @@ class DoubleIntegrator(Env):
 
 			for i in range(num_agents):
 				# skip datapoints where agents are just sitting at goal
-				if i in reached_goal:
+				if t >= goal_idxs[i]:
 					continue
 
 				s_i = data[t,i*4+1:i*4+5]   # state i 
@@ -350,15 +366,7 @@ class DoubleIntegrator(Env):
 				s_g = torch.Tensor(map_data["agents"][i]["goal"] + [0,0]) + torch.Tensor([0.5,0.5,0,0])
 				# print(s_g, data[-1,i*4+1:i*4+5])
 				relative_goal = s_g - s_i   # relative goal
-				# if we reached the goal, do not include more datapoints from this trajectory
-				# if np.allclose(relative_goal, np.zeros(2)):
-					# reached_goal.add(i)
-				if relative_goal.norm() < 0.5:
-					reached_goal.add(i)
 				time_to_goal = data[-1,0] - data[t,0]
-
-
-				# here! 
 
 				# query visible neighbors
 				_, neighbor_idx = kd_tree_neighbors.query(
@@ -592,7 +600,7 @@ class DoubleIntegrator(Env):
 		
 	def bad_behavior(self, observations):
 		# penalize agent going too slowly when still too far from the goal 
-		v_min = 0.2
+		v_min = 0.1
 		d_max = 0.5
 
 		# the observation already encodes the closest neighbors (sorted)
