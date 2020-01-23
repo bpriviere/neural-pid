@@ -115,8 +115,8 @@ def run(input_fn, output_fn, use_grid_planner = True):
 			subprocess.run(["./discrete/build/ecbsCLI/ecbsCLI",
 				"-m", os.path.join(tmpdirname, "annotatedRoadmap.yaml"),
 				"-a", os.path.join(tmpdirname, "agents.yaml"),
-				"-f", "1.3",
-				"-o", os.path.join(tmpdirname, "discreteSchedule.json")])
+				"-f", "3.0",
+				"-o", os.path.join(tmpdirname, "discreteSchedule.json")], timeout=120)
 
 			convertSchedule(
 				os.path.join(tmpdirname, "discreteSchedule.json"),
@@ -133,7 +133,8 @@ def run(input_fn, output_fn, use_grid_planner = True):
 			"-nosplash",
 			"-nodesktop",
 			"-r", cmd],
-			cwd="multi-robot-trajectory-planning/smoothener")
+			cwd="multi-robot-trajectory-planning/smoothener",
+			timeout=10*60)
 
 		exportTrajectories(
 			tmpdirname,

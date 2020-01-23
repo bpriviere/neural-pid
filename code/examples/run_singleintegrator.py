@@ -188,6 +188,7 @@ def load_instance(param, env, instance):
 
 
 def run_batch(param, env, instance, controllers):
+	s0 = load_instance(param, env, instance)
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
 

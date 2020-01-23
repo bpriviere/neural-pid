@@ -12,9 +12,15 @@ plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
 
-def add_line_plot_agg(pp,result_by_instance,key,title, group_by="num_agents"):
+def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_label=None, group_by="num_agents"):
 	fig,ax = plt.subplots()
-	ax.set_title(title)
+
+	if title:
+		ax.set_title(title)
+	if x_label:
+		ax.set_xlabel(x_label)
+	if y_label:
+		ax.set_ylabel(y_label)
 
 	# find set of solvers
 	solvers = set()
@@ -67,7 +73,8 @@ def add_line_plot_agg(pp,result_by_instance,key,title, group_by="num_agents"):
 		ax.fill_between(x_array,
 			result_array[i_s,:,0]-result_array[i_s,:,1],
 			result_array[i_s,:,0]+result_array[i_s,:,1],
-			color=line.get_color(),
+			facecolor=line.get_color(),
+			linewidth=1e-3,
 			alpha=0.5)
 
 	if key == "percent_agents_success":

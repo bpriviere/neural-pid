@@ -18,6 +18,8 @@ from itertools import repeat
 import glob
 from multiprocessing import cpu_count
 from torch.multiprocessing import Pool
+import matplotlib.pyplot as plt
+import numpy as np
 
 sys.path.insert(1, os.path.join(os.getcwd(),'singleintegrator'))
 from createPlots import add_line_plot_agg, add_bar_agg, add_scatter
@@ -43,34 +45,90 @@ if __name__ == "__main__":
   obst_lst = [6,9,12]
 
   if args.plot:
-    solvers = ['orca', 'exp1Empty', 'central', 'exp1Barrier']
-    solver_names = ['ORCA', 'APF', 'Central', 'Barrier']
+    plt.rcParams.update({'font.size': 12})
+    plt.rcParams['lines.linewidth'] = 4
 
-    for obst in obst_lst:
-      files = []
-      result_by_instance = dict()
-      for solver in solvers:
-        for agent in agents_lst:
-          files.extend( glob.glob("singleintegrator/{}*/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
+    solvers = {
+      'orcaR3': 'ORCA',
+      'exp1Empty': 'NN+BF',
+      'central': 'Central',
+      'exp1Barrier': 'NNwBF'
+    }
+
+    # for obst in obst_lst:
+    #   files = []
+    #   result_by_instance = dict()
+    #   for solver in solvers.keys():
+    #     for agent in agents_lst:
+    #       files.extend( glob.glob("singleintegrator/{}*/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
+    #   for file in files:
+    #     instance = os.path.splitext(os.path.basename(file))[0]
+    #     map_filename = "singleintegrator/instances/{}.yaml".format(instance)
+    #     result = stats.stats(map_filename, file)
+    #     result["solver"] = solvers[os.path.basename(result["solver"])]
+
+    #     if instance in result_by_instance:
+    #       result_by_instance[instance].append(result)
+    #     else:
+    #       result_by_instance[instance] = [result]
+
+    #   # create plots
+    #   pp = PdfPages("exp1_{}.pdf".format(obst))
+
+    #   add_line_plot_agg(pp, result_by_instance, "percent_agents_success",
+    #     x_label="number of robots",
+    #     y_label="robot success [%]")
+    #   add_line_plot_agg(pp, result_by_instance, "control_effort_mean",
+    #     x_label="number of robots",
+    #     y_label="average control effort of successful robots")
+    #   add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+
+    #   pp.close()
+
+    # plot loss curve
+    for solver in solvers.keys():
+      files = glob.glob("singleintegrator/{}*/*.csv".format(solver), recursive=True)
+      if len(files) == 0:
+        continue
+
+      pp = PdfPages("exp1_loss_{}.pdf".format(solver))
+
+      train_loss =[]
+      test_loss = []
       for file in files:
-        instance = os.path.splitext(os.path.basename(file))[0]
-        map_filename = "singleintegrator/instances/{}.yaml".format(instance)
-        result = stats.stats(map_filename, file)
-        result["solver"] = os.path.basename(result["solver"])
+        data = np.loadtxt(file, delimiter=',', skiprows=1, dtype=np.float32)
+        train_loss.append(data[:,2])
+        test_loss.append(data[:,3])
 
-        if instance in result_by_instance:
-          result_by_instance[instance].append(result)
-        else:
-          result_by_instance[instance] = [result]
+      train_loss_std = np.std(train_loss,axis=0)
+      train_loss_mean = np.mean(train_loss,axis=0)
 
-      # create plots
-      pp = PdfPages("exp1_{}.pdf".format(obst))
+      test_loss_std = np.std(test_loss,axis=0)
+      test_loss_mean = np.mean(test_loss,axis=0)
 
-      add_line_plot_agg(pp, result_by_instance, "percent_agents_success", "% robots success")
-      add_line_plot_agg(pp, result_by_instance, "control_effort_mean", "control effort")
-      add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+      print(test_loss_std)
 
+      fig,ax = plt.subplots()
+      line1 = ax.plot(data[:,1], train_loss_mean, label="train loss",linewidth=1)[0]
+      line2 = ax.plot(data[:,1], test_loss_mean, label="test loss",linewidth=1)[0]
+
+      ax.fill_between(data[:,1],
+        train_loss_mean-train_loss_std,
+        train_loss_mean+train_loss_std,
+        facecolor=line1.get_color(),
+        linewidth=1e-3,
+        alpha=0.5)
+      ax.fill_between(data[:,1],
+        test_loss_mean-test_loss_std,
+        test_loss_mean+test_loss_std,
+        facecolor=line2.get_color(),
+        linewidth=1e-3,
+        alpha=0.5)
+      plt.legend()
+      pp.savefig(fig)
+      plt.close(fig)
       pp.close()
+
     exit()
 
   datadir = []
@@ -79,6 +137,7 @@ if __name__ == "__main__":
       datadir.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*".format(obst,agents)))
   instances = sorted(datadir)
 
+  first_training = False
 
 
   for i in range(10):
@@ -86,10 +145,16 @@ if __name__ == "__main__":
       param = run_singleintegrator.SingleIntegratorParam()
       env = SingleIntegrator(param)
       if args.train:
-        for cc in ['Empty', 'Barrier']:
+        for cc in ['Empty']:#, 'Barrier']:
           param = run_singleintegrator.SingleIntegratorParam()
           param.il_controller_class = cc
           param.il_train_model_fn = 'singleintegrator/exp1{}_{}/il_current.pt'.format(cc,i)
+          # only load the data once
+          if first_training:
+            param.il_load_loader_on = False
+            first_training = False
+          else:
+            param.il_load_loader_on = True
           env = SingleIntegrator(param)
           train_il(param, env, device)
 

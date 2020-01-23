@@ -16,14 +16,14 @@
 std::vector<RVO::Vector2> goals;
 
 
-void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile)
+void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile, float Rsense)
 {
   /* Specify the global time step of the simulation. */
   sim->setTimeStep(0.05f);
 
   /* Specify the default parameters for agents that are subsequently added. */
   sim->setAgentDefaults(
-    /* neighborDist*/ 3.0f,
+    /* neighborDist*/ Rsense,
     /* maxNeighbors*/ 5,
     /* timeHorizon*/ 1.0f,
     /* timeHorizonObst*/ 1.0f,
@@ -198,6 +198,7 @@ bool reachedGoal(RVO::RVOSimulator *sim)
 int main(int argc, char** argv)
 {
   std::string inputFile, outputFile;
+  float Rsense;
 
   namespace po = boost::program_options;
 
@@ -206,6 +207,7 @@ int main(int argc, char** argv)
     ("help", "produce help message")
     ("input,i", po::value<std::string>(&inputFile)->required(),"input file (YAML)")
     ("output,o", po::value<std::string>(&outputFile)->required(),"output file (csv)")
+    ("Rsense", po::value<float>(&Rsense)->default_value(3.0),"sensing radius in meter")
   ;
 
   try
@@ -230,7 +232,7 @@ int main(int argc, char** argv)
   RVO::RVOSimulator sim;
 
   /* Set up the scenario. */
-  setupScenario(&sim, inputFile);
+  setupScenario(&sim, inputFile, Rsense);
 
   std::ofstream output(outputFile);
   output << "t";
