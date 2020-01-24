@@ -75,7 +75,7 @@ class SingleIntegratorVelSensingParam(Param):
 		self.il_n_data = 1000000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
 		
 		self.datadict = dict()
 		self.datadict["4"] = 100000 #self.il_n_data

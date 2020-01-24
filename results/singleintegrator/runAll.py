@@ -47,14 +47,17 @@ if __name__ == "__main__":
 
   # datadir = sorted(glob.glob("instances/*"))
 
-  agents_lst = [128] #[2,4,8,16,32,64]
-  obst_lst = [6,9,12] #int(map_size[0] * map_size[1] * 0.1)
+  agents_lst = [64] #[2,4,8,16,32,64]
+  obst_lst = [6] #int(map_size[0] * map_size[1] * 0.1)
 
   datadir = []
   for agents in agents_lst:
     for obst in obst_lst:
       datadir.extend(glob.glob("instances/*obst{}_agents{}_*".format(obst,agents)))
+
   datadir = sorted(datadir)
+
+  datadir = datadir[0:2]
 
   # Serial version
   # for file in datadir:

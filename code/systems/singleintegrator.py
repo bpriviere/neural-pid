@@ -164,9 +164,8 @@ class SingleIntegrator(Env):
 			observations.append(obs_array)
 			# observations.append(observation_i)
 
-		transformed_oa_pairs, transformations = self.preprocess_transformation(oa_pairs)
-		observations = [o for o,_ in transformed_oa_pairs]
-		self.transformations = transformations
+		transformed_oa_pairs, _ = self.preprocess_transformation(oa_pairs)
+		observations = [o for (o,a) in transformed_oa_pairs]
 		return observations
 
 	def reward(self):

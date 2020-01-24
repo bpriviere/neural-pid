@@ -58,7 +58,7 @@ def torch_tile(a, dim, n_tile):
     repeat_idx = [1] * a.dim()
     repeat_idx[dim] = n_tile
     a = a.repeat(*(repeat_idx))
-    order_index = torch.LongTensor(np.concatenate([init_dim * np.arange(n_tile) + i for i in range(init_dim)]))
+    order_index = torch.tensor(np.concatenate([init_dim * np.arange(n_tile) + i for i in range(init_dim)]),device=a.device)
     return torch.index_select(a, dim, order_index)
 
 
@@ -78,3 +78,31 @@ def min_dist_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
 	
 	# return closest point in rectangle, and distance to circle
 	return closest, dist
+
+def torch_min_point_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
+	# Find the closest point to the circle within the rectangle
+	closest = torch_clip(circle_pos, rect_tl, rect_br)
+	return closest
+
+def torch_clip(x,lower,upper):
+	lower = lower.float()
+	upper = upper.float()
+	# x = x.float()
+	y = torch.min(torch.max(x,lower),upper)
+	return y
+
+
+# def torch_min_point_circle_rectangle(circle_pos, circle_r, rect_bl, rect_tr):
+# 	# Find the closest point to the circle within the rectangle
+# 	closest = torch_clip(circle_pos, rect_bl, rect_tr)
+# 	return closest
+
+# def torch_clip(x,lower,upper):
+# 	y = torch.max(torch.min(x,lower),upper)
+# 	print('torch_clip')
+# 	print('x: ', x)
+# 	print('lower: ', lower)
+# 	print('upper: ', upper)
+# 	print('output: ', y)
+# 	exit()
+# 	return y

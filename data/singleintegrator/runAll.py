@@ -44,13 +44,13 @@ if __name__ == "__main__":
   parser.add_argument("--il", action='store_true')
   args = parser.parse_args()
 
-  datadir = glob.glob("instances/*")
+  datadir = glob.glob("instances/*agents008_*")
 
   # Serial version
   # for file in datadir:
   #   rollout_instance(file)
 
   # parallel version
-  with concurrent.futures.ThreadPoolExecutor() as executor:
+  with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
     for _ in executor.map(rollout_instance, datadir):
       pass
