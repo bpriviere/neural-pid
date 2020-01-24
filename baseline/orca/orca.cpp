@@ -16,7 +16,7 @@
 std::vector<RVO::Vector2> goals;
 
 
-void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile, float Rsense)
+void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile, float Rsense, float robotRadius)
 {
   /* Specify the global time step of the simulation. */
   sim->setTimeStep(0.05f);
@@ -27,7 +27,7 @@ void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile, float R
     /* maxNeighbors*/ 5,
     /* timeHorizon*/ 1.0f,
     /* timeHorizonObst*/ 1.0f,
-    /* radius*/ 0.16f,
+    /* radius*/ robotRadius,
     /* maxSpeed*/ 0.5f);
 
 
@@ -199,6 +199,7 @@ int main(int argc, char** argv)
 {
   std::string inputFile, outputFile;
   float Rsense;
+  float robotRadius;
 
   namespace po = boost::program_options;
 
@@ -208,6 +209,7 @@ int main(int argc, char** argv)
     ("input,i", po::value<std::string>(&inputFile)->required(),"input file (YAML)")
     ("output,o", po::value<std::string>(&outputFile)->required(),"output file (csv)")
     ("Rsense", po::value<float>(&Rsense)->default_value(3.0),"sensing radius in meter")
+    ("robotRadius", po::value<float>(&robotRadius)->default_value(0.16f),"radius of robots")
   ;
 
   try
@@ -232,7 +234,7 @@ int main(int argc, char** argv)
   RVO::RVOSimulator sim;
 
   /* Set up the scenario. */
-  setupScenario(&sim, inputFile, Rsense);
+  setupScenario(&sim, inputFile, Rsense, robotRadius);
 
   std::ofstream output(outputFile);
   output << "t";
