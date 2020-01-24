@@ -122,16 +122,19 @@ class SingleIntegratorVelSensing(Env):
 			relative_neighbors = []
 			for k in neighbor_idx[1:]: # skip first entry (self)
 				if k < self.positions.shape[0]:
-					relative_neighbors.append(np.hstack((self.agents[k].s - s_i, self.agents[k].v - v_i)))
+					relative_neighbors.append(np.hstack((self.agents[k].s - s_i, self.agents[k].v)))
 				else:
 					break
 
 			# query visible obstacles
-			_, obst_idx = self.kd_tree_obstacles.query(p_i,
-				k=self.param.max_obstacles,
-				distance_upper_bound=self.param.r_obs_sense)
-			if type(obst_idx) is not np.ndarray:
-				obst_idx = [obst_idx]
+			if self.param.max_obstacles > 0:
+				_, obst_idx = self.kd_tree_obstacles.query(p_i,
+					k=self.param.max_obstacles,
+					distance_upper_bound=self.param.r_obs_sense)
+				if type(obst_idx) is not np.ndarray:
+					obst_idx = [obst_idx]
+			else:
+				obst_idx = []
 			relative_obstacles = []
 			for k in obst_idx:
 				if k < self.obstacles_np.shape[0]:
@@ -371,17 +374,21 @@ class SingleIntegratorVelSensing(Env):
 				relative_neighbors = []
 				for k in neighbor_idx[1:]: # skip first entry (self)
 					if k < positions.shape[0]:
-						relative_neighbors.append(data[t,k*4+1:k*4+5] - data[t,i*4+1:i*4+5])
+						# relative_neighbors.append(data[t,k*4+1:k*4+5] - data[t,i*4+1:i*4+5])
+						relative_neighbors.append(np.hstack((data[t,k*4+1:k*4+3] - data[t,i*4+1:i*4+3], data[t,k*4+3:k*4+5])))
 					else:
 						break
 
 				# query visible obstacles
-				_, obst_idx = kd_tree_obstacles.query(
-					s_i[0:2].numpy(),
-					k=self.param.max_obstacles,
-					distance_upper_bound=self.param.r_obs_sense)
-				if type(obst_idx) is not np.ndarray:
-					obst_idx = [obst_idx]
+				if self.param.max_obstacles > 0:
+					_, obst_idx = kd_tree_obstacles.query(
+						s_i[0:2].numpy(),
+						k=self.param.max_obstacles,
+						distance_upper_bound=self.param.r_obs_sense)
+					if type(obst_idx) is not np.ndarray:
+						obst_idx = [obst_idx]
+				else:
+					obst_idx = []
 				relative_obstacles = []
 				for k in obst_idx:
 					if k < obstacles.shape[0]:

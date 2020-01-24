@@ -118,7 +118,7 @@ class SingleIntegratorVelSensingParam(Param):
 		# learning hyperparameters
 		n,m,h,l,p = 2,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
-			nn.Linear(2,h),
+			nn.Linear(4,h),
 			nn.Linear(h,h),
 			nn.Linear(h,l)])
 
