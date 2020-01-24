@@ -6,7 +6,7 @@ from cvxpy.atoms.norm_inf import norm_inf
 from collections import namedtuple
 
 
-from utilities import torch_tile, min_dist_circle_rectangle
+from utilities import torch_tile, min_dist_circle_rectangle, torch_min_point_circle_rectangle
 import torch 
 
 # motion planning 
@@ -29,14 +29,16 @@ class Empty_Net_wAPF():
 
 		self.param = param 
 
+		self.device = torch.device('cpu')
+
 
 	def get_relative_positions_and_safety_functions(self,x):
 		nd = x.shape[0] # number of data points in batch 
 		nn = int(x[0,0].item()) # number of neighbors
 		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
 
-		P = torch.zeros((nd,nn+no,2)) # pj - pi 
-		H = torch.zeros((nd,nn+no)) 
+		P = torch.zeros((nd,nn+no,2),device=self.device) # pj - pi 
+		H = torch.zeros((nd,nn+no),device=self.device) 
 		curr_idx = 0
 
 		# print('new')
@@ -44,18 +46,19 @@ class Empty_Net_wAPF():
 			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
 			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,2,dtype=int)
 			P[:,curr_idx,:] = x[:,idx]
-			H[:,curr_idx] = torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent
+			H[:,curr_idx] = torch.max(torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent, torch.zeros(1,device=self.device))
 			curr_idx += 1 
 
 		for j in range(no):
 			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
 			P[:,curr_idx,:] = x[:,idx]
 			closest_point = torch_min_point_circle_rectangle(
-				torch.Tensor([0.0,0.0]), 
+				torch.zeros(2,device=self.device), 
 				self.param.r_agent,
-				-x[:,idx] - torch.Tensor([0.5,0.5]), 
-				-x[:,idx] + torch.Tensor([0.5,0.5]))
-			H[:,curr_idx] = torch.norm(closest_point, p=2, dim=1) - self.param.r_agent
+				-x[:,idx] - torch.tensor([0.5,0.5],device=self.device), 
+				-x[:,idx] + torch.tensor([0.5,0.5],device=self.device))
+			# H[:,curr_idx] = torch.norm(closest_point, p=2, dim=1) - self.param.r_agent
+			H[:,curr_idx] = torch.max(torch.norm(closest_point, p=2, dim=1) - self.param.r_agent, torch.zeros(1,device=self.device))
 			curr_idx += 1
 
 		return P,H 
@@ -95,6 +98,7 @@ class Empty_Net_wAPF():
 			adaptive_scaling = self.get_adaptive_scaling(x_i,empty_action,barrier_action)
 			a_i = adaptive_scaling*empty_action + barrier_action
 			a_i = self.scale(a_i,self.param.a_max)
+			a_i = a_i.detach().numpy()
 			A[i,:] = a_i
 		return A
 
