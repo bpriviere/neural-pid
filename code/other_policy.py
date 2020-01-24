@@ -9,6 +9,119 @@ from collections import namedtuple
 from utilities import torch_tile, min_dist_circle_rectangle
 import torch 
 
+# motion planning 
+
+class Empty_Net_wAPF():
+
+	def __init__(self,param,env,empty_net):
+
+		self.empty_net = empty_net
+
+		self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
+		self.state_dim_per_agent = param.il_phi_network_architecture[0].in_features
+		
+		self.a_max = param.a_max
+		self.a_min = param.a_min
+		# self.a_noise = param.a_noise
+
+		self.layers = param.il_psi_network_architecture
+		self.activation = param.il_network_activation
+
+		self.param = param 
+
+
+	def get_relative_positions_and_safety_functions(self,x):
+		nd = x.shape[0] # number of data points in batch 
+		nn = int(x[0,0].item()) # number of neighbors
+		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
+
+		P = torch.zeros((nd,nn+no,2)) # pj - pi 
+		H = torch.zeros((nd,nn+no)) 
+		curr_idx = 0
+
+		# print('new')
+		for j in range(nn):
+			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
+			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,2,dtype=int)
+			P[:,curr_idx,:] = x[:,idx]
+			H[:,curr_idx] = torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent
+			curr_idx += 1 
+
+		for j in range(no):
+			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
+			P[:,curr_idx,:] = x[:,idx]
+			closest_point = torch_min_point_circle_rectangle(
+				torch.Tensor([0.0,0.0]), 
+				self.param.r_agent,
+				-x[:,idx] - torch.Tensor([0.5,0.5]), 
+				-x[:,idx] + torch.Tensor([0.5,0.5]))
+			H[:,curr_idx] = torch.norm(closest_point, p=2, dim=1) - self.param.r_agent
+			curr_idx += 1
+
+		return P,H 
+
+	def get_barrier_action(self,x):
+
+		P,H = self.get_relative_positions_and_safety_functions(x)
+
+		nd = x.shape[0] # number of data points in batch 
+		nn = int(x[0,0].item()) # number of neighbors
+		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
+		barrier = torch.zeros((len(x),self.action_dim_per_agent))
+
+		for j in range(nn + no):
+			barrier += self.get_barrier(P[:,j,:],H[:,j])
+
+		return barrier
+
+
+	def get_barrier(self,P,H):
+		normP = torch.norm(P,p=2,dim=1)
+		normP = normP.unsqueeze(1)
+		normP = torch_tile(normP,1,P.shape[1])
+		H = H.unsqueeze(1)
+		H = torch_tile(H,1,P.shape[1])
+		barrier = -1*self.param.b_gamma*torch.mul(torch.mul(torch.pow(H,-1),torch.pow(normP,-1)),P)
+		return barrier
+
+	def policy(self,x):
+
+		A = np.empty((len(x),self.action_dim_per_agent))
+		for i,x_i in enumerate(x):
+			x_i = torch.Tensor(x_i)
+			empty_action = self.empty_net(x_i)
+			empty_action = self.scale(empty_action, self.param.phi_max)
+			barrier_action = self.get_barrier_action(x_i)
+			adaptive_scaling = self.get_adaptive_scaling(x_i,empty_action,barrier_action)
+			a_i = adaptive_scaling*empty_action + barrier_action
+			a_i = self.scale(a_i,self.param.a_max)
+			A[i,:] = a_i
+		return A
+
+
+	def scale(self,action,value):
+		# scale 
+		inv_alpha = action.norm(p=float('inf'),dim=1)/value
+		inv_alpha = torch.clamp(inv_alpha,min=1)
+		inv_alpha = inv_alpha.unsqueeze(0).T
+		inv_alpha = torch_tile(inv_alpha,1,2)
+		action = action*inv_alpha.pow_(-1)
+		return action 
+
+	def get_adaptive_scaling(self,x,empty_action,barrier_action):
+		P,H = self.get_relative_positions_and_safety_functions(x)
+		adaptive_scaling = torch.ones(H.shape[0])
+		if not H.nelement() == 0:
+			minH = torch.min(H,dim=1)[0]
+			normb = torch.norm(barrier_action,p=2,dim=1)
+			normpi = torch.norm(empty_action,p=2,dim=1)
+			adaptive_scaling[minH < self.param.Delta_R] = torch.min(torch.mul(normb,torch.pow(normpi,-1)),torch.Tensor(1))[0]
+		return adaptive_scaling.unsqueeze(1)
+
+
+
+
+# other
 # consensus policies 
 
 class ZeroPolicy:
@@ -114,145 +227,7 @@ class WMSR_Policy:
 		return a*dt
 
 
-# motion planning 
 
-class Empty_Net_wAPF():
-
-	def __init__(self,param,env,empty_net):
-
-		self.empty_net = empty_net
-
-		self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
-		self.state_dim_per_agent = param.il_phi_network_architecture[0].in_features
-		
-		self.a_max = param.a_max
-		self.a_min = param.a_min
-		# self.a_noise = param.a_noise
-
-		self.layers = param.il_psi_network_architecture
-		self.activation = param.il_network_activation
-
-		self.param = param 
-
-
-	def policy(self,x,transformations):
-
-		# inputs observation from all agents...
-		# outputs policy for all agents
-		A = np.empty((len(x),self.action_dim_per_agent))
-		for i,x_i in enumerate(x):
-			R = transformations[i][0]
-			empty_action = self.empty_net(torch.Tensor(x_i))
-			barrier_action = self.APF(x_i)
-			a_i = (barrier_action+empty_action).detach().numpy()
-			a_i = self.scale(barrier_action+empty_action,self.a_max).detach().numpy()
-			a_i = np.matmul(R.T,a_i.T).T
-			A[i,:] = a_i
-		return A
-
-	def APF(self,x):
-		barrier_action = torch.zeros((len(x),self.action_dim_per_agent))
-		nd = x.shape[0] # number of data points in batch 
-		nn = int(x[0,0].item()) # number of neighbors
-		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
-
-		# 
-		if not isinstance(x,torch.Tensor):
-			x = torch.from_numpy(x).float()
-
-		closest_barrier_mode_on = False
-		if closest_barrier_mode_on:
-			min_neighbor_dist = np.Inf 
-			min_neighbor_mode = 0
-			for j in range(nn):
-				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-				relative_neighbor = x[:,idx].numpy()
-				P_i = -1*relative_neighbor[:,0:2] # pi - pj
-				if np.linalg.norm(P_i) - self.param.r_agent < min_neighbor_dist: 
-					min_neighbor_p = P_i 
-					min_neighbor_dist = np.linalg.norm(P_i) - self.param.r_agent
-					min_neighbor_mode = 1 
-
-			for j in range(no):
-				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)
-				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-				closest, dist = min_dist_circle_rectangle(
-					np.zeros(2), self.param.r_agent,
-					P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
-				if dist[0] < min_neighbor_dist:
-					min_neighbor_p = closest
-					min_neighbor_dist = dist[0]
-					min_neighbor_mode = 2
-
-			# if min_neighbor_dist < self.param.r_agent + 0.15:
-			if min_neighbor_mode == 1:
-				barrier_action += torch.from_numpy(self.get_robot_barrier(min_neighbor_p)).float()
-			elif min_neighbor_mode == 2:
-				barrier_action += torch.from_numpy(self.get_obstacle_barrier_square(min_neighbor_p)).float()
-
-		else:
-			# this implementation uses all barriers
-			# print('Neighbors')
-			for j in range(nn):
-				# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-				idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,self.state_dim_per_agent,dtype=int)
-				relative_neighbor = x[:,idx].numpy()
-				P_i = -1*relative_neighbor[:,0:2] # pi - pj
-				A_i = self.get_robot_barrier(P_i)
-				barrier_action += torch.from_numpy(A_i).float()
-
-			# print('Obstacles')
-			for j in range(no):
-				idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
-				P_i = -1*x[:,idx].numpy() # in nd x state_dim_per_agent
-				closest, dist = min_dist_circle_rectangle(
-					np.zeros(2), self.param.r_agent,
-					P_i - np.array([0.5,0.5]), P_i + np.array([0.5,0.5]))
-				A_i = self.get_obstacle_barrier_square(closest)
-				barrier_action += torch.from_numpy(A_i).float()
-
-		return barrier_action 
-
-
-	def scale(self,action,value):
-		# scale 
-		inv_alpha = action.norm(p=float('inf'),dim=1)/value
-		inv_alpha = torch.clamp(inv_alpha,min=1)
-		inv_alpha = inv_alpha.unsqueeze(0).T
-		inv_alpha = torch_tile(inv_alpha,1,2)
-		action = action*inv_alpha.pow_(-1)
-		return action 
-
-
-	def get_robot_barrier(self,P):
-		H = np.linalg.norm(P,axis=1) - self.param.D_robot
-		H = np.reshape(H,(len(H),1))
-		H = np.tile(H,(1,np.shape(P)[1]))
-		normP = np.linalg.norm(P,axis=1)
-		normP = np.reshape(normP,(len(normP),1))
-		normP = np.tile(normP,(1,np.shape(P)[1]))
-		return self.param.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.param.b_exph)),P)
-
-
-	def get_obstacle_barrier(self,P):
-		H = np.linalg.norm(P,axis=1) - self.param.D_obstacle
-		H = np.reshape(H,(len(H),1))
-		H = np.tile(H,(1,np.shape(P)[1]))
-		normP = np.linalg.norm(P,axis=1)
-		normP = np.reshape(normP,(len(normP),1))
-		normP = np.tile(normP,(1,np.shape(P)[1]))
-		return self.param.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.param.b_exph)),P)
-
-
-	def get_obstacle_barrier_square(self,P):
-		H = np.linalg.norm(P,axis=1) - self.param.r_agent
-		H = np.reshape(H,(len(H),1))
-		H = np.tile(H,(1,np.shape(P)[1]))
-		normP = np.linalg.norm(P,axis=1)
-		normP = np.reshape(normP,(len(normP),1))
-		normP = np.tile(normP,(1,np.shape(P)[1]))
-		return self.param.b_gamma*np.multiply(np.multiply(np.power(normP,-1),np.power(H,-1*self.param.b_exph)),P)
 
 # control barrier function as implemented by Ames 2017
 # static obstacles not implemented  
