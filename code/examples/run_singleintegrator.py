@@ -3,7 +3,7 @@ from param import Param
 from run import run, parse_args
 from sim import run_sim
 from systems.singleintegrator import SingleIntegrator
-from other_policy import APF, Empty_Net_wAPF
+from other_policy import APF, Empty_Net_wAPF, ZeroPolicy, GoToGoalPolicy
 import plotter 
 
 # standard
