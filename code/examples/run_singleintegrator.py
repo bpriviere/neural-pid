@@ -3,7 +3,7 @@ from param import Param
 from run import run, parse_args
 from sim import run_sim
 from systems.singleintegrator import SingleIntegrator
-from other_policy import APF, Empty_Net_wAPF
+from other_policy import APF, Empty_Net_wAPF, ZeroPolicy, GoToGoalPolicy
 import plotter 
 
 # standard
@@ -38,6 +38,8 @@ class SingleIntegratorParam(Param):
 		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
+		self.Delta_R = 0.01
+
 		self.max_neighbors = 5
 		self.max_obstacles = 5
 		# Barrier function stuff
@@ -54,14 +56,14 @@ class SingleIntegratorParam(Param):
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100 #25
+		self.sim_tf = 25 #25
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
 
 		# IL
-		self.il_load_loader_on = True
+		self.il_load_loader_on = False
 		# self.il_load_loader_on = False
 		self.training_time_downsample = 100
 		self.il_train_model_fn = '../results/singleintegrator/empty_2/il_current.pt'
@@ -75,11 +77,11 @@ class SingleIntegratorParam(Param):
 		self.il_n_data = 1000000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["4"] = 10000000 #750000 #self.il_n_data
+		self.datadict["4"] = 10000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -221,7 +223,7 @@ if __name__ == '__main__':
 
 	controllers = {
 		# 'il':	torch.load(param.sim_il_model_fn),
-		'empty_2': Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn)),
+		# 'empty_2': Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn)),
 		# 'empty': torch.load(param.il_empty_model_fn),
 		# 'ad':torch.load(param.ad_train_model_fn),
 		# 'adAPF': Empty_Net_wAPF(param,env,torch.load(param.ad_train_model_fn)),
@@ -231,7 +233,8 @@ if __name__ == '__main__':
 		# 'ad1M': torch.load('../models/singleintegrator/ad_current.pt'),
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
-		# 'barrier' : torch.load(param.il_barrier_model_fn)
+		# 'barrier' : torch.load(param.il_barrier_model_fn),
+		'current': torch.load(param.il_train_model_fn)
 	}
 
 	s0 = load_instance(param, env, args.instance)
