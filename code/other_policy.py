@@ -150,7 +150,33 @@ class ZeroPolicy:
 	def __init__(self,env):
 		self.env = env
 	def policy(self,state):
-		return np.zeros((self.env.m))
+		return torch.zeros((self.env.m))
+	def __call__(self,x):
+		return torch.zeros((len(x),2))
+
+class GoToGoalPolicy:
+	def __init__(self,param,env):
+		self.param = param
+		self.env = env
+
+	def policy(self, o):
+		A = np.empty((len(o),self.env.action_dim_per_agent))
+		for i,o_i in enumerate(o):
+			a_i = self(o_i)
+			A[i,:] = a_i 
+		return A
+
+	def __call__(self, o):
+		A = torch.empty((len(o),self.env.action_dim_per_agent))
+		for i, observation_i in enumerate(o):
+			relative_goal = np.array(observation_i[1:3])
+			a_nom = self.param.cbf_kp*relative_goal
+			scale = self.param.a_max/np.max(np.abs(a_nom))
+			if scale < 1:
+				a_nom = scale*a_nom
+			A[i,:] = torch.tensor(a_nom)
+
+		return A
 
 class LCP_Policy:
 	# linear consensus protocol
