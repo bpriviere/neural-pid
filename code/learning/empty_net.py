@@ -19,6 +19,7 @@ class Empty_Net(nn.Module):
 		super(Empty_Net, self).__init__()
 
 		if learning_module is "DeepSet":
+
 			self.model_neighbors = DeepSet(
 				param.il_phi_network_architecture,
 				param.il_rho_network_architecture,
@@ -31,21 +32,19 @@ class Empty_Net(nn.Module):
 				param.il_network_activation,
 				param.env_name
 				)
+			self.psi = FeedForward(
+				param.il_psi_network_architecture,
+				param.il_network_activation)
 
-			self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
-		
-		self.phi_max = param.phi_max
-		self.phi_min = param.phi_min
-		# self.a_noise = param.a_noise
-
-		self.psi = FeedForward(
-			param.il_psi_network_architecture,
-			param.il_network_activation)
-
-		self.dim_g = param.il_psi_network_architecture[0].in_features - \
-						self.model_obstacles.rho.out_dim - \
-						self.model_neighbors.rho.out_dim
+		self.param = param
 		self.device = torch.device('cpu')
+
+		self.dim_neighbor = param.il_phi_network_architecture[0].in_features
+		self.dim_action = param.il_psi_network_architecture[-1].out_features
+		self.dim_state = param.il_psi_network_architecture[0].in_features - \
+						param.il_rho_network_architecture[-1].out_features - \
+						param.il_rho_obs_network_architecture[-1].out_features
+
 
 	def to(self, device):
 		self.device = device
@@ -54,17 +53,15 @@ class Empty_Net(nn.Module):
 		self.psi.to(device)
 		return super().to(device)
 
-	def policy(self,x,transformations):
+	def policy(self,x):
 
 		# inputs observation from all agents...
 		# outputs policy for all agents
 
 		A = np.empty((len(x),self.action_dim_per_agent))
 		for i,x_i in enumerate(x):
-			R = transformations[i][0]
 			a_i = self(torch.Tensor(x_i))
 			a_i = a_i.detach().numpy()
-			a_i = np.matmul(R.T,a_i.T).T
 			A[i,:] = a_i
 		return A
 
@@ -73,55 +70,39 @@ class Empty_Net(nn.Module):
 		self.model_obstacles.export_to_onnx("{}_obstacles".format(filename))
 		self.psi.export_to_onnx("{}_psi".format(filename))
 
+	def get_num_neighbors(self,x):
+		return int(x[0,0])
+
+	def get_num_obstacles(self,x):
+		nn = self.get_num_neighbors(x)
+		return int((x.shape[1] - 1 - self.dim_state - nn*self.dim_neighbor) / 2)  # number of obstacles 
+
+	def get_agent_idx_all(self,x):
+		nn = self.get_num_neighbors(x)
+		idx = np.arange(1+self.dim_state,1+self.dim_state+self.dim_neighbor*nn,dtype=int)
+		return idx
+
+	def get_obstacle_idx_all(self,x):
+		nn = self.get_num_neighbors(x)
+		idx = np.arange((1+self.dim_state)+self.dim_neighbor*nn, x.size()[1],dtype=int)
+		return idx
+
+	def get_goal_idx(self,x):
+		idx = np.arange(1,1+self.dim_state,dtype=int)
+		return idx 
+
 	def __call__(self,x):
 		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
 		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
-		if self.dim_g == 2 and self.model_neighbors.phi.in_dim == 2:
-			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-			num_obstacles = int((x.size()[1] - 3 - 2*num_neighbors)/2)
 
-			# print("neighbors ", num_neighbors)
-			# print("obs ", num_obstacles)
+		num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
+		num_obstacles = int((x.size()[1] - (1 + self.dim_state + self.dim_neighbor*num_neighbors))/2)
 
-			rho_neighbors = self.model_neighbors.forward(x[:,3:3+2*num_neighbors])
-			
-			# rho_neighbors = torch.zeros((len(x),16), device=self.device)
-
-			# print("rho_neighbors", rho_neighbors)
-			rho_obstacles = self.model_obstacles.forward(x[:,3+2*num_neighbors:])
-			g = x[:,1:3]
-		elif self.dim_g == 4 and self.model_neighbors.phi.in_dim == 4:
-			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-			num_obstacles = int((x.size()[1] - 5 - 4*num_neighbors)/2)
-
-			# print("neighbors ", num_neighbors)
-			# print("obs ", num_obstacles)
-
-			rho_neighbors = self.model_neighbors.forward(x[:,5:5+4*num_neighbors])
-			# print("rho_neighbors", rho_neighbors)
-			rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
-			g = x[:,1:5]
-		elif self.dim_g == 2 and self.model_neighbors.phi.in_dim == 4:
-			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-			num_obstacles = int((x.size()[1] - 3 - 4*num_neighbors)/2)
-
-			rho_neighbors = self.model_neighbors.forward(x[:,3:3+4*num_neighbors])
-			# print("rho_neighbors", rho_neighbors)
-			rho_obstacles = self.model_obstacles.forward(x[:,3+4*num_neighbors:])
-			g = x[:,1:3]
-		else:
-			assert(False)
-		# g_norm = g.norm(dim=1,keepdim=True)
-		# time_to_goal = x[:,4:5]
+		rho_neighbors = self.model_neighbors.forward(x[:,self.get_agent_idx_all(x)])
+		rho_obstacles = self.model_obstacles.forward(x[:,self.get_obstacle_idx_all(x)])
+		g = x[:,self.get_goal_idx(x)]
 
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)
 		x = self.psi(x)
 
-		# x = self.scale(x)
-
-		return x
-
-	def scale(self,x):
-		x = torch.tanh(x) # x \in [-1,1]
-		x = (x+1.)/2.*torch.tensor((self.phi_max-self.phi_min)).float()+torch.tensor((self.phi_min)).float() #, x \in [amin,amax]
 		return x

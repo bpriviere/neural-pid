@@ -13,23 +13,16 @@ import torch
 
 class Empty_Net_wAPF():
 
-	def __init__(self,param,env,empty_net):
+	def __init__(self,param,env,empty):
 
-		self.empty = empty_net
-
-		self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
-		self.state_dim_per_agent = param.il_phi_network_architecture[0].in_features
-		
-		self.a_max = param.a_max
-		self.a_min = param.a_min
-		# self.a_noise = param.a_noise
-
-		self.layers = param.il_psi_network_architecture
-		self.activation = param.il_network_activation
-
+		self.empty = empty
 		self.param = param 
-
 		self.device = torch.device('cpu')
+		self.dim_neighbor = param.il_phi_network_architecture[0].in_features
+		self.dim_action = param.il_psi_network_architecture[-1].out_features
+		self.dim_state = param.il_psi_network_architecture[0].in_features - \
+						param.il_rho_network_architecture[-1].out_features - \
+						param.il_rho_obs_network_architecture[-1].out_features
 
 
 	def __call__(self,x):
@@ -52,31 +45,30 @@ class Empty_Net_wAPF():
 
 	def policy(self,x):
 
-		A = np.empty((len(x),self.action_dim_per_agent))
+		A = np.empty((len(x),self.dim_action))
 		for i,x_i in enumerate(x):
 			a_i = self(x_i)
 			A[i,:] = a_i 
 		return A
 
 	def numpy_get_relative_positions_and_safety_functions(self,x):
+		
 		nd = x.shape[0] # number of data points in batch 
-		nn = int(x[0,0].item()) # number of neighbors
-		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
+		nn = self.get_num_neighbors(x)
+		no = self.get_num_obstacles(x) 
 
 		P = np.zeros((nd,nn+no,2)) # pj - pi 
 		H = np.zeros((nd,nn+no)) 
 		curr_idx = 0
 
-		# print('new')
 		for j in range(nn):
-			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,2,dtype=int)
+			idx = self.get_agent_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
 			H[:,curr_idx] = np.max((np.linalg.norm(x[:,idx]) - 2*self.param.r_agent, np.zeros(1)))
 			curr_idx += 1 
 
 		for j in range(no):
-			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
+			idx = self.get_obstacle_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
 			closest_point = min_point_circle_rectangle(
 				np.zeros(2), 
@@ -89,14 +81,9 @@ class Empty_Net_wAPF():
 
 	def numpy_get_barrier_action(self,x,P,H):
 
-		nd = x.shape[0] # number of data points in batch 
-		nn = int(x[0,0].item()) # number of neighbors
-		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
-		barrier = np.zeros((len(x),self.action_dim_per_agent))
-
-		for j in range(nn + no):
+		barrier = np.zeros((len(x),self.dim_action))
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
 			barrier += self.numpy_get_barrier(P[:,j,:],H[:,j])
-
 		return barrier
 
 	def numpy_get_barrier(self,P,H):
@@ -104,15 +91,12 @@ class Empty_Net_wAPF():
 		barrier = -1*self.param.b_gamma/(H*normp)*P
 		return barrier
 
-	def numpy_get_adaptive_scaling(self,x,empty,barrier,P,H):
+	def numpy_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = 1.0 
-		
-		if (not len(H) == 0) and (np.min(H) < self.param.Delta_R):		
-
+		if (not len(H) == 0) and (np.min(H) < self.param.Delta_R):
 			normb = np.linalg.norm(barrier_action)
 			normpi = np.linalg.norm(empty_action)
 			adaptive_scaling = np.min((normb/normpi,1))
-			
 		return adaptive_scaling
 
 	def numpy_scale(self,action,max_action):
@@ -120,6 +104,36 @@ class Empty_Net_wAPF():
 		alpha = np.min((alpha,1))
 		action = action*alpha
 		return action
+
+	def get_num_neighbors(self,x):
+		return int(x[0,0])
+
+	def get_num_obstacles(self,x):
+		nn = self.get_num_neighbors(x)
+		return int((x.shape[1] - 1 - self.dim_state - nn*self.dim_neighbor) / 2)  # number of obstacles 
+
+	def get_agent_idx_j(self,x,j):
+		idx = 1+self.dim_state + self.dim_neighbor*j+np.arange(0,2,dtype=int)
+		return idx
+
+	def get_obstacle_idx_j(self,x,j):
+		nn = self.get_num_neighbors(x)
+		idx = 1 + self.dim_state + self.dim_neighbor*nn+j*2+np.arange(0,2,dtype=int)
+		return idx
+
+	def get_agent_idx_all(self,x):
+		nn = self.get_num_neighbors(x)
+		idx = np.arange(1+self.dim_state,1+self.dim_state+self.dim_neighbor*nn,dtype=int)
+		return idx
+
+	def get_obstacle_idx_all(self,x):
+		nn = self.get_num_neighbors(x)
+		idx = np.arange((1+self.dim_state)+self.dim_neighbor*nn, x.size()[1],dtype=int)
+		return idx
+
+	def get_goal_idx(self,x):
+		idx = np.arange(1,1+self.dim_state,dtype=int)
+		return idx 
 
 
 

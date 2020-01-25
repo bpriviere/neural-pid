@@ -35,14 +35,21 @@ class Barrier_Net(nn.Module):
 			param.il_network_activation)		
 
 		self.param = param 
-		self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
-		self.state_dim_per_agent = param.il_phi_network_architecture[0].in_features
+		
+		# temp fix 
+		# self.action_dim_per_agent = param.il_psi_network_architecture[-1].out_features
+		# self.state_dim_per_agent = param.il_phi_network_architecture[0].in_features
+
 		self.layers = param.il_psi_network_architecture
 		self.activation = param.il_network_activation
 		self.device = torch.device('cpu')
-		self.dim_g = param.il_psi_network_architecture[0].in_features - \
-						self.model_obstacles.rho.out_dim - \
-						self.model_neighbors.rho.out_dim		
+
+		self.dim_neighbor = param.il_phi_network_architecture[0].in_features
+		self.dim_action = param.il_psi_network_architecture[-1].out_features
+		self.dim_state = param.il_psi_network_architecture[0].in_features - \
+						param.il_rho_network_architecture[-1].out_features - \
+						param.il_rho_obs_network_architecture[-1].out_features
+
 
 	def to(self, device):
 		self.device = device
@@ -52,31 +59,30 @@ class Barrier_Net(nn.Module):
 
 
 	def torch_get_relative_positions_and_safety_functions(self,x):
+
 		nd = x.shape[0] # number of data points in batch 
-		nn = int(x[0,0].item()) # number of neighbors
-		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
+		nn = self.get_num_neighbors(x)
+		no = self.get_num_obstacles(x)
 
 		P = torch.zeros((nd,nn+no,2),device=self.device) # pj - pi 
 		H = torch.zeros((nd,nn+no),device=self.device) 
 		curr_idx = 0
 
-		# print('new')
 		for j in range(nn):
 			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,2,dtype=int)
+			idx = self.get_agent_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
 			H[:,curr_idx] = torch.max(torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent, torch.zeros(1,device=self.device))
 			curr_idx += 1 
 
 		for j in range(no):
-			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
+			idx = self.get_obstacle_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
 			closest_point = torch_min_point_circle_rectangle(
 				torch.zeros(2,device=self.device), 
 				self.param.r_agent,
 				-x[:,idx] - torch.tensor([0.5,0.5],device=self.device), 
 				-x[:,idx] + torch.tensor([0.5,0.5],device=self.device))
-			# H[:,curr_idx] = torch.norm(closest_point, p=2, dim=1) - self.param.r_agent
 			H[:,curr_idx] = torch.max(torch.norm(closest_point, p=2, dim=1) - self.param.r_agent, torch.zeros(1,device=self.device))
 			curr_idx += 1
 
@@ -84,24 +90,23 @@ class Barrier_Net(nn.Module):
 
 
 	def numpy_get_relative_positions_and_safety_functions(self,x):
+		
 		nd = x.shape[0] # number of data points in batch 
-		nn = int(x[0,0].item()) # number of neighbors
-		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
+		nn = self.get_num_neighbors(x)
+		no = self.get_num_obstacles(x) 
 
 		P = np.zeros((nd,nn+no,2)) # pj - pi 
 		H = np.zeros((nd,nn+no)) 
 		curr_idx = 0
 
-		# print('new')
 		for j in range(nn):
-			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-			idx = 1+self.state_dim_per_agent*(j+1)+np.arange(0,2,dtype=int)
+			idx = self.get_agent_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
 			H[:,curr_idx] = np.max((np.linalg.norm(x[:,idx]) - 2*self.param.r_agent, np.zeros(1)))
 			curr_idx += 1 
 
 		for j in range(no):
-			idx = 1+self.state_dim_per_agent*(nn+1)+j*2+np.arange(0,2,dtype=int)	
+			idx = self.get_obstacle_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
 			closest_point = min_point_circle_rectangle(
 				np.zeros(2), 
@@ -115,26 +120,16 @@ class Barrier_Net(nn.Module):
 
 	def torch_get_barrier_action(self,x,P,H):
 
-		nd = x.shape[0] # number of data points in batch 
-		nn = int(x[0,0].item()) # number of neighbors
-		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
-		barrier = torch.zeros((len(x),self.action_dim_per_agent),device=self.device)
-
-		for j in range(nn + no):
+		barrier = torch.zeros((len(x),self.dim_action),device=self.device)
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
 			barrier += self.torch_get_barrier(P[:,j,:],H[:,j])
-
 		return barrier
 
 	def numpy_get_barrier_action(self,x,P,H):
 
-		nd = x.shape[0] # number of data points in batch 
-		nn = int(x[0,0].item()) # number of neighbors
-		no = int((x.shape[1] - 1 - (nn+1)*self.state_dim_per_agent) / 2)  # number of obstacles 
-		barrier = np.zeros((len(x),self.action_dim_per_agent))
-
-		for j in range(nn + no):
+		barrier = np.zeros((len(x),self.dim_action))
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
 			barrier += self.numpy_get_barrier(P[:,j,:],H[:,j])
-
 		return barrier
 
 
@@ -157,7 +152,7 @@ class Barrier_Net(nn.Module):
 
 		self.to("cpu")
 
-		A = np.empty((len(x),self.action_dim_per_agent))
+		A = np.empty((len(x),self.dim_action))
 		for i,x_i in enumerate(x):
 			a_i = self(x_i)
 			A[i,:] = a_i
@@ -176,15 +171,12 @@ class Barrier_Net(nn.Module):
 		return adaptive_scaling.unsqueeze(1)
 
 
-	def numpy_get_adaptive_scaling(self,x,empty,barrier,P,H):
+	def numpy_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = 1.0 
-		
-		if (not len(H) == 0) and (np.min(H) < self.param.Delta_R):		
-
+		if (not len(H) == 0) and (np.min(H) < self.param.Delta_R):
 			normb = np.linalg.norm(barrier_action)
 			normpi = np.linalg.norm(empty_action)
 			adaptive_scaling = np.min((normb/normpi,1))
-			
 		return adaptive_scaling
 
 
@@ -205,9 +197,7 @@ class Barrier_Net(nn.Module):
 	def __call__(self,x):
 
 		if type(x) == torch.Tensor:
-
 			P,H = self.torch_get_relative_positions_and_safety_functions(x)
-
 			barrier_action = self.torch_get_barrier_action(x,P,H)
 			empty_action = self.empty(x)
 			empty_action = self.torch_scale(empty_action, self.param.phi_max)
@@ -216,52 +206,58 @@ class Barrier_Net(nn.Module):
 			action = self.torch_scale(action, self.param.a_max)
 
 		elif type(x) is np.ndarray:
-
 			P,H = self.numpy_get_relative_positions_and_safety_functions(x)
-
 			barrier_action = self.numpy_get_barrier_action(x,P,H)
 			empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 			empty_action = self.numpy_scale(empty_action, self.param.phi_max)
 			adaptive_scaling = self.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
 			action = adaptive_scaling*empty_action+barrier_action 
 			action = self.numpy_scale(action, self.param.a_max)
-
 		else:
 			exit('type(x) not recognized: ', type(x))
 
 		return action 
 
+	def get_num_neighbors(self,x):
+		return int(x[0,0])
+
+	def get_num_obstacles(self,x):
+		nn = self.get_num_neighbors(x)
+		return int((x.shape[1] - 1 - self.dim_state - nn*self.dim_neighbor) / 2)  # number of obstacles 
+
+	def get_agent_idx_j(self,x,j):
+		idx = 1+self.dim_state + self.dim_neighbor*j+np.arange(0,2,dtype=int)
+		return idx
+
+	def get_obstacle_idx_j(self,x,j):
+		nn = self.get_num_neighbors(x)
+		idx = 1 + self.dim_state + self.dim_neighbor*nn+j*2+np.arange(0,2,dtype=int)
+		return idx
+
+	def get_agent_idx_all(self,x):
+		nn = self.get_num_neighbors(x)
+		idx = np.arange(1+self.dim_state,1+self.dim_state+self.dim_neighbor*nn,dtype=int)
+		return idx
+
+	def get_obstacle_idx_all(self,x):
+		nn = self.get_num_neighbors(x)
+		idx = np.arange((1+self.dim_state)+self.dim_neighbor*nn, x.size()[1],dtype=int)
+		return idx
+
+	def get_goal_idx(self,x):
+		idx = np.arange(1,1+self.dim_state,dtype=int)
+		return idx 
 
 	def empty(self,x):
 		# batches are grouped by number of neighbors (i.e., each batch has data with the same number of neighbors)
 		# x is a 2D tensor, where the columns are: relative_goal, relative_neighbors, ...
 
-		# this is for single integrator
-		if self.dim_g == 2 and self.model_neighbors.phi.in_dim == 2:
-			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-			num_obstacles = int((x.size()[1] - 3 - 2*num_neighbors)/2)
-			rho_neighbors = self.model_neighbors.forward(x[:,3:3+2*num_neighbors])
-			rho_obstacles = self.model_obstacles.forward(x[:,3+2*num_neighbors:])
-			g = x[:,1:3]
+		num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
+		num_obstacles = int((x.size()[1] - (1 + self.dim_state + self.dim_neighbor*num_neighbors))/2)
 
-		# this is for single integrator with vel sensing 
-		elif self.dim_g == 2 and self.model_neighbors.phi.in_dim == 4:
-			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-			num_obstacles = int((x.size()[1] - 3 - 4*num_neighbors)/2)
-			rho_neighbors = self.model_neighbors.forward(x[:,3:3+4*num_neighbors])
-			rho_obstacles = self.model_obstacles.forward(x[:,3+4*num_neighbors:])
-			g = x[:,1:3]
-
-		# this is for double integrator
-		elif self.dim_g == 4 and self.model_neighbors.phi.in_dim == 4:
-			num_neighbors = int(x[0,0]) #int((x.size()[1]-4)/4)
-			num_obstacles = int((x.size()[1] - 5 - 4*num_neighbors)/2)
-			rho_neighbors = self.model_neighbors.forward(x[:,5:5+4*num_neighbors])
-			rho_obstacles = self.model_obstacles.forward(x[:,5+4*num_neighbors:])
-			g = x[:,1:5]
-
-		else:
-			assert(False)
+		rho_neighbors = self.model_neighbors.forward(x[:,self.get_agent_idx_all(x)])
+		rho_obstacles = self.model_obstacles.forward(x[:,self.get_obstacle_idx_all(x)])
+		g = x[:,self.get_goal_idx(x)]
 
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)
 		x = self.psi(x)
