@@ -28,28 +28,12 @@ from createPlots import add_line_plot_agg, add_bar_agg, add_scatter
 import stats
 from matplotlib.backends.backend_pdf import PdfPages
 
-def run_orca(file, r):
-  basename = os.path.splitext(os.path.basename(file))[0]
-
-  with tempfile.TemporaryDirectory() as tmpdirname:
-    output_file = tmpdirname + "/orca.csv"
-    subprocess.run("../baseline/orca/build/orca -i {} -o {} --Rsense {}".format(file, output_file, r), shell=True)
-    # load file and convert to binary
-    data = np.loadtxt(output_file, delimiter=',', skiprows=1, dtype=np.float32)
-    # store in binary format
-    folder = "singleintegrator/orcaR{}".format(r)
-    if not os.path.exists(folder):
-      os.mkdir(folder)
-    with open("{}/{}.npy".format(folder, basename), "wb") as f:
-        np.save(f, data, allow_pickle=False)
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--disable-cuda', action='store_true', help='Disable CUDA')
   parser.add_argument('--train', action='store_true', help='run training')
   parser.add_argument('--sim', action='store_true', help='run validation inference')
   parser.add_argument('--plot', action='store_true', help='create plots')
-  parser.add_argument('--orca', action='store_true', help='run ORCA baseline')
   args = parser.parse_args()
 
   torch.multiprocessing.set_start_method('spawn')
@@ -63,14 +47,6 @@ if __name__ == "__main__":
   obst_lst = [6] #[6,9,12]
   radii = [1,2,3,4,5,6,7,8] #[1,2,3,4]
   training_data = [100000, 500000, 1000000]
-
-  if args.orca:
-    for r in radii:
-      for agent in agents_lst:
-        for obst in obst_lst:
-          files = glob.glob("singleintegrator/instances/*obst{}_agents{}_*.yaml".format(obst,agent), recursive=True)
-          with Pool(24) as p:
-            p.starmap(run_orca, zip(files, repeat(r)))
 
   if args.plot:
     plt.rcParams.update({'font.size': 12})
@@ -138,6 +114,7 @@ if __name__ == "__main__":
       datadir.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*".format(obst,agents)))
   instances = sorted(datadir)
 
+
   for i in range(0,10):
     # train policy
     param = run_singleintegrator.SingleIntegratorParam()
@@ -149,7 +126,7 @@ if __name__ == "__main__":
 
       for td in training_data:
         if args.train:
-          for cc in ['Empty']: #['Empty', 'Barrier']:
+          for cc in ['Empty','Barrier']:
             param.il_load_loader_on = False
             param.il_controller_class = cc
             param.datadict["4"] = td
@@ -163,13 +140,14 @@ if __name__ == "__main__":
           # evaluate policy
           controllers = {
             'exp2EmptyR{}td{}_{}'.format(r,td,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp2EmptyR{}td{}_{}/il_current.pt'.format(r,td,i))),
-            # 'exp1Barrier_{}'.format(i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(i))
+            'exp1BarrierR{}_td{}_{}'.format(r,td,i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(r,td,i))
           }
 
           # for instance in instances:
             # run_singleintegrator.run_batch(instance, controllers)
 
-          with Pool(24) as p:
+
+          with Pool(12) as p:
             p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
 
           # with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
