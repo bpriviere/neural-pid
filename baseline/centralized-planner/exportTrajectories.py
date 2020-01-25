@@ -19,6 +19,15 @@ def findMaxDynamicLimits(traj):
     amax = max(amax, np.linalg.norm(e.acc))
   return vmax, amax
 
+# returns average velocity, acceleration
+def findAvgVel(traj):
+  vel = []
+  for t in np.arange(0.0 , traj.duration, 0.5):
+    e = traj.eval(t)
+    vel.append(np.linalg.norm(e.vel))
+  print(traj.duration,np.mean(vel))
+  return np.mean(vel)
+
 # returns upper bound stretchtime factor
 def upperBound(traj, vmax, amax):
   stretchtime = 1.0
@@ -62,6 +71,53 @@ def findStretchtime(file, vmax, amax):
     v,a = findMaxDynamicLimits(traj)
     # print("v,a ", v, a)
     if v <= vmax and a <= amax:
+      U = middle
+    else:
+      L = middle
+
+# returns upper bound stretchtime factor
+def upperBound2(traj, vavg):
+  stretchtime = 1.0
+  while True:
+    v = findAvgVel(traj)
+    if v == 0:
+      return stretchtime
+    if v <= vavg:
+      # print(v,a)
+      return stretchtime
+    traj.stretchtime(2.0)
+    stretchtime = stretchtime * 2.0
+
+# returns lower bound stretchtime factor
+def lowerBound2(traj, vavg):
+  stretchtime = 1.0
+  while True:
+    v = findAvgVel(traj)
+    if v == 0:
+      return stretchtime
+    if v >= vavg:
+      return stretchtime
+    traj.stretchtime(0.5)
+    stretchtime = stretchtime * 0.5
+
+def findStretchtime2(file, vavg):
+  print(file)
+  traj = uav_trajectory.Trajectory()
+  traj.loadcsv(file)
+  L = lowerBound2(traj, vavg)
+  traj.loadcsv(file)
+  U = upperBound2(traj, vavg)
+  while True:
+    print("L ", L)
+    print("U ", U)
+    if U - L < 0.1:
+      return U
+    middle = (L + U) / 2
+    print("try: ", middle)
+    traj.loadcsv(file)
+    traj.stretchtime(middle)
+    v = findAvgVel(traj)
+    if v <= vavg:
       U = middle
     else:
       L = middle

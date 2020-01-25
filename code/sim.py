@@ -72,7 +72,7 @@ def sim(param, env, controllers, initial_state, visualize):
 		sim_results.append(result)
 
 		# plot state space
-		if param.env_name in ['SingleIntegrator','DoubleIntegrator'] :
+		if param.env_name in ['SingleIntegrator','SingleIntegratorVelSensing','DoubleIntegrator'] :
 			fig,ax = plotter.make_fig()
 			ax.set_title('State Space')
 			ax.set_aspect('equal')

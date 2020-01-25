@@ -86,12 +86,15 @@ if __name__ == "__main__":
     #   pp.close()
 
     # plot loss curve
+    pp = PdfPages("exp1_loss.pdf")
+    fig,ax = plt.subplots()    
+    ax.set_yscale('log')
+    
     for solver in solvers.keys():
       files = glob.glob("singleintegrator/{}*/*.csv".format(solver), recursive=True)
       if len(files) == 0:
         continue
 
-      pp = PdfPages("exp1_loss_{}.pdf".format(solver))
 
       train_loss =[]
       test_loss = []
@@ -108,26 +111,26 @@ if __name__ == "__main__":
 
       print(test_loss_std)
 
-      fig,ax = plt.subplots()
-      line1 = ax.plot(data[:,1], train_loss_mean, label="train loss",linewidth=1)[0]
-      line2 = ax.plot(data[:,1], test_loss_mean, label="test loss",linewidth=1)[0]
+      # line1 = ax.plot(data[:,1], train_loss_mean, label="train loss",linewidth=1)[0]
+      line2 = ax.plot(data[:,1], test_loss_mean, label=solvers[solver],linewidth=1)[0]
 
-      ax.fill_between(data[:,1],
-        train_loss_mean-train_loss_std,
-        train_loss_mean+train_loss_std,
-        facecolor=line1.get_color(),
-        linewidth=1e-3,
-        alpha=0.5)
+      # ax.fill_between(data[:,1],
+      #   train_loss_mean-train_loss_std,
+      #   train_loss_mean+train_loss_std,
+      #   facecolor=line1.get_color(),
+      #   linewidth=1e-3,
+      #   alpha=0.5)
       ax.fill_between(data[:,1],
         test_loss_mean-test_loss_std,
         test_loss_mean+test_loss_std,
         facecolor=line2.get_color(),
         linewidth=1e-3,
         alpha=0.5)
-      plt.legend()
-      pp.savefig(fig)
-      plt.close(fig)
-      pp.close()
+      
+    plt.legend()
+    pp.savefig(fig)
+    plt.close(fig)
+    pp.close()
 
     exit()
 
@@ -168,8 +171,8 @@ if __name__ == "__main__":
         # for instance in instances:
           # run_singleintegrator.run_batch(instance, controllers)
 
-        with Pool(24) as p:
-          p.starmap(run_singleintegrator.run_batch, zip(instances, repeat(controllers)))
+        with Pool(32) as p:
+          p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
 
         # with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
         #   for _ in executor.map(run_singleintegrator.run_batch, instances, repeat(controllers)):

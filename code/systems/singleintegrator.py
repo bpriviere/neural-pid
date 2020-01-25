@@ -126,11 +126,14 @@ class SingleIntegrator(Env):
 					break
 
 			# query visible obstacles
-			_, obst_idx = self.kd_tree_obstacles.query(p_i,
-				k=self.param.max_obstacles,
-				distance_upper_bound=self.param.r_obs_sense)
-			if type(obst_idx) is not np.ndarray:
-				obst_idx = [obst_idx]
+			if self.param.max_obstacles > 0:
+				_, obst_idx = self.kd_tree_obstacles.query(p_i,
+					k=self.param.max_obstacles,
+					distance_upper_bound=self.param.r_obs_sense)
+				if type(obst_idx) is not np.ndarray:
+					obst_idx = [obst_idx]
+			else:
+				obst_idx = []
 			relative_obstacles = []
 			for k in obst_idx:
 				if k < self.obstacles_np.shape[0]:
@@ -375,12 +378,15 @@ class SingleIntegrator(Env):
 						break
 
 				# query visible obstacles
-				_, obst_idx = kd_tree_obstacles.query(
-					s_i[0:2].numpy(),
-					k=self.param.max_obstacles,
-					distance_upper_bound=self.param.r_obs_sense)
-				if type(obst_idx) is not np.ndarray:
-					obst_idx = [obst_idx]
+				if self.param.max_obstacles > 0:
+					_, obst_idx = kd_tree_obstacles.query(
+						s_i[0:2].numpy(),
+						k=self.param.max_obstacles,
+						distance_upper_bound=self.param.r_obs_sense)
+					if type(obst_idx) is not np.ndarray:
+						obst_idx = [obst_idx]
+				else:
+					obst_idx = []
 				relative_obstacles = []
 				for k in obst_idx:
 					if k < obstacles.shape[0]:

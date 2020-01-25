@@ -23,7 +23,7 @@ def rollout_instance(file):
     # ORCA
     with tempfile.TemporaryDirectory() as tmpdirname:
       output_file = tmpdirname + "/orca.csv"
-      subprocess.run("../../baseline/orca/build/orca -i {} -o {}".format(file, output_file), shell=True)
+      subprocess.run("../../baseline/orca/build/orca -i {} -o {} --robotRadius 0.21".format(file, output_file), shell=True)
       # load file and convert to binary
       data = np.loadtxt(output_file, delimiter=',', skiprows=1, dtype=np.float32)
       # store in binary format
