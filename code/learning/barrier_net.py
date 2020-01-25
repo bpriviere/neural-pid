@@ -173,7 +173,7 @@ class Barrier_Net(nn.Module):
 
 	def numpy_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = 1.0 
-		if (not len(H) == 0) and (np.min(H) < self.param.Delta_R):
+		if not H.size == 0 and np.min(H) < self.param.Delta_R:
 			normb = np.linalg.norm(barrier_action)
 			normpi = np.linalg.norm(empty_action)
 			adaptive_scaling = np.min((normb/normpi,1))
