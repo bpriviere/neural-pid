@@ -63,6 +63,7 @@ if __name__ == "__main__":
   obst_lst = [6] #[6,9,12]
   radii = [1,2,3,4,5,6,7,8] #[1,2,3,4]
   training_data = [100000, 500000, 1000000]
+  training_data = [10000, 100000, 1000000]
 
   if args.orca:
     for r in radii:
@@ -140,16 +141,16 @@ if __name__ == "__main__":
 
   for i in range(0,10):
     # train policy
-    param = run_singleintegrator.SingleIntegratorParam()
     for r in radii:
-      param.r_comm = r
-      param.r_obs_sense = r
-      param.max_neighbors = 5
-      param.max_obstacles = 5
-
       for td in training_data:
         if args.train:
           for cc in ['Empty']: #['Empty', 'Barrier']:
+            param = run_singleintegrator.SingleIntegratorParam()
+            param.r_comm = r
+            param.r_obs_sense = r
+            param.max_neighbors = 10000 #5
+            param.max_obstacles = 10000 #5
+
             param.il_load_loader_on = False
             param.il_controller_class = cc
             param.datadict["4"] = td
@@ -157,8 +158,16 @@ if __name__ == "__main__":
             param.il_train_model_fn = 'singleintegrator/exp2{}R{}td{}_{}/il_current.pt'.format(cc,r,td,i)
             env = SingleIntegrator(param)
             train_il(param, env, device)
+            del env
+            del param
 
         elif args.sim:
+          param = run_singleintegrator.SingleIntegratorParam()
+          param.r_comm = r
+          param.r_obs_sense = r
+          param.max_neighbors = 10000 #5
+          param.max_obstacles = 10000 #5
+
           env = SingleIntegrator(param)
           # evaluate policy
           controllers = {
