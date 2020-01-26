@@ -98,7 +98,7 @@ class SingleIntegrator(Env):
 	def done(self):
 		
 		for agent in self.agents:
-			if not np.linalg.norm(agent.p - agent.s_g) < 0.05:
+			if not np.linalg.norm(agent.s - agent.s_g) < 0.05:
 				return False
 		return True
 

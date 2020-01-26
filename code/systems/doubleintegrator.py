@@ -130,11 +130,14 @@ class DoubleIntegrator(Env):
 					break
 
 			# query visible obstacles
-			_, obst_idx = self.kd_tree_obstacles.query(p_i,
-				k=self.param.max_obstacles,
-				distance_upper_bound=self.param.r_obs_sense)
-			if type(obst_idx) is not np.ndarray:
-				obst_idx = [obst_idx]
+			if self.param.max_obstacles > 0:
+				_, obst_idx = self.kd_tree_obstacles.query(p_i,
+					k=self.param.max_obstacles,
+					distance_upper_bound=self.param.r_obs_sense)
+				if type(obst_idx) is not np.ndarray:
+					obst_idx = [obst_idx]
+			else:
+				obst_idx = []
 			relative_obstacles = []
 			for k in obst_idx:
 				if k < self.obstacles_np.shape[0]:
@@ -168,9 +171,8 @@ class DoubleIntegrator(Env):
 			observations.append(obs_array)
 			# observations.append(observation_i)
 
-		transformed_oa_pairs, transformations = self.preprocess_transformation(oa_pairs)
-		observations = [o for o,_ in transformed_oa_pairs]
-		self.transformations = transformations
+		transformed_oa_pairs, _ = self.preprocess_transformation(oa_pairs)
+		observations = [o for (o,a) in transformed_oa_pairs]
 		return observations
 
 	def reward(self):
@@ -383,12 +385,15 @@ class DoubleIntegrator(Env):
 						break
 
 				# query visible obstacles
-				_, obst_idx = kd_tree_obstacles.query(
-					s_i[0:2].numpy(),
-					k=self.param.max_obstacles,
-					distance_upper_bound=self.param.r_obs_sense)
-				if type(obst_idx) is not np.ndarray:
-					obst_idx = [obst_idx]
+				if self.param.max_obstacles > 0:
+					_, obst_idx = kd_tree_obstacles.query(
+						s_i[0:2].numpy(),
+						k=self.param.max_obstacles,
+						distance_upper_bound=self.param.r_obs_sense)
+					if type(obst_idx) is not np.ndarray:
+						obst_idx = [obst_idx]
+				else:
+					obst_idx = []
 				relative_obstacles = []
 				for k in obst_idx:
 					if k < obstacles.shape[0]:

@@ -46,7 +46,7 @@ class SingleIntegratorParam(Param):
 		self.b_gamma = 0.05 # 0.1
 		self.b_exph = 1.0 # 1.0
 		# cbf 
-		# self.cbf_kp = 1.0
+		self.cbf_kp = 1.0
 		# self.cbf_kv = 0.1
 		# self.a_noise = 0.002
 
