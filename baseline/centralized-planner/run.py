@@ -134,7 +134,7 @@ def run(input_fn, output_fn, use_grid_planner = True):
 			"-nodesktop",
 			"-r", cmd],
 			cwd="multi-robot-trajectory-planning/smoothener",
-			timeout=10*60)
+			timeout=5*60)
 
 		exportTrajectories(
 			tmpdirname,
@@ -148,4 +148,4 @@ if __name__ == '__main__':
 	parser.add_argument("output", help="output file (npy)")
 	args = parser.parse_args()
 
-	run(args.input, args.output, True)
+	run(args.input, args.output, False)
