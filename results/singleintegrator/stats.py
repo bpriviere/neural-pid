@@ -112,7 +112,9 @@ def stats(map_filename, schedule_filename):
 
 	solver = os.path.dirname(schedule_filename)
 	if '_' in solver:
-		solver,num_model = solver.split('_')
+		r = solver.split('_')
+		solver = "_".join(r[0:-1])
+		num_model = r[-1]
 	else:
 		num_model = 0
 

@@ -12,10 +12,10 @@ def rollout_instance(file):
   print(basename)
   if args.central:
     # Centralized planner
-    if not os.path.exists(os.path.abspath("central/"+basename+".npy")):
+    if not os.path.exists(os.path.abspath("central3/"+basename+".npy")):
       subprocess.run("python3 run.py {} {}".format(
         os.path.abspath(file),
-        os.path.abspath("central/"+basename+".npy")),
+        os.path.abspath("central3/"+basename+".npy")),
         shell=True,
         cwd="../../baseline/centralized-planner")
 
@@ -44,13 +44,23 @@ if __name__ == "__main__":
   parser.add_argument("--il", action='store_true')
   args = parser.parse_args()
 
-  datadir = glob.glob("instances/*agents008_*")
+  # datadir = glob.glob("instances/*obst06_agents032*.yaml")
 
-  # Serial version
+  import random
+  datadir = glob.glob("instances3/*.yaml")
+  random.shuffle(datadir)
+
+  # files = glob.glob("instances/*obst6_agents4*.yaml")
+  # datadir.extend(random.sample(files, min(len(files), 10000)))
+
+  # files = glob.glob("instances/*obst06_agents032*.yaml")
+  # datadir.extend(random.sample(files, min(len(files), 10000)))
+
+  # # Serial version
   # for file in datadir:
   #   rollout_instance(file)
 
   # parallel version
-  with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+  with concurrent.futures.ProcessPoolExecutor(max_workers=24) as executor:
     for _ in executor.map(rollout_instance, datadir):
       pass
