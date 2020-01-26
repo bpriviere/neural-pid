@@ -42,10 +42,10 @@ if __name__ == "__main__":
     device = torch.device('cpu')
 
   agents_lst = [2,4,8,16,32]
-  obst_lst = [6,9,12]
+  obst_lst = [6,12]
 
   if args.plot:
-    plt.rcParams.update({'font.size': 12})
+    plt.rcParams.update({'font.size': 14})
     plt.rcParams['lines.linewidth'] = 4
 
     solvers = {
@@ -55,35 +55,58 @@ if __name__ == "__main__":
       'exp1Barrier': 'NNwBF'
     }
 
-    # for obst in obst_lst:
-    #   files = []
-    #   result_by_instance = dict()
-    #   for solver in solvers.keys():
-    #     for agent in agents_lst:
-    #       files.extend( glob.glob("singleintegrator/{}*/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
-    #   for file in files:
-    #     instance = os.path.splitext(os.path.basename(file))[0]
-    #     map_filename = "singleintegrator/instances/{}.yaml".format(instance)
-    #     result = stats.stats(map_filename, file)
-    #     result["solver"] = solvers[os.path.basename(result["solver"])]
+    # default fig size is [6.4, 4.8]
+    fig, axs = plt.subplots(2, len(obst_lst), sharex='all', sharey='row', figsize = [6.4 * 1.4, 4.8 * 1.4])
 
-    #     if instance in result_by_instance:
-    #       result_by_instance[instance].append(result)
-    #     else:
-    #       result_by_instance[instance] = [result]
+    pp = PdfPages("exp1_collisions.pdf")
+    for column, obst in enumerate(obst_lst):
+      files = []
+      result_by_instance = dict()
+      for solver in solvers.keys():
+        for agent in agents_lst:
+          files.extend( glob.glob("singleintegrator/{}*/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
+      for file in files:
+        instance = os.path.splitext(os.path.basename(file))[0]
+        map_filename = "singleintegrator/instances/{}.yaml".format(instance)
+        result = stats.stats(map_filename, file)
+        result["solver"] = solvers[os.path.basename(result["solver"])]
 
-    #   # create plots
-    #   pp = PdfPages("exp1_{}.pdf".format(obst))
+        if instance in result_by_instance:
+          result_by_instance[instance].append(result)
+        else:
+          result_by_instance[instance] = [result]
 
-    #   add_line_plot_agg(pp, result_by_instance, "percent_agents_success",
-    #     x_label="number of robots",
-    #     y_label="robot success [%]")
-    #   add_line_plot_agg(pp, result_by_instance, "control_effort_mean",
-    #     x_label="number of robots",
-    #     y_label="average control effort of successful robots")
-    #   add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+      # create plots
 
-    #   pp.close()
+      add_line_plot_agg(None, result_by_instance, "percent_agents_success",
+        ax=axs[0, column])
+      add_line_plot_agg(None, result_by_instance, "control_effort_mean",
+        ax=axs[1, column])
+      add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+    
+    pp.close()
+    
+    pp = PdfPages("exp1.pdf")
+
+    for column in range(0, 2):
+      axs[1,column].set_xlabel("number of robots")
+    
+    axs[0,0].set_ylabel("robot success [%]")
+    axs[0,0].set_ylim([35,105])
+    axs[1,0].set_ylabel("control effort")
+
+    axs[0,0].set_title("10 % obstacles")
+    axs[0,1].set_title("20 % obstacles")
+
+    for column in range(0, 2):
+      for row in range(0, 2):
+        axs[row, column].grid(which='both')
+
+    fig.tight_layout()
+    axs[0,0].legend()
+    pp.savefig(fig)
+    plt.close(fig)
+    pp.close()
 
     # plot loss curve
     pp = PdfPages("exp1_loss.pdf")

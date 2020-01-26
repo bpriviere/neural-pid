@@ -4,6 +4,7 @@ import stats
 import numpy as np
 import yaml
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.patches import Rectangle, Circle
@@ -12,8 +13,10 @@ plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
 
-def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_label=None, group_by="num_agents"):
-	fig,ax = plt.subplots()
+def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_label=None, group_by="num_agents",\
+	ax=None):
+	if ax is None:
+		fig,ax = plt.subplots()
 
 	if title:
 		ax.set_title(title)
@@ -82,13 +85,20 @@ def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_labe
 
 	if group_by == "num_agents":
 		ax.set_xscale('log')
+		# ax.minorticks_off()
 	
-	ax.set_xticks(x_array)
+	ax.set_xticks(np.arange(x_array[0], x_array[-1], 2), True) # set minor ticks
+	ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+	
+	ax.set_xticks(x_array) # set major ticks
 	ax.set_xticklabels(x_array)
 
-	plt.legend()
-	pp.savefig(fig)
-	plt.close(fig)
+
+
+	if pp is not None:
+		plt.legend()
+		pp.savefig(fig)
+		plt.close(fig)
 
 
 
