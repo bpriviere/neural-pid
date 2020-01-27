@@ -58,15 +58,31 @@ class Barrier_Net(nn.Module):
 		return super().to(device)
 
 	def policy(self,x):
-		# only called in rollout 
 
-		self.to("cpu")
-
-		A = np.empty((len(x),self.dim_action))
+		grouping = dict()
 		for i,x_i in enumerate(x):
-			a_i = self(x_i)
-			A[i,:] = a_i
-		return A
+			key = (int(x_i[0][0]), x_i.shape[1])
+			if key in grouping:
+				grouping[key].append(i)
+			else:
+				grouping[key] = [i]
+
+		if len(grouping) < len(x):
+			A = np.empty((len(x),self.dim_action))
+			for key, idxs in grouping.items():
+				batch = torch.Tensor([x[idx][0] for idx in idxs])
+				a = self(batch)
+				a = a.detach().numpy()
+				for i, idx in enumerate(idxs):
+					A[idx,:] = a[i]
+
+			return A
+		else:
+			A = np.empty((len(x),self.dim_action))
+			for i,x_i in enumerate(x):
+				a_i = self(x_i)
+				A[i,:] = a_i 
+			return A
 
 	def __call__(self,x):
 
@@ -114,7 +130,6 @@ class Barrier_Net(nn.Module):
 				
 				Phi = self.numpy_get_phi(x,P,H)
 				GradPhiInv = self.numpy_get_grad_phi_inv(x,P,H)
-				GradPhi = self.numpy_get_grad_phi(x,P,H)
 				barrier_action = -1*self.param.b_gamma*Phi*GradPhiInv
 
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
@@ -191,8 +206,9 @@ class Barrier_Net(nn.Module):
 			minH = torch.min(H,dim=1)[0]
 			normb = torch.norm(barrier_action,p=2,dim=1)
 			normpi = torch.norm(empty_action,p=2,dim=1)
-			adaptive_scaling[minH < self.param.Delta_R] = torch.min(\
-				torch.mul(normb,torch.pow(normpi,-1)),torch.ones(1,device=self.device))[0]
+			idx = minH < self.param.Delta_R
+			adaptive_scaling[idx] = torch.min(\
+				torch.mul(normb[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
 		return adaptive_scaling.unsqueeze(1)
 
 	def torch_scale(self,action,max_action):
