@@ -29,25 +29,35 @@ class Empty_Net_wAPF():
 
 		if type(x) is np.ndarray:
 
-			if self.param.safety is "potential":
+			if self.param.safety == "potential":
 
 				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
-				barrier_action = self.numpy_get_barrier_action(x,P,H)
+				barrier_action = -1*self.param.b_gamma*self.numpy_get_grad_phi(x,P,H)
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 				empty_action = self.numpy_scale(empty_action, self.param.pi_max)
 				adaptive_scaling = self.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
 				action = adaptive_scaling*empty_action+barrier_action 
 				action = self.numpy_scale(action, self.param.a_max)
 
-			elif self.param.safety is "fdbk":
+			elif self.param.safety == "fdbk":
+
+				# barrier
 				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
-				Psi = self.numpy_get_psi(x,P,H)
-				GradPsiInv = self.numpy_get_grad_psi_inv(x,P,H)
-				barrier_action = -1*self.param.b_gamma*Psi*GradPsiInv
+				Phi = self.numpy_get_phi(x,P,H)
+				GradPhiInv = self.numpy_get_grad_phi_inv(x,P,H)
+				GradPhi = self.numpy_get_grad_phi(x,P,H)
+				barrier_action = -1*self.param.b_gamma*Phi*GradPhiInv
+				
+				# empty
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 				empty_action = self.numpy_scale(empty_action, self.param.pi_max)
-				alpha_fdbk = self.numpy_get_alpha_fdbk()
-				action = alpha_fdbk*empty_action + barrier_action 
+
+				# scaling 
+				# alpha_fdbk = self.numpy_get_alpha_fdbk() 
+				# action = alpha_fdbk*empty_action + barrier_action 
+				adaptive_scaling = self.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
+				action = adaptive_scaling*empty_action+barrier_action 
+				
 				action = self.numpy_scale(action, self.param.a_max)
 
 
@@ -64,22 +74,41 @@ class Empty_Net_wAPF():
 			A[i,:] = a_i 
 		return A
 
-	def numpy_get_psi(self,x,P,H):
-		psi = np.zeros(1,dtype=float)
+	# numpy scalar function, otpimized for rollout
+	def numpy_get_phi(self,x,P,H):
+		phi = np.zeros(1)
 		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
-			psi += -np.log(H[:,j])
-		return psi 
+			phi += -np.log(H[:,j])
+		return phi 
 
-	def numpy_get_grad_psi_inv(self,x,P,H):
-		barrier = self.numpy_get_barrier_action(x,P,H)
-		barrier += self.param.eps_h*np.random.random(barrier.shape)
-		grad_psi_inv = np.ones(barrier.shape)
-		grad_psi_inv[:,0] = (1-barrier[:,1])/barrier[:,0]
-		return grad_psi_inv
+	def numpy_get_grad_phi_inv(self,x,P,H):
+		grad_phi = self.numpy_get_grad_phi(x,P,H)
+		grad_phi_inv = np.zeros(grad_phi.shape)
+		if not np.linalg.norm(grad_phi) == 0:
+			grad_phi_inv = grad_phi / np.linalg.norm(grad_phi)
+		return grad_phi_inv
+
+	def numpy_get_grad_phi(self,x,P,H):
+		grad_phi = np.zeros((len(x),self.dim_action))
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
+			grad_phi += self.numpy_get_grad_phi_contribution(P[:,j,:],H[:,j])
+		return grad_phi
+
+	def numpy_get_grad_phi_contribution(self,P,H):
+		normp = np.linalg.norm(P)
+		grad_phi_ji = 1./(H*normp)*P
+		return grad_phi_ji
 
 	def numpy_get_alpha_fdbk(self):
-		phi_max = -self.param.n_agents**2.0*np.log(self.param.Delta_R/(self.param.r_obs_sense-self.param.r_agent))
-		alpha = phi_max*self.param.b_gamma 
+
+		unsafe = False
+		if unsafe:
+			phi_max = -1*np.log(self.param.Delta_R/(self.param.r_obs_sense-self.param.r_agent))
+			alpha = phi_max*self.param.b_gamma
+
+		else:
+			alpha = self.param.alpha_fdbk
+
 		return alpha 
 
 	def numpy_get_relative_positions_and_safety_functions(self,x):
@@ -95,9 +124,7 @@ class Empty_Net_wAPF():
 		for j in range(nn):
 			idx = self.get_agent_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
-			H[:,curr_idx] = np.max((
-				(np.linalg.norm(x[:,idx]) - 2*self.param.r_agent)/(self.param.r_comm - self.param.r_agent),
-				self.param.eps_h*np.ones(1)))
+			H[:,curr_idx] = (np.linalg.norm(x[:,idx]) - 2*self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent)
 			curr_idx += 1 
 
 		for j in range(no):
@@ -108,27 +135,13 @@ class Empty_Net_wAPF():
 				self.param.r_agent,
 				-x[:,idx] - np.array([0.5,0.5]), 
 				-x[:,idx] + np.array([0.5,0.5]))
-			H[:,curr_idx] = np.max((
-				(np.linalg.norm(closest_point) - self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent), 
-				self.param.eps_h*np.ones(1)))
+			H[:,curr_idx] = (np.linalg.norm(closest_point) - self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent)
 			curr_idx += 1
 		return P,H 
 
-	def numpy_get_barrier_action(self,x,P,H):
-
-		barrier = np.zeros((len(x),self.dim_action))
-		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
-			barrier += self.numpy_get_barrier(P[:,j,:],H[:,j])
-		return barrier
-
-	def numpy_get_barrier(self,P,H):
-		normp = np.linalg.norm(P)
-		barrier = -1*self.param.b_gamma/(H*normp)*P
-		return barrier
-
 	def numpy_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = 1.0 
-		if not H.size == 0 and np.min(H < self.param.Delta_R):
+		if not H.size == 0 and np.min(H) < self.param.Delta_R:
 			normb = np.linalg.norm(barrier_action)
 			normpi = np.linalg.norm(empty_action)
 			adaptive_scaling = np.min((normb/normpi,1))
@@ -205,10 +218,17 @@ class GoToGoalPolicy:
 		A = torch.empty((len(o),self.env.action_dim_per_agent))
 		for i, observation_i in enumerate(o):
 			relative_goal = np.array(observation_i[1:3])
+			
 			a_nom = self.param.cbf_kp*relative_goal
-			scale = self.param.a_max/np.max(np.abs(a_nom))
+			scale = 0.6*self.param.a_max/np.max(np.abs(a_nom))
 			if scale < 1:
 				a_nom = scale*a_nom
+
+			# a_nom = relative_goal
+			# scale = np.linalg.norm(relative_goal)
+			# if scale > 1:
+			# 	a_nom = a_nom/scale 
+
 			A[i,:] = torch.tensor(a_nom)
 
 		return A
