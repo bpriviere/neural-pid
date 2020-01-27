@@ -47,10 +47,12 @@ if __name__ == "__main__":
     device = torch.device('cpu')
 
   agents_lst = [2,16]
-  obst_lst = [6,12]
-  datasource = ["obst06_agents004", "obst06_agents008", "obst06_agents016",
-                "obst12_agents004", "obst12_agents008", "obst12_agents016",]
-  # datasource = ["obst12_agents008", "obst12_agents012", "obst0_agents32"]
+  obst_lst = [6]
+  # datasource = ["obst06_agents004", "obst06_agents008", "obst06_agents016",
+                # "obst12_agents004", "obst12_agents008", "obst12_agents016","mixed"]
+  datasource = ["obst06_agents004", "obst06_agents016",
+                "mixed"]
+  num_data = 250000
 
   if args.plot:
     plt.rcParams.update({'font.size': 12})
@@ -59,16 +61,18 @@ if __name__ == "__main__":
     solvers = {
       'orcaR3': 'ORCA',
       'central': 'Central',
+      'apf': 'BF',
     }
     for src in datasource:
-      solvers['exp3BarrierS'+src] = src
+      # solvers['exp3BarrierS'+src] = src
+      solvers['exp3EmptyS'+src] = src
 
     for obst in obst_lst:
       files = []
       result_by_instance = dict()
       for solver in solvers.keys():
         for agent in agents_lst:
-          files.extend( glob.glob("singleintegrator/{}*_0/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
+          files.extend( glob.glob("singleintegrator/{}*/*obst{}_agents{}_*.npy".format(solver,obst,agent), recursive=True))
       for file in files:
         instance = os.path.splitext(os.path.basename(file))[0]
         map_filename = "singleintegrator/instances/{}.yaml".format(instance)
@@ -210,19 +214,23 @@ if __name__ == "__main__":
       datadir.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*".format(obst,agents)))
   instances = sorted(datadir)
 
-  for i in range(0,10):
+  for i in range(0,1):
     # train policy
     
 
     for src in datasource:
       if args.train:
-        for cc in ['Barrier']:
+        for cc in ['Empty']:
           param = run_singleintegrator.SingleIntegratorParam()
           # param = run_singleintegrator_vel_sensing.SingleIntegratorVelSensingParam()
           param.il_load_loader_on = False
           param.il_controller_class = cc
           param.datadict = dict()
-          param.datadict[src] = 100000
+          if src == "mixed":
+            for src in datasource:
+              param.datadict[src] = num_data / (len(datasource)-1)
+          else:
+            param.datadict[src] = num_data
 
           param.il_train_model_fn = 'singleintegrator/exp3{}S{}_{}/il_current.pt'.format(cc,src,i)
           env = SingleIntegrator(param)
@@ -240,9 +248,8 @@ if __name__ == "__main__":
         
         # evaluate policy
         controllers = {
-          'exp3BarrierS{}_{}'.format(src,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp3BarrierS{}_{}/il_current.pt'.format(src,i))),
-          # 'exp3EmptyS{}_{}'.format(src,i): torch.load('singleintegrator/exp3EmptyS{}_{}/il_current.pt'.format(src,i)),
-          # 'exp1Barrier_{}'.format(i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(i))
+          # 'exp3BarrierS{}_{}'.format(src,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp3BarrierS{}_{}/il_current.pt'.format(src,i))),
+          'exp3EmptyS{}_{}'.format(src,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp3EmptyS{}_{}/il_current.pt'.format(src,i))),
         }
 
         # for instance in instances:

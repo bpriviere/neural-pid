@@ -67,7 +67,7 @@ class DoubleIntegratorParam(Param):
 		# IL
 		# self.il_load_loader_on = True
 		self.il_load_loader_on = False
-		self.training_time_downsample = 100 #10
+		self.training_time_downsample = 50 #10
 		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/doubleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
@@ -76,14 +76,14 @@ class DoubleIntegratorParam(Param):
 		self.il_n_epoch = 250
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 1000000 # 100000 # 100000000
+		self.il_n_data = 10000000000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier',
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["4"] = 10000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 100000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -220,13 +220,13 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		# 'il':	torch.load(param.sim_il_model_fn),
+		'il':	torch.load(param.il_train_model_fn),
 		# 'empty_2': Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn)),
 		# 'empty': torch.load(param.il_empty_model_fn),
 		# 'ad':torch.load(param.ad_train_model_fn),
 		# 'adAPF': Empty_Net_wAPF(param,env,torch.load(param.ad_train_model_fn)),
-		'emptywAPF' : Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
-		'APF' : GoToGoalPolicy(param,env),
+		# 'emptywAPF' : Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'APF' : GoToGoalPolicy(param,env),
 		# 'barrier' : torch.load(param.sim_il_model_fn)
 		# 'e1M': torch.load('../models/singleintegrator/empty_1M_agent4_data.pt'),
 		# 'ad1M': torch.load('../models/singleintegrator/ad_current.pt'),

@@ -58,7 +58,7 @@ class Empty_Net(nn.Module):
 		# inputs observation from all agents...
 		# outputs policy for all agents
 
-		A = np.empty((len(x),self.action_dim_per_agent))
+		A = np.empty((len(x),self.dim_action))
 		for i,x_i in enumerate(x):
 			a_i = self(torch.Tensor(x_i))
 			a_i = a_i.detach().numpy()
