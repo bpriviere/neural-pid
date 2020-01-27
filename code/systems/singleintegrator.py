@@ -13,7 +13,7 @@ import yaml
 # my package
 import plotter 
 import utilities
-from utilities import rot_mat_2d
+from utilities import rot_mat_2d, not_batch_is_collision_circle_rectangle
 from scipy.linalg import block_diag
 
 class Agent:
@@ -178,10 +178,16 @@ class SingleIntegrator(Env):
 			return -1
 
 		# check with respect to obstacles
-		results = self.kd_tree_obstacles.query_ball_point(self.positions, self.r_agent + self.r_obstacle)
-		for r in results:
-			if len(r) > 0:
-				return -1
+		# results = self.kd_tree_obstacles.query_ball_point(self.positions, self.r_agent + self.r_obstacle)
+		# for r in results:
+		# 	if len(r) > 0:
+		# 		return -1
+
+		for agent in self.agents:
+			for o in self.obstacles:
+				coll, dist = not_batch_is_collision_circle_rectangle(np.array(agent.p), self.param.r_agent, np.array(o), np.array(o) + np.array([1.0,1.0]))
+				inc = np.count_nonzero(coll)
+				return -inc 
 
 		return 0
 
@@ -624,7 +630,7 @@ class SingleIntegrator(Env):
 
 			if num_obstacles > 0:
 				closest_obstacle = obs[0,3+2*num_neighbors:3+2*num_neighbors+2]
-				if self.is_collision_circle_rectangle(
+				if self.not_batch_is_collision_circle_rectangle(
 					np.zeros(2),
 					self.r_agent,
 					closest_obstacle - np.array([0.5,0.5]),
@@ -646,14 +652,4 @@ class SingleIntegrator(Env):
 					bad_agents.add(agent)
 
 		return list(bad_agents)
-
-
-	# from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
-	def is_collision_circle_rectangle(self,circle_pos, circle_r, rect_tl, rect_br):
-		# Find the closest point to the circle within the rectangle
-		closest = np.clip(circle_pos, rect_tl, rect_br)
-		# Calculate the distance between the circle's center and this closest point
-		dist = np.linalg.norm(circle_pos - closest)
-		# If the distance is less than the circle's radius, an intersection occurs
-		return dist + 1e-4 < circle_r
 

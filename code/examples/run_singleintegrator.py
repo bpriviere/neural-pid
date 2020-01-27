@@ -28,17 +28,20 @@ class SingleIntegratorParam(Param):
 
 		# orca param
 		self.n_agents = 1
-		self.r_comm = 3. #0.5sta
+		self.r_comm = 3 
 		self.r_obs_sense = 3.
 		self.r_agent = 0.15 #5
 		self.r_obstacle = 0.5
+		
 		self.a_max = 0.5
 		self.a_min = -1*self.a_max
+
 		self.D_robot = 1.*(self.r_agent+self.r_agent)
 		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
 		self.Delta_R = 0.01
+		self.safety = "fdbk" # "potential", "fdbk"
 
 		self.max_neighbors = 5
 		self.max_obstacles = 5
@@ -47,12 +50,14 @@ class SingleIntegratorParam(Param):
 		self.b_exph = 1.0 # 1.0
 		# cbf 
 		self.cbf_kp = 1.0
-		# self.cbf_kv = 0.1
-		# self.a_noise = 0.002
-
+		
 		# 
-		self.phi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
-		self.phi_min = -self.phi_max # -1*self.a_max
+		self.eps_h = 1e-9
+		if self.safety is "potential":
+			self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
+			self.pi_min = -self.pi_max # -1*self.a_max
+		elif self.safety is "fdbk":
+			self.pi_max = 1.0
 		
 		# sim 
 		self.sim_t0 = 0
@@ -234,7 +239,8 @@ if __name__ == '__main__':
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
 		# 'barrier' : torch.load(param.il_barrier_model_fn),
-		'current': torch.load(param.il_train_model_fn)
+		# 'current': torch.load(param.il_train_model_fn),
+		'current_wsafety' : Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn))
 	}
 
 	s0 = load_instance(param, env, args.instance)

@@ -29,14 +29,27 @@ class Empty_Net_wAPF():
 
 		if type(x) is np.ndarray:
 
-			P,H = self.numpy_get_relative_positions_and_safety_functions(x)
+			if self.param.safety is "potential":
 
-			barrier_action = self.numpy_get_barrier_action(x,P,H)
-			empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
-			empty_action = self.numpy_scale(empty_action, self.param.phi_max)
-			adaptive_scaling = self.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
-			action = adaptive_scaling*empty_action+barrier_action 
-			action = self.numpy_scale(action, self.param.a_max)
+				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
+				barrier_action = self.numpy_get_barrier_action(x,P,H)
+				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
+				empty_action = self.numpy_scale(empty_action, self.param.pi_max)
+				adaptive_scaling = self.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
+				action = adaptive_scaling*empty_action+barrier_action 
+				action = self.numpy_scale(action, self.param.a_max)
+
+			elif self.param.safety is "fdbk":
+				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
+				Psi = self.numpy_get_psi(x,P,H)
+				GradPsiInv = self.numpy_get_grad_psi_inv(x,P,H)
+				barrier_action = -1*self.param.b_gamma*Psi*GradPsiInv
+				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
+				empty_action = self.numpy_scale(empty_action, self.param.pi_max)
+				alpha_fdbk = self.numpy_get_alpha_fdbk()
+				action = alpha_fdbk*empty_action + barrier_action 
+				action = self.numpy_scale(action, self.param.a_max)
+
 
 		else:
 			exit('type(x) not recognized: ', type(x))
@@ -51,6 +64,24 @@ class Empty_Net_wAPF():
 			A[i,:] = a_i 
 		return A
 
+	def numpy_get_psi(self,x,P,H):
+		psi = np.zeros(1,dtype=float)
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
+			psi += -np.log(H[:,j])
+		return psi 
+
+	def numpy_get_grad_psi_inv(self,x,P,H):
+		barrier = self.numpy_get_barrier_action(x,P,H)
+		barrier += self.param.eps_h*np.random.random(barrier.shape)
+		grad_psi_inv = np.ones(barrier.shape)
+		grad_psi_inv[:,0] = (1-barrier[:,1])/barrier[:,0]
+		return grad_psi_inv
+
+	def numpy_get_alpha_fdbk(self):
+		phi_max = -self.param.n_agents**2.0*np.log(self.param.Delta_R/(self.param.r_obs_sense-self.param.r_agent))
+		alpha = phi_max*self.param.b_gamma 
+		return alpha 
+
 	def numpy_get_relative_positions_and_safety_functions(self,x):
 		
 		nd = x.shape[0] # number of data points in batch 
@@ -64,7 +95,9 @@ class Empty_Net_wAPF():
 		for j in range(nn):
 			idx = self.get_agent_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx]
-			H[:,curr_idx] = np.max((np.linalg.norm(x[:,idx]) - 2*self.param.r_agent, np.zeros(1)))
+			H[:,curr_idx] = np.max((
+				(np.linalg.norm(x[:,idx]) - 2*self.param.r_agent)/(self.param.r_comm - self.param.r_agent),
+				self.param.eps_h*np.ones(1)))
 			curr_idx += 1 
 
 		for j in range(no):
@@ -75,7 +108,9 @@ class Empty_Net_wAPF():
 				self.param.r_agent,
 				-x[:,idx] - np.array([0.5,0.5]), 
 				-x[:,idx] + np.array([0.5,0.5]))
-			H[:,curr_idx] = np.max((np.linalg.norm(closest_point) - self.param.r_agent, np.zeros(1)))
+			H[:,curr_idx] = np.max((
+				(np.linalg.norm(closest_point) - self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent), 
+				self.param.eps_h*np.ones(1)))
 			curr_idx += 1
 		return P,H 
 
