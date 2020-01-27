@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1920px"
+   height="1080px"
+   id="svg3583"
+   version="1.1"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"
+   sodipodi:docname="step1_datageneration.svg">
+  <defs
+     id="defs3585">
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0.0"
+       refX="0.0"
+       id="Arrow1Lend"
+       style="overflow:visible;"
+       inkscape:isstock="true">
+      <path
+         id="path845"
+         d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+         style="fill-rule:evenodd;stroke:#ffffff;stroke-width:1pt;stroke-opacity:1;fill:#ffffff;fill-opacity:1"
+         transform="scale(0.8) rotate(180) translate(12.5,0)" />
+    </marker>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient7988"
+       id="linearGradient7994"
+       x1="221.2766"
+       y1="185.86008"
+       x2="1740.4255"
+       y2="183.73242"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient7988">
+      <stop
+         style="stop-color:#aa0000;stop-opacity:1;"
+         offset="0"
+         id="stop7990" />
+      <stop
+         style="stop-color:#800000;stop-opacity:1"
+         offset="1"
+         id="stop7992" />
+    </linearGradient>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Lend-3"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path845-6"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:#ffffff;stroke-width:1.00000003pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#000000"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.51160151"
+     inkscape:cx="869.87767"
+     inkscape:cy="586.04587"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1853"
+     inkscape:window-height="1145"
+     inkscape:window-x="67"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata3588">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="layer1"
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'TeX Gyre Adventor';-inkscape-font-specification:'TeX Gyre Adventor';letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none"
+       x="639.45612"
+       y="202.67834"
+       id="text3027"><tspan
+         sodipodi:role="line"
+         id="tspan3029"
+         x="639.45612"
+         y="206.37434"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';fill:#ffffff" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none"
+       x="813.10205"
+       y="1056.6968"
+       id="text3466"><tspan
+         sodipodi:role="line"
+         x="813.10205"
+         y="1056.6968"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan927">1. We generate <tspan
+   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum Bold'"
+   id="tspan838">trajectories</tspan> using a <tspan
+   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum Bold'"
+   id="tspan839">global</tspan> motion planner</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none"
+       x="135.69113"
+       y="273.01437"
+       id="text3466-3"><tspan
+         sodipodi:role="line"
+         x="144.23279"
+         y="273.01437"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan927-6">10 % </tspan><tspan
+         sodipodi:role="line"
+         x="135.69113"
+         y="339.68103"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan862">obstacles</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none"
+       x="135.69113"
+       y="703.67554"
+       id="text3466-3-3"><tspan
+         sodipodi:role="line"
+         x="144.23279"
+         y="703.67554"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan927-6-5">20 % </tspan><tspan
+         sodipodi:role="line"
+         x="135.69113"
+         y="770.34222"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan862-6">obstacles</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none"
+       x="473.86078"
+       y="60.088379"
+       id="text3466-3-2"><tspan
+         sodipodi:role="line"
+         x="473.86078"
+         y="60.088379"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan862-1">4 robots</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none"
+       x="992.30658"
+       y="59.981689"
+       id="text3466-3-2-2"><tspan
+         sodipodi:role="line"
+         x="992.30658"
+         y="59.981689"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan862-1-7">8 robots</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none"
+       x="1526.1658"
+       y="59.981689"
+       id="text3466-3-2-2-0"><tspan
+         sodipodi:role="line"
+         x="1526.1658"
+         y="59.981689"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         id="tspan862-1-7-9">16 robots</tspan></text>
+  </g>
+</svg>

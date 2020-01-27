@@ -244,7 +244,7 @@ int main(int argc, char** argv)
   output << std::endl;
 
   /* Perform (and manipulate) the simulation. */
-  for (size_t i = 0; i < 1000 && !reachedGoal(&sim); ++i) {
+  for (size_t i = 0; sim.getGlobalTime() < 100 && !reachedGoal(&sim); ++i) {
     // output current simulation result
     output << sim.getGlobalTime();
     for (size_t i = 0; i < sim.getNumAgents(); ++i) {
