@@ -57,13 +57,30 @@ class Empty_Net(nn.Module):
 
 		# inputs observation from all agents...
 		# outputs policy for all agents
+		grouping = dict()
+		for i,x_i in enumerate(x):
+			key = (int(x_i[0][0]), x_i.shape[1])
+			if key in grouping:
+				grouping[key].append(i)
+			else:
+				grouping[key] = [i]
 
 		A = np.empty((len(x),self.dim_action))
-		for i,x_i in enumerate(x):
-			a_i = self(torch.Tensor(x_i))
-			a_i = a_i.detach().numpy()
-			A[i,:] = a_i
+		for key, idxs in grouping.items():
+			batch = torch.Tensor([x[idx][0] for idx in idxs])
+			a = self(batch)
+			a = a.detach().numpy()
+			for i, idx in enumerate(idxs):
+				A[idx,:] = a[i]
+
 		return A
+
+		# A = np.empty((len(x),self.dim_action))
+		# for i,x_i in enumerate(x):
+		# 	a_i = self(torch.Tensor(x_i))
+		# 	a_i = a_i.detach().numpy()
+		# 	A[i,:] = a_i
+		# return A
 
 	def export_to_onnx(self, filename):
 		self.model_neighbors.export_to_onnx("{}_neighbors".format(filename))

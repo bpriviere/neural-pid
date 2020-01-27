@@ -87,6 +87,7 @@ class Barrier_Net(nn.Module):
 	def __call__(self,x):
 
 		if type(x) == torch.Tensor:
+
 			if self.param.safety == "potential":
 				P,H = self.torch_get_relative_positions_and_safety_functions(x)
 				barrier_action = -1*self.param.b_gamma*self.torch_get_grad_phi(x,P,H)
@@ -113,6 +114,7 @@ class Barrier_Net(nn.Module):
 
 			else:
 				exit('self.param.safety: {} not recognized'.format(self.param.safety))				
+
 
 		elif type(x) is np.ndarray:
 
