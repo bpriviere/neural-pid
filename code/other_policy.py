@@ -31,7 +31,7 @@ class Empty_Net_wAPF():
 
 			if self.param.safety == "potential":
 				P,H = self.torch_get_relative_positions_and_safety_functions(x)
-				barrier_action = self.torch_get_barrier_action(x,P,H)
+				barrier_action = -1*self.param.b_gamma*self.torch_get_grad_phi(x,P,H)
 				empty_action = self.empty(x)
 				empty_action = self.torch_scale(empty_action, self.param.pi_max)
 				adaptive_scaling = self.torch_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
@@ -40,22 +40,26 @@ class Empty_Net_wAPF():
 
 			elif self.param.safety == "fdbk":
 				P,H = self.torch_get_relative_positions_and_safety_functions(x)
-				Psi = self.torch_get_psi(x,P,H)
-				GradPsiInv = self.torch_get_grad_psi_inv(x,P,H)
-				barrier_action = -1*self.param.b_gamma*torch.mul(Psi.unsqueeze(1),GradPsiInv)
+				Phi = self.torch_get_phi(x,P,H)
+				GradPhiInv = self.torch_get_grad_phi_inv(x,P,H)
+				barrier_action = -1*self.param.b_gamma*Phi.unsqueeze(1)*GradPhiInv
 				empty_action = self.empty(x)
 				empty_action = self.torch_scale(empty_action, self.param.pi_max)
-				alpha_fdbk = self.torch_get_alpha_fdbk()
-				action = alpha_fdbk*empty_action + barrier_action 
+				
+				# alpha_fdbk = self.torch_get_alpha_fdbk() 
+				# action = alpha_fdbk*empty_action + barrier_action
+
+				adaptive_scaling = self.torch_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
+				action = torch.mul(adaptive_scaling,empty_action)+barrier_action  
 				action = self.torch_scale(action, self.param.a_max)
 
 			else:
-				exit('safety not recognized: ' + self.param.safety)
+				exit('self.param.safety: {} not recognized'.format(self.param.safety))				
 
 
 		elif type(x) is np.ndarray:
-			if self.param.safety == "potential":
 
+			if self.param.safety == "potential":
 				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
 				barrier_action = -1*self.param.b_gamma*self.numpy_get_grad_phi(x,P,H)
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
@@ -66,30 +70,29 @@ class Empty_Net_wAPF():
 
 			elif self.param.safety == "fdbk":
 				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
+				
 				Phi = self.numpy_get_phi(x,P,H)
 				GradPhiInv = self.numpy_get_grad_phi_inv(x,P,H)
-				GradPhi = self.numpy_get_grad_phi(x,P,H)
 				barrier_action = -1*self.param.b_gamma*Phi*GradPhiInv
-				
-				# empty
+
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 				empty_action = self.numpy_scale(empty_action, self.param.pi_max)
 
-				# scaling 
 				# alpha_fdbk = self.numpy_get_alpha_fdbk() 
-				# action = alpha_fdbk*empty_action + barrier_action 
+				# alpha_fdbk = self.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
+				# action = alpha_fdbk*empty_action + barrier_action
+
 				adaptive_scaling = self.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
 				action = adaptive_scaling*empty_action+barrier_action 
-				
 				action = self.numpy_scale(action, self.param.a_max)
 
 			else:
-				exit('safety not recognized: ' + self.param.safety)
+				exit('self.param.safety: {} not recognized'.format(self.param.safety))
 
 		else:
 			exit('type(x) not recognized: ', type(x))
 
-		return action
+		return action 
 
 	def policy(self,x):
 
@@ -120,11 +123,110 @@ class Empty_Net_wAPF():
 
 
 
-	# numpy scalar function, otpimized for rollout
+	# torch functions, optimzied for batch 
+	def torch_get_phi(self,x,P,H):
+		phi = torch.zeros((len(x)),device=self.device)
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
+			idx = H[:,j] > 0
+			phi[idx] += -1*torch.log(H[idx,j])
+		return phi 
+
+	def torch_get_grad_phi_inv(self,x,P,H):
+		grad_phi = self.torch_get_grad_phi(x,P,H)
+		grad_phi_inv = torch.zeros(grad_phi.shape,device=self.device)
+		idx = torch.norm(grad_phi,p=2,dim=1) != 0
+		grad_phi_inv[idx] = \
+			torch.mul(grad_phi[idx],\
+			torch.pow(torch.norm(grad_phi[idx],p=2,dim=1),-1).unsqueeze(1))
+		return grad_phi_inv
+
+	def torch_get_grad_phi(self,x,P,H):
+		grad_phi = torch.zeros((len(x),self.dim_action),device=self.device)
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
+			grad_phi += self.torch_get_grad_phi_contribution(P[:,j,:],H[:,j])
+		return grad_phi
+
+	def torch_get_grad_phi_contribution(self,P,H):
+		normP = torch.norm(P,p=2,dim=1)
+		normP = normP.unsqueeze(1)
+		normP = torch_tile(normP,1,P.shape[1])
+		H = H.unsqueeze(1)
+		H = torch_tile(H,1,P.shape[1])
+		grad_phi = torch.mul(torch.mul(torch.pow(H,-1),torch.pow(normP,-1)),P)
+		return grad_phi		
+
+	def torch_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
+		adaptive_scaling = torch.ones(H.shape[0],device=self.device)
+		# print('H',H)
+		if not H.nelement() == 0:
+			minH = torch.min(H,dim=1)[0]
+			normb = torch.norm(barrier_action,p=2,dim=1)
+			normpi = torch.norm(empty_action,p=2,dim=1)
+			idx = minH < self.param.Delta_R
+			adaptive_scaling[idx] = torch.min(\
+				torch.mul(normb[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
+		return adaptive_scaling.unsqueeze(1)
+
+	def torch_scale(self,action,max_action):
+		inv_alpha = action.norm(p=2,dim=1)/max_action
+		inv_alpha = torch.clamp(inv_alpha,min=1)
+		inv_alpha = inv_alpha.unsqueeze(0).T
+		inv_alpha = torch_tile(inv_alpha,1,2)
+		action = action*inv_alpha.pow_(-1)
+		return action
+
+	def torch_get_alpha_fdbk(self):
+		phi_max = -1*np.log(self.param.Delta_R/(self.param.r_obs_sense-self.param.r_agent))
+		alpha = np.min((phi_max*self.param.b_gamma,self.param.alpha_fdbk))
+		return alpha
+
+	def torch_get_relative_positions_and_safety_functions(self,x):
+
+		nd = x.shape[0] # number of data points in batch 
+		nn = self.get_num_neighbors(x)
+		no = self.get_num_obstacles(x)
+
+		P = torch.zeros((nd,nn+no,2),device=self.device) # pj - pi 
+		H = torch.zeros((nd,nn+no),device=self.device) 
+		curr_idx = 0
+
+		for j in range(nn):
+			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
+			idx = self.get_agent_idx_j(x,j)
+			P[:,curr_idx,:] = x[:,idx]
+			H[:,curr_idx] = (torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent)/(self.param.r_comm - self.param.r_agent)
+
+			# H[:,curr_idx] = torch.max(torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent, torch.zeros(1,device=self.device))
+			# H[:,curr_idx] = torch.max(
+			# 	(torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent)/(self.param.r_comm-self.param.r_agent), 
+			# 	self.param.eps_h*torch.ones(1,device=self.device))
+
+			curr_idx += 1 
+
+		for j in range(no):
+			idx = self.get_obstacle_idx_j(x,j)
+			P[:,curr_idx,:] = x[:,idx]
+			closest_point = torch_min_point_circle_rectangle(
+				torch.zeros(2,device=self.device), 
+				self.param.r_agent,
+				-x[:,idx] - torch.tensor([0.5,0.5],device=self.device), 
+				-x[:,idx] + torch.tensor([0.5,0.5],device=self.device))
+			H[:,curr_idx] = (torch.norm(closest_point, p=2, dim=1) - self.param.r_agent)/(self.param.r_comm - self.param.r_agent)
+
+			# H[:,curr_idx] = torch.max(torch.norm(closest_point, p=2, dim=1) - self.param.r_agent, torch.zeros(1,device=self.device))
+			# H[:,curr_idx] = torch.max(
+			# 	(torch.norm(closest_point, p=2, dim=1) - self.param.r_agent)/(self.param.r_comm-self.param.r_agent), 
+			# 	self.param.eps_h*torch.ones(1,device=self.device))
+			curr_idx += 1
+
+		return P,H 
+
+	# numpy function, otpimized for rollout
 	def numpy_get_phi(self,x,P,H):
 		phi = np.zeros(1)
 		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
-			phi += -np.log(H[:,j])
+			if H[:,j] > 0:
+				phi += -np.log(H[:,j])
 		return phi 
 
 	def numpy_get_grad_phi_inv(self,x,P,H):
@@ -146,16 +248,23 @@ class Empty_Net_wAPF():
 		return grad_phi_ji
 
 	def numpy_get_alpha_fdbk(self):
-		phi_max = -self.param.n_agents**2.0*np.log(self.param.Delta_R/(self.param.r_obs_sense-self.param.r_agent))
-		alpha = phi_max*self.param.b_gamma 
-		return alpha 		
+		phi_max = -1*np.log(self.param.Delta_R/(self.param.r_obs_sense-self.param.r_agent))
+		alpha = np.min((phi_max*self.param.b_gamma,self.param.alpha_fdbk))
+		return alpha
 
-	def numpy_get_grad_psi_inv(self,x,P,H):
-		barrier = self.numpy_get_barrier_action(x,P,H)
-		barrier += self.param.eps_h*np.random.random(barrier.shape)
-		grad_psi_inv = np.ones(barrier.shape)
-		grad_psi_inv[:,0] = (1-barrier[:,1])/barrier[:,0]
-		return grad_psi_inv
+	def numpy_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
+		adaptive_scaling = 1.0 
+		if not H.size == 0 and np.min(H) < self.param.Delta_R:
+			normb = np.linalg.norm(barrier_action)
+			normpi = np.linalg.norm(empty_action)
+			adaptive_scaling = np.min((normb/normpi,1))
+		return adaptive_scaling
+
+	def numpy_scale(self,action,max_action):
+		alpha = max_action/np.linalg.norm(action)
+		alpha = np.min((alpha,1))
+		action = action*alpha
+		return action		
 
 	def numpy_get_relative_positions_and_safety_functions(self,x):
 		
@@ -185,113 +294,6 @@ class Empty_Net_wAPF():
 			curr_idx += 1
 		return P,H 
 
-	def numpy_get_barrier_action(self,x,P,H):
-		barrier = np.zeros((len(x),self.dim_action))
-		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
-			barrier += self.numpy_get_barrier(P[:,j,:],H[:,j])
-		return barrier
-
-	def numpy_get_barrier(self,P,H):
-		normp = np.linalg.norm(P)
-		barrier = -1*self.param.b_gamma/(H*normp)*P
-		return barrier
-
-
-
-	# torch functions, optimzied for batch 
-	def torch_get_grad_psi_inv(self,x,P,H):
-		barrier = self.torch_get_barrier_action(x,P,H)
-		barrier += self.param.eps_h*torch.rand(barrier.shape)
-		grad_psi_inv = torch.ones(barrier.shape,device=self.device)
-		grad_psi_inv[:,0] = torch.mul(grad_psi_inv[:,1]-barrier[:,1],torch.pow(barrier[:,0],-1))
-		return grad_psi_inv
-
-	def torch_get_alpha_fdbk(self):
-		phi_max = -self.param.n_agents**2.0*np.log(self.param.Delta_R/(self.param.r_obs_sense-self.param.r_agent))
-		alpha = phi_max*self.param.b_gamma 
-		return alpha 
-
-	def torch_get_relative_positions_and_safety_functions(self,x):
-
-		nd = x.shape[0] # number of data points in batch 
-		nn = self.get_num_neighbors(x)
-		no = self.get_num_obstacles(x)
-
-		P = torch.zeros((nd,nn+no,2),device=self.device) # pj - pi 
-		H = torch.zeros((nd,nn+no),device=self.device) 
-		curr_idx = 0
-
-		for j in range(nn):
-			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
-			idx = self.get_agent_idx_j(x,j)
-			P[:,curr_idx,:] = x[:,idx]
-			H[:,curr_idx] = torch.max(torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent, torch.zeros(1,device=self.device))
-			curr_idx += 1 
-
-		for j in range(no):
-			idx = self.get_obstacle_idx_j(x,j)
-			P[:,curr_idx,:] = x[:,idx]
-			closest_point = torch_min_point_circle_rectangle(
-				torch.zeros(2,device=self.device), 
-				self.param.r_agent,
-				-x[:,idx] - torch.tensor([0.5,0.5],device=self.device), 
-				-x[:,idx] + torch.tensor([0.5,0.5],device=self.device))
-			H[:,curr_idx] = torch.max(torch.norm(closest_point, p=2, dim=1) - self.param.r_agent, torch.zeros(1,device=self.device))
-			curr_idx += 1
-
-		return P,H 
-
-	def torch_get_barrier_action(self,x,P,H):
-
-		barrier = torch.zeros((len(x),self.dim_action),device=self.device)
-		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
-			barrier += self.torch_get_barrier(P[:,j,:],H[:,j])
-		return barrier
-
-	def torch_get_barrier(self,P,H):
-		normP = torch.norm(P,p=2,dim=1)
-		normP = normP.unsqueeze(1)
-		normP = torch_tile(normP,1,P.shape[1])
-		H = H.unsqueeze(1)
-		H = torch_tile(H,1,P.shape[1])
-		barrier = -1*self.param.b_gamma*torch.mul(torch.mul(torch.pow(H,-1),torch.pow(normP,-1)),P)
-		return barrier
-
-
-
-	def torch_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
-		adaptive_scaling = torch.ones(H.shape[0],device=self.device)
-		# print('H',H)
-		if not H.nelement() == 0:
-			minH = torch.min(H,dim=1)[0]
-			normb = torch.norm(barrier_action,p=2,dim=1)
-			normpi = torch.norm(empty_action,p=2,dim=1)
-			idx = minH < self.param.Delta_R
-			adaptive_scaling[idx] = torch.min(\
-				torch.mul(normb[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
-		return adaptive_scaling.unsqueeze(1)
-
-	def numpy_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
-		adaptive_scaling = 1.0 
-		if not H.size == 0 and np.min(H) < self.param.Delta_R:
-			normb = np.linalg.norm(barrier_action)
-			normpi = np.linalg.norm(empty_action)
-			adaptive_scaling = np.min((normb/normpi,1))
-		return adaptive_scaling
-
-	def torch_scale(self,action,max_action):
-		inv_alpha = action.norm(p=2,dim=1)/max_action
-		inv_alpha = torch.clamp(inv_alpha,min=1)
-		inv_alpha = inv_alpha.unsqueeze(0).T
-		inv_alpha = torch_tile(inv_alpha,1,2)
-		action = action*inv_alpha.pow_(-1)
-		return action
-
-	def numpy_scale(self,action,max_action):
-		alpha = max_action/np.linalg.norm(action)
-		alpha = np.min((alpha,1))
-		action = action*alpha
-		return action
 
 	def get_num_neighbors(self,x):
 		return int(x[0,0])
