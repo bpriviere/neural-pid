@@ -58,21 +58,37 @@ class Barrier_Net(nn.Module):
 		return super().to(device)
 
 	def policy(self,x):
-		# only called in rollout 
 
-		self.to("cpu")
-
-		A = np.empty((len(x),self.dim_action))
+		grouping = dict()
 		for i,x_i in enumerate(x):
-			a_i = self(x_i)
-			A[i,:] = a_i
-		return A
+			key = (int(x_i[0][0]), x_i.shape[1])
+			if key in grouping:
+				grouping[key].append(i)
+			else:
+				grouping[key] = [i]
+
+		if len(grouping) < len(x):
+			A = np.empty((len(x),self.dim_action))
+			for key, idxs in grouping.items():
+				batch = torch.Tensor([x[idx][0] for idx in idxs])
+				a = self(batch)
+				a = a.detach().numpy()
+				for i, idx in enumerate(idxs):
+					A[idx,:] = a[i]
+
+			return A
+		else:
+			A = np.empty((len(x),self.dim_action))
+			for i,x_i in enumerate(x):
+				a_i = self(x_i)
+				A[i,:] = a_i 
+			return A
 
 	def __call__(self,x):
 
 		if type(x) == torch.Tensor:
 
-			if self.param.safety is "potential":
+			if self.param.safety == "potential":
 				P,H = self.torch_get_relative_positions_and_safety_functions(x)
 				barrier_action = self.torch_get_barrier_action(x,P,H)
 				empty_action = self.empty(x)
@@ -81,7 +97,7 @@ class Barrier_Net(nn.Module):
 				action = torch.mul(adaptive_scaling,empty_action)+barrier_action 
 				action = self.torch_scale(action, self.param.a_max)
 
-			elif self.param.safety is "fdbk":
+			elif self.param.safety == "fdbk":
 				P,H = self.torch_get_relative_positions_and_safety_functions(x)
 				Psi = self.torch_get_psi(x,P,H)
 				GradPsiInv = self.torch_get_grad_psi_inv(x,P,H)
@@ -92,9 +108,12 @@ class Barrier_Net(nn.Module):
 				action = alpha_fdbk*empty_action + barrier_action 
 				action = self.torch_scale(action, self.param.a_max)
 
+			else:
+				exit('safety not recognized: ' + self.param.safety)
+
 		elif type(x) is np.ndarray:
 
-			if self.param.safety is "potential":
+			if self.param.safety == "potential":
 				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
 				barrier_action = self.numpy_get_barrier_action(x,P,H)
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
@@ -103,7 +122,7 @@ class Barrier_Net(nn.Module):
 				action = adaptive_scaling*empty_action+barrier_action 
 				action = self.numpy_scale(action, self.param.a_max)
 
-			elif self.param.safety is "fdbk":
+			elif self.param.safety == "fdbk":
 				P,H = self.numpy_get_relative_positions_and_safety_functions(x)
 				Psi = self.numpy_get_psi(x,P,H)
 				GradPsiInv = self.numpy_get_grad_psi_inv(x,P,H)
@@ -113,6 +132,9 @@ class Barrier_Net(nn.Module):
 				alpha_fdbk = self.numpy_get_alpha_fdbk()
 				action = alpha_fdbk*empty_action + barrier_action 
 				action = self.numpy_scale(action, self.param.a_max)
+
+			else:
+				exit('safety not recognized: ' + self.param.safety)
 
 		else:
 			exit('type(x) not recognized: ', type(x))
