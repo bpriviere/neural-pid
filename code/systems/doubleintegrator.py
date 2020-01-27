@@ -590,7 +590,9 @@ class DoubleIntegrator(Env):
 		s,g = [],[]
 		for agent in instance["agents"]:
 			s.extend([agent["start"][0] + 0.5, agent["start"][1] + 0.5])
+			s.extend([0,0])
 			g.extend([agent["goal"][0] + 0.5, agent["goal"][1] + 0.5])
+			g.extend([0,0])
 		s0 = InitialState._make((np.array(s), np.array(g)))
 
 		self.obstacles = instance["map"]["obstacles"]
@@ -614,9 +616,9 @@ class DoubleIntegrator(Env):
 		bad_agents = set()
 		for obs, agent in zip(observations, self.agents):
 			num_neighbors = int(obs[0][0])
-			num_obstacles = int((obs.shape[1]-3-2*num_neighbors)/2)
+			num_obstacles = int((obs.shape[1]-5-4*num_neighbors)/2)
 			if num_neighbors > 0:
-				closest_neighbor = obs[0,3:5]
+				closest_neighbor = obs[0,5:7]
 				d_ji = np.linalg.norm(closest_neighbor)
 				if d_ji < 2*self.r_agent:
 					print('collision between agents at t = {}'.format(self.param.sim_times[self.time_step]))
@@ -624,7 +626,7 @@ class DoubleIntegrator(Env):
 					bad_agents.add(agent) 
 
 			if num_obstacles > 0:
-				closest_obstacle = obs[0,3+2*num_neighbors:3+2*num_neighbors+2]
+				closest_obstacle = obs[0,5+4*num_neighbors:5+4*num_neighbors+2]
 				if self.is_collision_circle_rectangle(
 					np.zeros(2),
 					self.r_agent,
@@ -633,11 +635,11 @@ class DoubleIntegrator(Env):
 					print('collision with obstacle at t = {}'.format(self.param.sim_times[self.time_step]))
 					bad_agents.add(agent)
 
-		# low velocity and not at goal?
-		for agent in self.agents:
-			if np.linalg.norm(agent.v) < v_min and np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
-				print('agent {} too slow (v={})'.format(agent.i, np.linalg.norm(agent.v)))
-				bad_agents.add(agent)
+		# # low velocity and not at goal?
+		# for agent in self.agents:
+		# 	if np.linalg.norm(agent.v) < v_min and np.linalg.norm(agent.p - agent.s_g[0:2]) > d_max:
+		# 		print('agent {} too slow (v={})'.format(agent.i, np.linalg.norm(agent.v)))
+		# 		bad_agents.add(agent)
 
 		# end condition 
 		if self.time_step == self.param.sim_nt-1:

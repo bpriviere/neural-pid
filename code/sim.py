@@ -91,8 +91,12 @@ def sim(param, env, controllers, initial_state, visualize):
 				for k in np.arange(0,result.steps,100):
 					X.append(result.states[k,env.agent_idx_to_state_idx(agent.i)])
 					Y.append(result.states[k,env.agent_idx_to_state_idx(agent.i)+1])
+					# Singleintegrator: plot actions
 					U.append(result.actions[k,2*agent.i+0])
 					V.append(result.actions[k,2*agent.i+1])
+					# doubleintegrator: plot velocities
+					# U.append(result.states[k,env.agent_idx_to_state_idx(agent.i)+2])
+					# V.append(result.states[k,env.agent_idx_to_state_idx(agent.i)+3])
 
 				ax.quiver(X,Y,U,V,angles='xy', scale_units='xy',scale=0.5,color=color,width=0.005)
 
@@ -181,23 +185,40 @@ def sim(param, env, controllers, initial_state, visualize):
 			# 	num_obstacles = int((observation.shape[0]-5 - 4*num_neighbors)/2)
 
 			# 	robot_pos = result.states[step,env.agent_idx_to_state_idx(robot):env.agent_idx_to_state_idx(robot)+2]
-				
+
+			# 	X = []
+			# 	Y = []
+			# 	U = []
+			# 	V = []
+
 			# 	idx = 5
 			# 	for i in range(num_neighbors):
 			# 		pos = observation[idx : idx+2] + robot_pos
+			# 		X.append(pos[0])
+			# 		Y.append(pos[1])
+			# 		U.append(observation[idx+2])
+			# 		V.append(observation[idx+3])
+			# 		# print(np.linalg.norm(observation[idx+2:idx+4]))
 			# 		ax.add_patch(Circle(pos, 0.25, facecolor='gray', edgecolor='red', alpha=0.5))
 			# 		idx += 4
 
 			# 	for i in range(num_obstacles):
-			# 		# pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
-			# 		# ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
-			# 		pos = observation[idx : idx+2] + robot_pos
-			# 		ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
+			# 		ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+			# 		# pos = observation[idx : idx+2] + robot_pos
+			# 		# ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
 			# 		idx += 2
 
 			# 	# plot goal
 			# 	goal = observation[1:3] + robot_pos
 			# 	ax.add_patch(Rectangle(goal - np.array([0.2,0.2]), 0.4, 0.4, alpha=0.5, color=color))
+			# 	X.append(robot_pos[0])
+			# 	Y.append(robot_pos[1])
+			# 	U.append(observation[3])
+			# 	V.append(observation[4])
+
+			# 	# plot velocity vectors
+			# 	ax.quiver(X,Y,U,V,angles='xy', scale_units='xy',scale=0.5,color='red',width=0.005)
 
 		elif param.env_name == 'Consensus' and param.sim_render_on:
 			env.render()

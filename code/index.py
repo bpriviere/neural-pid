@@ -64,9 +64,9 @@ class Index:
 		# if (distances[0][0] > 2 or distances[0][-1] > 4) and self.fileidx < 100:
 		if False:
 			pp = PdfPages("index_query_{}.pdf".format(self.fileidx))
-			self.plot_obs(pp, obs[0], "input", has_action = False)
+			self.plot_obs_doubleintegrator(pp, obs[0], "input", has_action = False)
 			for k, l in enumerate(labels[0]):
-				self.plot_obs(pp, self.D[(num_neighbors,num_obstacles)][l], "k = {}, dist = {}".format(k, distances[0][k]))
+				self.plot_obs_doubleintegrator(pp, self.D[(num_neighbors,num_obstacles)][l], "k = {}, dist = {}".format(k, distances[0][k]))
 			pp.close()
 			self.fileidx += 1
 
@@ -98,7 +98,7 @@ class Index:
 		return total 
 
 
-	def plot_obs(self, pp, observation,title=None, has_action = True):
+	def plot_obs_singleintegrator(self, pp, observation,title=None, has_action = True):
 		fig, ax = plt.subplots()
 		ax.set_aspect('equal')
 		ax.set_xlim(-3,3)
@@ -135,6 +135,71 @@ class Index:
 		# plot goal
 		goal = observation[1:3] + robot_pos
 		ax.add_patch(Rectangle(goal - np.array([0.2,0.2]), 0.4, 0.4, alpha=0.5, color='blue'))
+
+		# plot action
+		if has_action:
+			plt.arrow(0,0,observation[-2],observation[-1])
+
+		ax.add_patch(Circle(robot_pos, 3.0, facecolor='gray', edgecolor='black', alpha=0.1))
+
+		# plt.show()
+		pp.savefig(fig)
+		plt.close(fig)
+
+	def plot_obs_doubleintegrator(self, pp, observation,title=None, has_action = True):
+		fig, ax = plt.subplots()
+		ax.set_aspect('equal')
+		ax.set_xlim(-3,3)
+		ax.set_ylim(-3,3)
+		ax.set_autoscalex_on(False)
+		ax.set_autoscaley_on(False)
+		ax.set_title(title)
+
+		# print(observation)
+		num_neighbors = int(observation[0])
+		if has_action:
+			num_obstacles = int((observation.shape[0]-7 - 4*num_neighbors)/2)
+		else:
+			num_obstacles = int((observation.shape[0]-5 - 4*num_neighbors)/2)
+
+		# print(observation, num_neighbors, num_obstacles)
+
+		robot_pos = np.array([0,0])
+		ax.add_patch(Circle(robot_pos, 0.2, facecolor='b', alpha=0.5))
+		
+		X = []
+		Y = []
+		U = []
+		V = []
+
+		idx = 5
+		for i in range(num_neighbors):
+			pos = observation[idx : idx+2] + robot_pos
+			X.append(pos[0])
+			Y.append(pos[1])
+			U.append(observation[idx+2])
+			V.append(observation[idx+3])
+			ax.add_patch(Circle(pos, 0.2, facecolor='gray', edgecolor='red', alpha=0.5))
+			idx += 4
+
+		for i in range(num_obstacles):
+			pos = observation[idx : idx+2] + robot_pos - np.array([0.5,0.5])
+			ax.add_patch(Rectangle(pos, 1.0, 1.0, facecolor='gray', edgecolor='red', alpha=0.5))
+			# pos = observation[idx : idx+2] + robot_pos
+			# ax.add_patch(Circle(pos, 0.5, facecolor='gray', edgecolor='red', alpha=0.5))
+			idx += 2
+
+		# plot goal
+		goal = observation[1:3] + robot_pos
+		ax.add_patch(Rectangle(goal - np.array([0.2,0.2]), 0.4, 0.4, alpha=0.5, color='blue'))
+		X.append(robot_pos[0])
+		Y.append(robot_pos[1])
+		U.append(observation[3])
+		V.append(observation[4])
+		print(observation)
+
+		# plot velocity vectors
+		ax.quiver(X,Y,U,V,angles='xy', scale_units='xy',scale=1.0,color='red',width=0.005)
 
 		# plot action
 		if has_action:
