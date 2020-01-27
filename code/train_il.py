@@ -114,7 +114,11 @@ def make_loader(
 
 		for data in dataset:
 			num_neighbors = int(data[0])
-			num_obstacles = int((data.shape[0] - 1 - env.state_dim_per_agent - num_neighbors*env.state_dim_per_agent - 2) / 2)
+			if env.param.env_name in ['SingleIntegrator', 'DoubleIntegrator']:
+				num_obstacles = int((data.shape[0] - 1 - env.state_dim_per_agent - num_neighbors*env.state_dim_per_agent - 2) / 2)
+			elif env.param.env_name == 'SingleIntegratorVelSensing':
+				num_obstacles = int((data.shape[0] - 1 - 2 - num_neighbors*4 - 2) / 2)
+
 			key = (num_neighbors, num_obstacles)
 			if key in dataset_dict:
 				dataset_dict[key].append(data)
@@ -238,9 +242,11 @@ def train_il(param, env, device):
 			shutil.rmtree('../preprocessed_data')
 			os.mkdir('../preprocessed_data')
 
-			for num_agent,num_data in param.datadict.items():
-				# datadir = glob.glob("../data/singleintegrator/central/*obst{}_agents{}_ex*.npy".format(param.il_obst_case,num_agent))
-				datadir = glob.glob("../data/singleintegrator/central/*_agents{}_ex*.npy".format(num_agent))
+			for datapattern,num_data in param.datadict.items():
+				if param.env_name in ['SingleIntegrator','SingleIntegratorVelSensing']:
+					datadir = glob.glob("../data/singleintegrator/central3/*{}_ex*.npy".format(datapattern))
+				elif param.env_name in ['DoubleIntegrator']:
+					datadir = glob.glob("../data/doubleintegrator/central3/*{}_ex*.npy".format(datapattern))
 
 				len_case = 0
 				with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -251,7 +257,7 @@ def train_il(param, env, device):
 							test_dataset.extend(dataset)
 
 						len_case += len(dataset)
-						print('num_agents,len_case = {},{}'.format(num_agent,len_case))
+						print('num_agents,len_case = {},{}'.format(datapattern,len_case))
 
 						if len_case > num_data:
 							break
