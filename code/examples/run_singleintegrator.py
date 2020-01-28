@@ -40,7 +40,7 @@ class SingleIntegratorParam(Param):
 		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
-		self.Delta_R = 0.01
+		self.Delta_R = 0.05
 		self.safety = "fdbk" # "potential", "fdbk"
 
 		self.max_neighbors = 5
@@ -52,7 +52,7 @@ class SingleIntegratorParam(Param):
 		self.cbf_kp = 1.0
 		
 		# 
-		self.eps_h = 1e-9
+		# self.eps_h = 1e-9
 		if self.safety is "potential":
 			self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
 			self.pi_min = -self.pi_max # -1*self.a_max
@@ -61,7 +61,7 @@ class SingleIntegratorParam(Param):
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 25 #25
+		self.sim_tf = 100 #25
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -79,14 +79,14 @@ class SingleIntegratorParam(Param):
 		self.il_n_epoch = 250
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 1000000 # 100000 # 100000000
+		self.il_n_data = 10000000000 # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["4"] = 10000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 1000000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -167,7 +167,9 @@ def load_instance(param, env, instance):
 	else:
 		# test map 
 		ex = '0001' # 4 is hard 
-		with open("../results/singleintegrator/instances/map_8by8_obst6_agents4_ex{}.yaml".format(ex)) as map_file:
+		# instance = "map_8by8_obst6_agents4_ex0004.yaml"
+		instance = "map_8by8_obst6_agents64_ex0004.yaml"
+		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
 
@@ -223,6 +225,7 @@ if __name__ == '__main__':
 	env = SingleIntegrator(param)
 
 	if args.il:
+		param.il_train_model_fn = param.sim_il_model_fn
 		run(param, env, None, None, args)
 		exit()
 
@@ -239,8 +242,8 @@ if __name__ == '__main__':
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
 		# 'barrier' : torch.load(param.il_barrier_model_fn),
-		# 'current': torch.load(param.il_train_model_fn),
-		'current_wsafety' : Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn))
+		'current': torch.load(param.sim_il_model_fn),
+		# 'current_wsafety' : Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn))
 	}
 
 	s0 = load_instance(param, env, args.instance)
