@@ -244,13 +244,15 @@ def train_il(param, env, device):
 
 			for datapattern,num_data in param.datadict.items():
 				if param.env_name in ['SingleIntegrator','SingleIntegratorVelSensing']:
-					datadir = glob.glob("../data/singleintegrator/central3/*{}_ex*.npy".format(datapattern))
+					datadir = glob.glob("../data/singleintegrator/central3/*{}*.npy".format(datapattern))
 				elif param.env_name in ['DoubleIntegrator']:
-					datadir = glob.glob("../data/doubleintegrator/central3/*{}_ex*.npy".format(datapattern))
+					datadir = glob.glob("../data/doubleintegrator/central3/*{}*.npy".format(datapattern))
 
 				len_case = 0
-				with concurrent.futures.ProcessPoolExecutor() as executor:
+				with concurrent.futures.ProcessPoolExecutor(max_workers=24) as executor:
 					for dataset in executor.map(env.load_dataset_action_loss, datadir):
+				# for file in datadir:
+					# dataset = env.load_dataset_action_loss(file)
 						if np.random.uniform(0, 1) <= param.il_test_train_ratio:
 							train_dataset.extend(dataset)
 						else:

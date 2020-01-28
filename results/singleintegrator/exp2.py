@@ -43,10 +43,9 @@ if __name__ == "__main__":
   else:
     device = torch.device('cpu')
 
-  agents_lst = [2,4,8] #[2,4,8,16,32]
-  obst_lst = [6] #[6,9,12]
-  radii = [1,2,3,4,5,6,7,8] #[1,2,3,4]
-  training_data = [100000, 500000, 1000000]
+  agents_lst = [8]
+  obst_lst = [6,12]
+  radii = [1,2,3,4,5,6,7,8]
   training_data = [10000, 100000, 1000000]
 
   if args.plot:
@@ -65,12 +64,12 @@ if __name__ == "__main__":
               instance = os.path.splitext(os.path.basename(file))[0]
               map_filename = "singleintegrator/instances/{}.yaml".format(instance)
               result = stats.stats(map_filename, file)
-              if td == 100000:
-                result["solver"] = "NN+BF (100k training data)"
-              elif td == 500000:
-                result["solver"] = "NN+BF (500k training data)"
+              if td == 10000:
+                result["solver"] = "10k training data"
+              elif td == 100000:
+                result["solver"] = "100k training data"
               elif td == 1000000:
-                result["solver"] = "NN+BF (1M training data)"
+                result["solver"] = "1M training data"
               else:
                 result["solver"] = "Empty{}".format(td)
               result["Rsense"] = r
@@ -121,7 +120,7 @@ if __name__ == "__main__":
     for r in radii:
       for td in training_data:
         if args.train:
-          for cc in ['Empty']: #'Barrier']:
+          for cc in ['Barrier']:
             param = run_singleintegrator.SingleIntegratorParam()
             param.r_comm = r
             param.r_obs_sense = r
@@ -129,7 +128,7 @@ if __name__ == "__main__":
             param.max_obstacles = 10000 #5
             param.il_load_loader_on = False
             param.il_controller_class = cc
-            param.datadict["4"] = td
+            param.datadict["obst"] = td
 
             param.il_train_model_fn = 'singleintegrator/exp2{}R{}td{}_{}/il_current.pt'.format(cc,r,td,i)
             env = SingleIntegrator(param)
@@ -147,18 +146,14 @@ if __name__ == "__main__":
           env = SingleIntegrator(param)
           # evaluate policy
           controllers = {
-            'exp2EmptyR{}td{}_{}'.format(r,td,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp2EmptyR{}td{}_{}/il_current.pt'.format(r,td,i))),
-            'exp1BarrierR{}_td{}_{}'.format(r,td,i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(r,td,i))
+            # 'exp2EmptyR{}td{}_{}'.format(r,td,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp2EmptyR{}td{}_{}/il_current.pt'.format(r,td,i))),
+            'exp2BarrierR{}td{}_{}'.format(r,td,i) : torch.load('singleintegrator/exp2BarrierR{}td{}_{}/il_current.pt'.format(r,td,i))
           }
 
           # for instance in instances:
             # run_singleintegrator.run_batch(instance, controllers)
 
-
-          with Pool(12) as p:
-            p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
-
-          # with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
-          #   for _ in executor.map(run_singleintegrator.run_batch, instances, repeat(controllers)):
-          #     pass
+          with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
+            for _ in executor.map(run_singleintegrator.run_batch, repeat(param), repeat(env), instances, repeat(controllers)):
+              pass
 

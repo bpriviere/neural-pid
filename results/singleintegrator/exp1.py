@@ -24,6 +24,7 @@ import numpy as np
 sys.path.insert(1, os.path.join(os.getcwd(),'singleintegrator'))
 from createPlots import add_line_plot_agg, add_bar_agg, add_scatter
 import stats
+import matplotlib
 from matplotlib.backends.backend_pdf import PdfPages
 
 if __name__ == "__main__":
@@ -41,7 +42,7 @@ if __name__ == "__main__":
   else:
     device = torch.device('cpu')
 
-  agents_lst = [2,4,8,16,32]
+  agents_lst = [2,4,8,16,32,64]
   obst_lst = [6,12]
 
   if args.plot:
@@ -50,9 +51,9 @@ if __name__ == "__main__":
 
     solvers = {
       'orcaR3': 'ORCA',
-      'exp1Empty': 'NN+BF',
+      'exp1Empty': '2-stage G2L',
       'central': 'Central',
-      'exp1Barrier': 'NNwBF'
+      'exp1Barrier': 'End-to-end G2L'
     }
 
     # default fig size is [6.4, 4.8]
@@ -89,7 +90,7 @@ if __name__ == "__main__":
     pp = PdfPages("exp1.pdf")
 
     for column in range(0, 2):
-      axs[1,column].set_xlabel("number of robots")
+      axs[1,column].set_xlabel("robot density [#robots/64m\u00B2]")
     
     axs[0,0].set_ylabel("robot success [%]")
     axs[0,0].set_ylim([35,105])
@@ -111,8 +112,7 @@ if __name__ == "__main__":
     # plot loss curve
     pp = PdfPages("exp1_loss.pdf")
     fig,ax = plt.subplots()    
-    ax.set_yscale('log')
-    
+   
     for solver in solvers.keys():
       files = glob.glob("singleintegrator/{}*/*.csv".format(solver), recursive=True)
       if len(files) == 0:
@@ -149,6 +149,10 @@ if __name__ == "__main__":
         facecolor=line2.get_color(),
         linewidth=1e-3,
         alpha=0.5)
+
+    ax.set_yscale('log')
+    ax.set_yticks([0.0001, 0.001, 0.01, 0.1])
+    ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
       
     plt.legend()
     pp.savefig(fig)
@@ -171,7 +175,7 @@ if __name__ == "__main__":
       param = run_singleintegrator.SingleIntegratorParam()
       env = SingleIntegrator(param)
       if args.train:
-        for cc in ['Empty']:#, 'Barrier']:
+        for cc in ['Empty', 'Barrier']:
           param = run_singleintegrator.SingleIntegratorParam()
           param.il_controller_class = cc
           param.il_train_model_fn = 'singleintegrator/exp1{}_{}/il_current.pt'.format(cc,i)

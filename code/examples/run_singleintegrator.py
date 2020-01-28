@@ -40,13 +40,13 @@ class SingleIntegratorParam(Param):
 		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
-		self.Delta_R = 0.075
-		self.safety = "fdbk" # "potential", "fdbk"
+		self.Delta_R = 1e-4
+		self.safety = "potential" # "potential", "fdbk"
 
 		self.max_neighbors = 5
 		self.max_obstacles = 5
 		# Barrier function stuff
-		self.b_gamma = 0.01 # 0.1
+		self.b_gamma = 0.001 # 0.1
 		self.b_exph = 1.0 # 1.0
 		# cbf 
 		self.cbf_kp = 1.0
@@ -72,23 +72,23 @@ class SingleIntegratorParam(Param):
 		# IL
 		self.il_load_loader_on = False
 		# self.il_load_loader_on = False
-		self.training_time_downsample = 100
+		self.training_time_downsample = 50
 		self.il_train_model_fn = '../results/singleintegrator/empty_2/il_current.pt'
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 10000 #512 #5000
-		self.il_n_epoch = 250
+		self.il_batch_size = 4096
+		self.il_n_epoch = 200
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 10000 # 100000 # 100000000
+		self.il_n_data = None
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier',
 		
 		self.datadict = dict()
-		self.datadict["4"] = 10000 #self.il_n_data
-		# self.datadict["obst"] = 10000 #10000000 #750000 #self.il_n_data
+		# self.datadict["4"] = 10000 #self.il_n_data
+		self.datadict["obst"] = 100000000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -227,7 +227,6 @@ if __name__ == '__main__':
 	env = SingleIntegrator(param)
 
 	if args.il:
-		param.il_train_model_fn = param.sim_il_model_fn
 		run(param, env, None, None, args)
 		exit()
 

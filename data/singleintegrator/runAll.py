@@ -61,6 +61,6 @@ if __name__ == "__main__":
   #   rollout_instance(file)
 
   # parallel version
-  with concurrent.futures.ProcessPoolExecutor(max_workers=24) as executor:
+  with concurrent.futures.ThreadPoolExecutor(max_workers=24) as executor:
     for _ in executor.map(rollout_instance, datadir):
       pass
