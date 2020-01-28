@@ -57,11 +57,13 @@ class SingleIntegratorParam(Param):
 			self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
 			self.pi_min = -self.pi_max # -1*self.a_max
 		elif self.safety is "fdbk":
-			self.pi_max = 4.5
+			phi = -np.log((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
+			grad_phi_norm = (self.r_comm - self.r_agent) / (0.2 - self.r_agent)
+			self.pi_max = self.b_gamma * phi / grad_phi_norm + self.a_max
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 25 #25
+		self.sim_tf = 25
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
