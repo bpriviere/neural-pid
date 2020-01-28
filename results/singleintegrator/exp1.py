@@ -20,12 +20,19 @@ from multiprocessing import cpu_count
 from torch.multiprocessing import Pool
 import matplotlib.pyplot as plt
 import numpy as np
+import subprocess
 
 sys.path.insert(1, os.path.join(os.getcwd(),'singleintegrator'))
 from createPlots import add_line_plot_agg, add_bar_agg, add_scatter
 import stats
 import matplotlib
 from matplotlib.backends.backend_pdf import PdfPages
+
+def rollout_instance(file, args):
+  subprocess.run("python3 examples/run_singleintegrator.py -i {} {} --batch".format(os.path.abspath(file), args),
+    cwd="../../code",
+    shell=True)
+
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -195,19 +202,11 @@ if __name__ == "__main__":
           'exp1Barrier_{}'.format(i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(i))
         }
 
-        # for instance in instances:
-          # run_singleintegrator.run_batch(instance, controllers)
-        controller1 = "exp1Empty_{},EmptyAPF,singleintegrator/exp1Empty_{}/il_current.pt".format(i,i)
-        controller2 = "exp1Barrier_{},torch,singleintegrator/exp1Barrier_{}/il_current.pt".format(i,i)
-        subprocess.run("python3 examples/run_singleintegrator.py -i {} --controller {} --controller {} --batch".format(
-          os.path.abspath(file), controller1, controller2),
-          cwd="../../code",
-          shell=True)
+        controller1 = "exp1Empty_{0},EmptyAPF,singleintegrator/exp1Empty_{0}/il_current.pt".format(i)
+        controller2 = "exp1Barrier_{0},torch,singleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
+        args = "--controller {} --controller {}".format(controller1, controller2)
 
-        # with Pool(12) as p:
-        #   p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
-
-        # with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
-        #   for _ in executor.map(run_singleintegrator.run_batch, instances, repeat(controllers)):
-        #     pass
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+          for _ in executor.map(rollout_instance, repeat(args), instances):
+            pass
 

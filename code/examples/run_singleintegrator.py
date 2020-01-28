@@ -254,7 +254,7 @@ if __name__ == '__main__':
 			controllers = dict()
 			for ctrl in args.controller:
 				name,kind,path = ctrl.split(',')
-				if kind == "EmptyAPF"
+				if kind == "EmptyAPF":
 					controllers[name] = Empty_Net_wAPF(param,env,torch.load(path))
 				elif kind == "torch":
 					controllers[name] = torch.load(path)
