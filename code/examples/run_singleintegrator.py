@@ -46,7 +46,7 @@ class SingleIntegratorParam(Param):
 		self.max_neighbors = 5
 		self.max_obstacles = 5
 		# Barrier function stuff
-		self.b_gamma = 0.05 # 0.1
+		self.b_gamma = 0.01 # 0.1
 		self.b_exph = 1.0 # 1.0
 		# cbf 
 		self.cbf_kp = 1.0
@@ -57,7 +57,7 @@ class SingleIntegratorParam(Param):
 			self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
 			self.pi_min = -self.pi_max # -1*self.a_max
 		elif self.safety is "fdbk":
-			self.pi_max = 1.0
+			self.pi_max = 4.5
 		
 		# sim 
 		self.sim_t0 = 0

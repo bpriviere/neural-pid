@@ -193,8 +193,8 @@ class Empty_Net_wAPF():
 		for j in range(nn):
 			# j+1 to skip relative goal entries, +1 to skip number of neighbors column
 			idx = self.get_agent_idx_j(x,j)
-			P[:,curr_idx,:] = x[:,idx]
-			H[:,curr_idx] = (torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent)/(self.param.r_comm - self.param.r_agent)
+			P[:,curr_idx,:] = x[:,idx] * (1 - self.param.r_agent * torch.pow(torch.norm(x[:,idx], p=2, dim=1).unsqueeze(1), -1))
+			H[:,curr_idx] = (torch.norm(P[:,curr_idx,:], p=2, dim=1) - self.param.r_agent)/(self.param.r_comm - self.param.r_agent)
 
 			# H[:,curr_idx] = torch.max(torch.norm(x[:,idx], p=2, dim=1) - 2*self.param.r_agent, torch.zeros(1,device=self.device))
 			# H[:,curr_idx] = torch.max(
@@ -205,12 +205,12 @@ class Empty_Net_wAPF():
 
 		for j in range(no):
 			idx = self.get_obstacle_idx_j(x,j)
-			P[:,curr_idx,:] = x[:,idx]
 			closest_point = torch_min_point_circle_rectangle(
 				torch.zeros(2,device=self.device), 
 				self.param.r_agent,
-				-x[:,idx] - torch.tensor([0.5,0.5],device=self.device), 
-				-x[:,idx] + torch.tensor([0.5,0.5],device=self.device))
+				x[:,idx] - torch.tensor([0.5,0.5],device=self.device), 
+				x[:,idx] + torch.tensor([0.5,0.5],device=self.device))
+			P[:,curr_idx,:] = closest_point
 			H[:,curr_idx] = (torch.norm(closest_point, p=2, dim=1) - self.param.r_agent)/(self.param.r_comm - self.param.r_agent)
 
 			# H[:,curr_idx] = torch.max(torch.norm(closest_point, p=2, dim=1) - self.param.r_agent, torch.zeros(1,device=self.device))
@@ -278,22 +278,24 @@ class Empty_Net_wAPF():
 
 		for j in range(nn):
 			idx = self.get_agent_idx_j(x,j)
-			P[:,curr_idx,:] = x[:,idx]
-			H[:,curr_idx] = (np.linalg.norm(x[:,idx]) - 2*self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent)
+			P[:,curr_idx,:] = x[:,idx] * (1 - self.param.r_agent / np.linalg.norm(x[:,idx]))
+			H[:,curr_idx] = (np.linalg.norm(P[:,curr_idx,:]) - self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent)
 			curr_idx += 1 
 
 		for j in range(no):
 			idx = self.get_obstacle_idx_j(x,j)
-			P[:,curr_idx,:] = x[:,idx]
 			closest_point = min_point_circle_rectangle(
 				np.zeros(2), 
 				self.param.r_agent,
-				-x[:,idx] - np.array([0.5,0.5]), 
-				-x[:,idx] + np.array([0.5,0.5]))
+				x[:,idx] - np.array([0.5,0.5]), 
+				x[:,idx] + np.array([0.5,0.5]))
+			P[:,curr_idx,:] = closest_point
 			H[:,curr_idx] = (np.linalg.norm(closest_point) - self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent)
 			curr_idx += 1
 		return P,H 
 
+
+	# helper fnc		
 
 	def get_num_neighbors(self,x):
 		return int(x[0,0])
