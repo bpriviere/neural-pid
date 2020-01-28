@@ -22,6 +22,8 @@ def parse_args():
 	parser.add_argument("-i", "--instance", help="File instance to run simulation on")
 	parser.add_argument("--batch", action='store_true', help="use batch (npy) output instead of interactive (pdf) output")
 	parser.add_argument("--controller", action='append', help="controller(s) to run")
+	parser.add_argument("--Rsense", type=float, help="sensing radius")
+	parser.add_argument("--maxNeighbors", type=int, help="maximum neighbors")
 
 	parser.add_argument("--export", action='store_true', help="export IL model to onnx")
 

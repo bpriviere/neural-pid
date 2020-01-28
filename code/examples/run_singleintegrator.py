@@ -46,7 +46,7 @@ class SingleIntegratorParam(Param):
 		self.max_neighbors = 5
 		self.max_obstacles = 5
 		# Barrier function stuff
-		self.b_gamma = 0.001 # 0.1
+		self.b_gamma = 0.005 # 0.1
 		self.b_exph = 1.0 # 1.0
 		# cbf 
 		self.cbf_kp = 1.0
@@ -63,8 +63,8 @@ class SingleIntegratorParam(Param):
 		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 25
-		self.sim_dt = 0.05
+		self.sim_tf = 100
+		self.sim_dt = 0.1
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -73,22 +73,22 @@ class SingleIntegratorParam(Param):
 		self.il_load_loader_on = False
 		# self.il_load_loader_on = False
 		self.training_time_downsample = 50
-		self.il_train_model_fn = '../results/singleintegrator/empty_2/il_current.pt'
+		self.il_train_model_fn = '../results/singleintegrator/barrier/il_current.pt'
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 4096
-		self.il_n_epoch = 200
+		self.il_batch_size = 4096*2
+		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
 		self.il_n_data = None
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 100000000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 10000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -243,8 +243,10 @@ if __name__ == '__main__':
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
 		# 'barrier' : torch.load(param.il_barrier_model_fn),
-		# 'current': torch.load(param.sim_il_model_fn),
-		'current_wsafety' : Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn))
+		# 'current': torch.load(param.il_train_model_fn),
+		# 'currentwsafety' : Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn))
+		'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/empty/il_current.pt')),
+		'barrier': torch.load('../results/singleintegrator/barrier/il_current.pt'),
 	}
 
 	s0 = load_instance(param, env, args.instance)
@@ -261,6 +263,14 @@ if __name__ == '__main__':
 				else:
 					print("ERROR unknown ctrl kind", kind)
 					exit()
+		if args.Rsense:
+			param.r_comm = args.Rsense
+			param.r_obs_sense = args.Rsense
+		if args.maxNeighbors:
+			param.max_neighbors = args.maxNeighbors
+			param.max_obstacles = args.maxNeighbors
+		env.reset_param(param)
+		torch.set_num_threads(1)
 		run_batch(param, env, args.instance, controllers)
 
 	# elif args.export:

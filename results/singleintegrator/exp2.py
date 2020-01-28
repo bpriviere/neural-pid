@@ -16,8 +16,9 @@ import torch
 import concurrent.futures
 from itertools import repeat
 import glob
-from multiprocessing import cpu_count
-from torch.multiprocessing import Pool
+# from multiprocessing import cpu_count
+# from torch.multiprocessing import Pool
+from multiprocessing import Pool
 import tempfile
 import subprocess
 import numpy as np
@@ -28,6 +29,11 @@ from createPlots import add_line_plot_agg, add_bar_agg, add_scatter
 import stats
 from matplotlib.backends.backend_pdf import PdfPages
 
+def rollout_instance(file, args):
+  subprocess.run("python3 examples/run_singleintegrator.py -i {} {} --batch".format(os.path.abspath(file), args),
+    cwd="../code",
+    shell=True)
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--disable-cuda', action='store_true', help='Disable CUDA')
@@ -36,7 +42,7 @@ if __name__ == "__main__":
   parser.add_argument('--plot', action='store_true', help='create plots')
   args = parser.parse_args()
 
-  torch.multiprocessing.set_start_method('spawn')
+  # torch.multiprocessing.set_start_method('spawn')
 
   if not args.disable_cuda and torch.cuda.is_available():
     device = torch.device('cuda')
@@ -45,8 +51,8 @@ if __name__ == "__main__":
 
   agents_lst = [8]
   obst_lst = [6,12]
-  radii = [1,2,3,4,5,6,7,8]
-  training_data = [10000, 100000, 1000000]
+  radii = [1,2,4,6,8]
+  training_data = [30000, 300000, 3000000]
 
   if args.plot:
     plt.rcParams.update({'font.size': 12})
@@ -58,18 +64,18 @@ if __name__ == "__main__":
         for agent in agents_lst:
           # load Empty
           for td in training_data:
-            files = glob.glob("singleintegrator/exp2EmptyR{}td{}_*/*obst{}_agents{}_*.npy".format(r,td,obst,agent), recursive=True)
+            files = glob.glob("singleintegrator/exp2BarrierR{}td{}_*/*obst{}_agents{}_*.npy".format(r,td,obst,agent), recursive=True)
        
             for file in files:
               instance = os.path.splitext(os.path.basename(file))[0]
               map_filename = "singleintegrator/instances/{}.yaml".format(instance)
               result = stats.stats(map_filename, file)
-              if td == 10000:
-                result["solver"] = "10k training data"
-              elif td == 100000:
-                result["solver"] = "100k training data"
-              elif td == 1000000:
-                result["solver"] = "1M training data"
+              if td == 30000:
+                result["solver"] = "|D| = 30k"
+              elif td == 300000:
+                result["solver"] = "|D| = 300k"
+              elif td == 3000000:
+                result["solver"] = "|D| = 3M"
               else:
                 result["solver"] = "Empty{}".format(td)
               result["Rsense"] = r
@@ -96,14 +102,14 @@ if __name__ == "__main__":
 
       # create plots
       pp = PdfPages("exp2_{}.pdf".format(obst))
-
+      print(result_by_instance)
 
       # add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
       add_line_plot_agg(pp, result_by_instance, "percent_agents_success", group_by="Rsense",
         x_label="sensing radius [m]",
         y_label="robot success [%]")
       # add_line_plot_agg(pp, result_by_instance, "control_effort_sum", "control effort")
-      # add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
+      add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
 
       pp.close()
     exit()
@@ -115,7 +121,7 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
 
-  for i in range(0,10):
+  for i in range(0,1):
     # train policy
     for r in radii:
       for td in training_data:
@@ -124,8 +130,8 @@ if __name__ == "__main__":
             param = run_singleintegrator.SingleIntegratorParam()
             param.r_comm = r
             param.r_obs_sense = r
-            param.max_neighbors = 10000 #5
-            param.max_obstacles = 10000 #5
+            param.max_neighbors = 10
+            param.max_obstacles = 10
             param.il_load_loader_on = False
             param.il_controller_class = cc
             param.datadict["obst"] = td
@@ -137,23 +143,22 @@ if __name__ == "__main__":
             del param
 
         elif args.sim:
-          param = run_singleintegrator.SingleIntegratorParam()
-          param.r_comm = r
-          param.r_obs_sense = r
-          param.max_neighbors = 10000 #5
-          param.max_obstacles = 10000 #5
+          controller = "exp2BarrierR{0}td{1}_{2},torch,../results/singleintegrator/exp2BarrierR{0}td{1}_{2}/il_current.pt".format(r,td,i)
+          rollout_args = "--controller {} --Rsense {} --maxNeighbors {}".format(controller, r, 10)
 
-          env = SingleIntegrator(param)
-          # evaluate policy
-          controllers = {
-            # 'exp2EmptyR{}td{}_{}'.format(r,td,i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp2EmptyR{}td{}_{}/il_current.pt'.format(r,td,i))),
-            'exp2BarrierR{}td{}_{}'.format(r,td,i) : torch.load('singleintegrator/exp2BarrierR{}td{}_{}/il_current.pt'.format(r,td,i))
-          }
+          with concurrent.futures.ThreadPoolExecutor(max_workers=24) as executor:
+            for _ in executor.map(rollout_instance, instances, repeat(rollout_args)):
+              pass
+
+
+          # torch.set_num_threads(1)
 
           # for instance in instances:
-            # run_singleintegrator.run_batch(instance, controllers)
+          #   run_singleintegrator.run_batch(param, env, instance, controllers)
+          # with Pool(3) as p:
+          #   p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
 
-          with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
-            for _ in executor.map(run_singleintegrator.run_batch, repeat(param), repeat(env), instances, repeat(controllers)):
-              pass
+          # with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+          #   for _ in executor.map(run_singleintegrator.run_batch, repeat(param), repeat(env), instances, repeat(controllers)):
+          #     pass
 
