@@ -137,7 +137,7 @@ class Empty_Net_wAPF():
 		idx = torch.norm(grad_phi,p=2,dim=1) != 0
 		grad_phi_inv[idx] = \
 			torch.mul(grad_phi[idx],\
-			torch.pow(torch.norm(grad_phi[idx],p=2,dim=1),-1).unsqueeze(1))
+			torch.pow(torch.norm(grad_phi[idx],p=2,dim=1),-2).unsqueeze(1))
 		return grad_phi_inv
 
 	def torch_get_grad_phi(self,x,P,H):
@@ -233,7 +233,7 @@ class Empty_Net_wAPF():
 		grad_phi = self.numpy_get_grad_phi(x,P,H)
 		grad_phi_inv = np.zeros(grad_phi.shape)
 		if not np.linalg.norm(grad_phi) == 0:
-			grad_phi_inv = grad_phi / np.linalg.norm(grad_phi)
+			grad_phi_inv = grad_phi / np.linalg.norm(grad_phi)**2.
 		return grad_phi_inv
 
 	def numpy_get_grad_phi(self,x,P,H):
