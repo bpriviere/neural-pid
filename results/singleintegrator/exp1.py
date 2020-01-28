@@ -167,7 +167,7 @@ if __name__ == "__main__":
       datadir.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*".format(obst,agents)))
   instances = sorted(datadir)
 
-  first_training = False
+  first_training = True
 
 
   for i in range(10):
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         # for instance in instances:
           # run_singleintegrator.run_batch(instance, controllers)
 
-        with Pool(32) as p:
+        with Pool(12) as p:
           p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
 
         # with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:

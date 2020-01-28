@@ -150,7 +150,7 @@ class SingleIntegrator(Env):
 			# convert to numpy array format
 			num_neighbors = len(relative_neighbors)
 			num_obstacles = len(relative_obstacles)
-			obs_array = np.zeros(3+2*num_neighbors+2*num_obstacles)
+			obs_array = np.zeros(3+2*num_neighbors+2*num_obstacles, dtype=np.float32)
 			obs_array[0] = num_neighbors
 			idx = 1
 			obs_array[idx:idx+2] = relative_goal
@@ -187,7 +187,8 @@ class SingleIntegrator(Env):
 			for o in self.obstacles:
 				coll, dist = not_batch_is_collision_circle_rectangle(np.array(agent.p), self.param.r_agent, np.array(o), np.array(o) + np.array([1.0,1.0]))
 				inc = np.count_nonzero(coll)
-				return -inc 
+				if inc > 0:
+					return -inc 
 
 		return 0
 
@@ -514,13 +515,13 @@ class SingleIntegrator(Env):
 
 			idx_goal = np.arange(1,3,dtype=int)
 
-			transformed_dataset = np.empty(dataset.shape)
-			transformed_classification = np.empty(classification.shape)
-			transformations = np.empty((dataset.shape[0],2,2))
+			transformed_dataset = np.empty(dataset.shape,dtype=np.float32)
+			transformed_classification = np.empty(classification.shape,dtype=np.float32)
+			transformations = np.empty((dataset.shape[0],2,2),dtype=np.float32)
 
 			for k,row in enumerate(dataset):
 
-				transformed_row = np.empty(row.shape)
+				transformed_row = np.empty(row.shape,dtype=np.float32)
 				transformed_row[0] = row[0]
 
 				# get goal 
