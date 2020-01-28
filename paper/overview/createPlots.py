@@ -32,9 +32,10 @@ def plot_state_space(map_data, data):
 	for i in range(num_agents):
 		line = ax.plot(data[:,1+i*4], data[:,1+i*4+1])
 		color = line[0].get_color()
-		start = np.array(map_data["agents"][i]["start"])
+		# start = np.array(map_data["agents"][i]["start"]) + np.array([0.5,0.5])
+		start = data[400,1+i*4:1+i*4+2]
 		goal = np.array(map_data["agents"][i]["goal"])
-		ax.add_patch(Circle(start + np.array([0.5,0.5]), 0.2, alpha=0.5, color=color))
+		ax.add_patch(Circle(start, 0.2, alpha=0.5, color=color))
 		ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))
 		colors.append(color)
 
