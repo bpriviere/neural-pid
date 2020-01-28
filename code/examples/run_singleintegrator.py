@@ -250,6 +250,17 @@ if __name__ == '__main__':
 	s0 = load_instance(param, env, args.instance)
 
 	if args.batch:
+		if args.controller:
+			controllers = dict()
+			for ctrl in args.controller:
+				name,kind,path = ctrl.split(',')
+				if kind == "EmptyAPF"
+					controllers[name] = Empty_Net_wAPF(param,env,torch.load(path))
+				elif kind == "torch":
+					controllers[name] = torch.load(path)
+				else:
+					print("ERROR unknown ctrl kind", kind)
+					exit()
 		run_batch(param, env, args.instance, controllers)
 
 	# elif args.export:

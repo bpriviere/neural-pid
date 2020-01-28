@@ -197,9 +197,15 @@ if __name__ == "__main__":
 
         # for instance in instances:
           # run_singleintegrator.run_batch(instance, controllers)
+        controller1 = "exp1Empty_{},EmptyAPF,singleintegrator/exp1Empty_{}/il_current.pt".format(i,i)
+        controller2 = "exp1Barrier_{},torch,singleintegrator/exp1Barrier_{}/il_current.pt".format(i,i)
+        subprocess.run("python3 examples/run_singleintegrator.py -i {} --controller {} --controller {} --batch".format(
+          os.path.abspath(file), controller1, controller2),
+          cwd="../../code",
+          shell=True)
 
-        with Pool(12) as p:
-          p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
+        # with Pool(12) as p:
+        #   p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
 
         # with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
         #   for _ in executor.map(run_singleintegrator.run_batch, instances, repeat(controllers)):
