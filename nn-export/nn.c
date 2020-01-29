@@ -1,5 +1,6 @@
 #include <string.h> // memset, memcpy
 #include <math.h> //tanhf
+#include <stdbool.h>
 
 #include "nn.h"
 
@@ -16,11 +17,18 @@ static float closest_dist;
 static float closest[2];
 static float min_distance;
 
-static const float b_gamma = 0.1;
-static const float b_exph = 1.0;
+// static const float b_gamma = 0.1;
+// static const float b_exph = 1.0;
 static const float robot_radius = 0.15; // m
 static const float max_v = 0.5; // m/s
 
+// Barrier stuff
+static float barrier_grad_phi[2];
+static float barrier_phi;
+static bool barrier_alpha_condition;
+static const float deltaR = 0.075;
+static const float Rsense = 3.0;
+static const float barrier_gamma = 0.05;
 
 static float relu(float num) {
 	if (num > 0) {
@@ -101,32 +109,34 @@ static float clip(float value, float min, float max) {
 	return value;
 }
 
-static void barrier(float x, float y, float D, float* vx, float *vy) {
-	float normP = sqrtf(x*x + y*y);
-	float H = normP - D;
+// static void barrier(float x, float y, float D, float* vx, float *vy) {
+// 	float normP = sqrtf(x*x + y*y);
+// 	float H = normP - D;
 
-	float factor = powf(H, -b_exph) / normP;
+// 	float factor = powf(H, -b_exph) / normP;
 
-	*vx = b_gamma * factor * x;
-	*vy = b_gamma * factor * y;
-}
+// 	*vx = b_gamma * factor * x;
+// 	*vy = b_gamma * factor * y;
+// }
 
-static void APF(float* vel)
-{
-	if (isfinite(closest_dist)) {
-		float vx, vy;
-		barrier(closest[0], closest[1], min_distance, &vx, &vy);
-		vel[0] -= vx;
-		vel[1] -= vy;
-	}
-}
+// static void APF(float* vel)
+// {
+// 	if (isfinite(closest_dist)) {
+// 		float vx, vy;
+// 		barrier(closest[0], closest[1], min_distance, &vx, &vy);
+// 		vel[0] -= vx;
+// 		vel[1] -= vy;
+// 	}
+// }
 
 void nn_reset()
 {
 	memset(deepset_sum_neighbor, 0, sizeof(deepset_sum_neighbor));
 	memset(deepset_sum_obstacle, 0, sizeof(deepset_sum_obstacle));
 
-	closest_dist = INFINITY;
+	memset(barrier_grad_phi, 0, sizeof(barrier_grad_phi));
+	barrier_phi = 0;
+	barrier_alpha_condition = false;
 }
 
 void nn_add_neighbor(const float input[2])
@@ -137,11 +147,19 @@ void nn_add_neighbor(const float input[2])
 		deepset_sum_neighbor[i] += phi[i];
 	}
 
-	float dist = fmaxf(sqrtf(powf(input[0], 2) + powf(input[1], 2)) - robot_radius, 0);
-	if (dist < closest_dist) {
-		memcpy(closest, input, sizeof(closest));
-		closest_dist = dist;
-		min_distance = 2 * robot_radius;
+	// barrier
+	const float Rsafe = 2 * robot_radius;
+	const float dist = sqrtf(powf(input[0], 2) + powf(input[1], 2));
+
+	if (dist > Rsafe) {
+		const float denominator = dist * (dist - Rsafe);
+		barrier_grad_phi[0] += input[0] / denominator;
+		barrier_grad_phi[1] += input[1] / denominator;
+
+		barrier_phi -= logf((dist - Rsafe)/(Rsense - Rsafe));
+		if (dist < Rsafe + deltaR) {
+			barrier_alpha_condition = true;
+		}
 	}
 }
 
@@ -153,14 +171,22 @@ void nn_add_obstacle(const float input[2])
 		deepset_sum_obstacle[i] += phi[i];
 	}
 
+	// barrier
 	float closest_x = clip(0, input[0] - 0.5f, input[0] + 0.5f);
 	float closest_y = clip(0, input[1] - 0.5f, input[1] + 0.5f);
-	float dist = sqrtf(powf(closest_x, 2) + powf(closest_y, 2));
-	if (dist < closest_dist) {
-		closest[0] = closest_x;
-		closest[1] = closest_y;
-		closest_dist = dist;
-		min_distance = robot_radius;
+
+	const float Rsafe = robot_radius;
+	const float dist = sqrtf(powf(closest_x, 2) + powf(closest_y, 2));
+
+	if (dist > Rsafe) {
+		const float denominator = dist * (dist - Rsafe);
+		barrier_grad_phi[0] += closest_x / denominator;
+		barrier_grad_phi[1] += closest_y / denominator;
+
+		barrier_phi -= logf((dist - Rsafe)/(Rsense - Rsafe));
+		if (dist < Rsafe + deltaR) {
+			barrier_alpha_condition = true;
+		}
 	}
 }
 
@@ -177,8 +203,40 @@ const float* nn_eval(const float goal[2])
 	memcpy(&pi_input[16], goal, 2 * sizeof(float));
 
 	const float* empty = psi(pi_input);
-	temp1[0] = empty[0];
-	temp1[1] = empty[1];
+	// temp1[0] = empty[0];
+	// temp1[1] = empty[1];
+
+	temp1[0] = -0.2;
+	temp1[1] = 0.0;
+
+	// Barrier:
+	float barrier_grad_phi_norm_sq = powf(barrier_grad_phi[0], 2) + powf(barrier_grad_phi[1], 2);
+	float b[2] = {0, 0};
+	if (barrier_grad_phi_norm_sq > 0) {
+		b[0] = barrier_grad_phi[0] / barrier_grad_phi_norm_sq * (-barrier_gamma * barrier_phi);
+		b[1] = barrier_grad_phi[1] / barrier_grad_phi_norm_sq * (-barrier_gamma * barrier_phi);
+	}
+
+	float alpha = 1.0;
+	if (barrier_alpha_condition) {
+		float bnorm = sqrtf(powf(b[0], 2) + powf(b[1], 2));
+		float pinorm = sqrtf(powf(empty[0], 2) + powf(empty[1], 2));
+		if (pinorm > 0) {
+			alpha = fminf(1.0f, bnorm / pinorm);
+		}
+	}
+
+	temp1[0] = b[0] + alpha * empty[0];
+	temp1[1] = b[1] + alpha * empty[1];
+
+	// scaling
+	float temp1_norm = sqrtf(powf(temp1[0], 2) + powf(temp1[1], 2));
+	float alpha2 = 1.0;
+	if (temp1_norm > 0) {
+		alpha2 = fminf(1.0f, max_v / temp1_norm);
+	}
+	temp1[0] *= alpha2;
+	temp1[1] *= alpha2;
 
 	// APF(temp1);
 

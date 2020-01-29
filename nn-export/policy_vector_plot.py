@@ -41,7 +41,7 @@ def plot_policy_vector_field(fig,ax,map_data,i):
 				V[i_y,i_x] = a[1]
 				C[i_y,i_x] = np.linalg.norm( np.array(a))
 
-	ax.quiver(X,Y,U,V,C)
+	ax.quiver(X,Y,U,V,C,angles='xy', scale_units='xy',scale=1.0)
 
 
 def collision(p,o_lst):
