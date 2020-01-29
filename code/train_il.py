@@ -247,6 +247,7 @@ def train_il(param, env, device):
 					datadir = glob.glob("../data/singleintegrator/central3/*{}*.npy".format(datapattern))
 				elif param.env_name in ['DoubleIntegrator']:
 					datadir = glob.glob("../data/doubleintegrator/central3/*{}*.npy".format(datapattern))
+				random.shuffle(datadir)
 
 				len_case = 0
 				with concurrent.futures.ProcessPoolExecutor(max_workers=24) as executor:

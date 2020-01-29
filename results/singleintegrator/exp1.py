@@ -16,6 +16,7 @@ import torch
 import concurrent.futures
 from itertools import repeat
 import glob
+import subprocess
 from multiprocessing import cpu_count
 from torch.multiprocessing import Pool
 import matplotlib.pyplot as plt
@@ -29,8 +30,9 @@ import matplotlib
 from matplotlib.backends.backend_pdf import PdfPages
 
 def rollout_instance(file, args):
+  print(file)
   subprocess.run("python3 examples/run_singleintegrator.py -i {} {} --batch".format(os.path.abspath(file), args),
-    cwd="../../code",
+    cwd="../code",
     shell=True)
 
 
@@ -175,9 +177,7 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
   first_training = True
-
-
-  for i in range(10):
+  for i in range(5):
       # train policy
       param = run_singleintegrator.SingleIntegratorParam()
       env = SingleIntegrator(param)
@@ -197,16 +197,15 @@ if __name__ == "__main__":
 
       elif args.sim:
         # evaluate policy
-        controllers = {
-          'exp1Empty_{}'.format(i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp1Empty_{}/il_current.pt'.format(i))),
-          'exp1Barrier_{}'.format(i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(i))
-        }
+        # controllers = {
+        #   'exp1Empty_{}'.format(i): Empty_Net_wAPF(param,env,torch.load('singleintegrator/exp1Empty_{}/il_current.pt'.format(i))),
+        #   'exp1Barrier_{}'.format(i) : torch.load('singleintegrator/exp1Barrier_{}/il_current.pt'.format(i))
+        # }
 
-        controller1 = "exp1Empty_{0},EmptyAPF,singleintegrator/exp1Empty_{0}/il_current.pt".format(i)
-        controller2 = "exp1Barrier_{0},torch,singleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
-        args = "--controller {} --controller {}".format(controller1, controller2)
+        controller1 = "exp1Empty_{0},EmptyAPF,../results/singleintegrator/exp1Empty_{0}/il_current.pt".format(i)
+        controller2 = "exp1Barrier_{0},torch,../results/singleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
+        rolloutargs = "--controller {} --controller {}".format(controller1, controller2)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-          for _ in executor.map(rollout_instance, repeat(args), instances):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+          for _ in executor.map(rollout_instance, instances, repeat(rolloutargs)):
             pass
-

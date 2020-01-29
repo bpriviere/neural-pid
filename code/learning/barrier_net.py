@@ -59,30 +59,40 @@ class Barrier_Net(nn.Module):
 
 	def policy(self,x):
 
-		grouping = dict()
-		for i,x_i in enumerate(x):
-			key = (int(x_i[0][0]), x_i.shape[1])
-			if key in grouping:
-				grouping[key].append(i)
+		if True:
+			grouping = dict()
+			for i,x_i in enumerate(x):
+				key = (int(x_i[0][0]), x_i.shape[1])
+				if key in grouping:
+					grouping[key].append(i)
+				else:
+					grouping[key] = [i]
+
+			if len(grouping) < len(x):
+				A = np.empty((len(x),self.dim_action))
+				for key, idxs in grouping.items():
+					batch = torch.Tensor([x[idx][0] for idx in idxs])
+					a = self(batch)
+					a = a.detach().numpy()
+					for i, idx in enumerate(idxs):
+						A[idx,:] = a[i]
+
+				return A
 			else:
-				grouping[key] = [i]
+				A = np.empty((len(x),self.dim_action))
+				for i,x_i in enumerate(x):
+					a_i = self(x_i)
+					A[i,:] = a_i 
+				return A
 
-		if len(grouping) < len(x):
-			A = np.empty((len(x),self.dim_action))
-			for key, idxs in grouping.items():
-				batch = torch.Tensor([x[idx][0] for idx in idxs])
-				a = self(batch)
-				a = a.detach().numpy()
-				for i, idx in enumerate(idxs):
-					A[idx,:] = a[i]
-
-			return A
 		else:
 			A = np.empty((len(x),self.dim_action))
 			for i,x_i in enumerate(x):
 				a_i = self(x_i)
 				A[i,:] = a_i 
 			return A
+
+
 
 	def __call__(self,x):
 
@@ -192,13 +202,24 @@ class Barrier_Net(nn.Module):
 			grad_phi += self.torch_get_grad_phi_contribution(P[:,j,:],H[:,j])
 		return grad_phi
 
+	# def torch_get_grad_phi_contribution(self,P,H):
+	# 	normP = torch.norm(P,p=2,dim=1)
+	# 	normP = normP.unsqueeze(1)
+	# 	normP = torch_tile(normP,1,P.shape[1])
+	# 	H = H.unsqueeze(1)
+	# 	H = torch_tile(H,1,P.shape[1])
+	# 	grad_phi = torch.mul(torch.mul(torch.pow(H,-1),torch.pow(normP,-1)),P)
+	# 	return grad_phi
+
 	def torch_get_grad_phi_contribution(self,P,H):
+		grad_phi = torch.zeros(P.shape,device=self.device)
 		normP = torch.norm(P,p=2,dim=1)
 		normP = normP.unsqueeze(1)
 		normP = torch_tile(normP,1,P.shape[1])
 		H = H.unsqueeze(1)
 		H = torch_tile(H,1,P.shape[1])
-		grad_phi = torch.mul(torch.mul(torch.pow(H,-1),torch.pow(normP,-1)),P)
+		idx = normP > 0 
+		grad_phi[idx] = torch.mul(torch.mul(torch.pow(H[idx],-1),torch.pow(normP[idx],-1)),P[idx])
 		return grad_phi		
 
 	def torch_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
@@ -290,7 +311,9 @@ class Barrier_Net(nn.Module):
 
 	def numpy_get_grad_phi_contribution(self,P,H):
 		normp = np.linalg.norm(P)
-		grad_phi_ji = 1./(H*normp)*P
+		grad_phi_ji = 0.
+		if normp > 0:
+			grad_phi_ji = 1./(H*normp)*P
 		return grad_phi_ji
 
 	def numpy_get_alpha_fdbk(self):

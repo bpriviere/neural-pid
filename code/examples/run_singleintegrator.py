@@ -36,15 +36,24 @@ class SingleIntegratorParam(Param):
 		self.a_max = 0.5
 		self.a_min = -1*self.a_max
 
+		# sim 
+		self.sim_t0 = 0
+		self.sim_tf = 50
+		self.sim_dt = 0.05
+		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
+		self.sim_nt = len(self.sim_times)
+		self.plots_fn = 'plots.pdf'
+
+		# safety
 		self.D_robot = 1.*(self.r_agent+self.r_agent)
 		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
-		self.Delta_R = 1e-4
+		self.Delta_R = self.a_max*self.sim_dt
 		self.safety = "potential" # "potential", "fdbk"
 
-		self.max_neighbors = 5
-		self.max_obstacles = 5
+		self.max_neighbors = 6
+		self.max_obstacles = 6
 		# Barrier function stuff
 		self.b_gamma = 0.005 # 0.1
 		self.b_exph = 1.0 # 1.0
@@ -54,21 +63,14 @@ class SingleIntegratorParam(Param):
 		# 
 		# self.eps_h = 1e-9
 		if self.safety is "potential":
-			self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
+			# self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
+			self.pi_max = 0.9 * self.a_max
 			self.pi_min = -self.pi_max # -1*self.a_max
 		elif self.safety is "fdbk":
 			phi = -np.log((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
 			grad_phi_norm = (self.r_comm - self.r_agent) / (0.2 - self.r_agent)
 			self.pi_max = self.b_gamma * phi / grad_phi_norm + self.a_max
 		
-		# sim 
-		self.sim_t0 = 0
-		self.sim_tf = 100
-		self.sim_dt = 0.1
-		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
-		self.sim_nt = len(self.sim_times)
-		self.plots_fn = 'plots.pdf'
-
 		# IL
 		self.il_load_loader_on = False
 		# self.il_load_loader_on = False
@@ -81,14 +83,14 @@ class SingleIntegratorParam(Param):
 		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = None
+		self.il_n_data = None # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 10000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 2000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -110,6 +112,7 @@ class SingleIntegratorParam(Param):
 
 		# Sim
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
+		# self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 
 		# plots
@@ -153,10 +156,6 @@ class SingleIntegratorParam(Param):
 
 		self.il_network_activation = relu
 
-		# Sim
-		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
-		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
-
 		# plots
 		self.vector_plot_dx = 0.3
 
@@ -167,8 +166,7 @@ def load_instance(param, env, instance):
 		with open(instance) as map_file:
 			map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 	else:
-		# test map 
-		ex = '0001' # 4 is hard 
+		# default
 		# instance = "map_8by8_obst6_agents4_ex0004.yaml"
 		instance = "map_8by8_obst6_agents64_ex0004.yaml"
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
@@ -243,10 +241,11 @@ if __name__ == '__main__':
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
 		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
 		# 'barrier' : torch.load(param.il_barrier_model_fn),
-		# 'current': torch.load(param.il_train_model_fn),
-		# 'currentwsafety' : Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn))
-		'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/empty/il_current.pt')),
-		'barrier': torch.load('../results/singleintegrator/barrier/il_current.pt'),
+		# 'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/empty/il_current.pt')),
+		# 'barrier': torch.load('../results/singleintegrator/barrier/il_current.pt'),
+		'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt')),
+		# 'barrier': torch.load('../results/singleintegrator/exp1Barrier_0/il_current.pt'),
+		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 	}
 
 	s0 = load_instance(param, env, args.instance)
@@ -260,9 +259,12 @@ if __name__ == '__main__':
 					controllers[name] = Empty_Net_wAPF(param,env,torch.load(path))
 				elif kind == "torch":
 					controllers[name] = torch.load(path)
+				elif kind == "apf":
+					controllers[name] = Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env))
 				else:
 					print("ERROR unknown ctrl kind", kind)
 					exit()
+
 		if args.Rsense:
 			param.r_comm = args.Rsense
 			param.r_obs_sense = args.Rsense
@@ -270,6 +272,7 @@ if __name__ == '__main__':
 			param.max_neighbors = args.maxNeighbors
 			param.max_obstacles = args.maxNeighbors
 		env.reset_param(param)
+
 		torch.set_num_threads(1)
 		run_batch(param, env, args.instance, controllers)
 
