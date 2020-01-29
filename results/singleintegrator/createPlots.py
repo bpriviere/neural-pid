@@ -53,9 +53,10 @@ def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_labe
 			for instance,results in result_by_instance.items():
 
 				if aggregrate_successful_agent:
-					agents_succeeded = results[0]["agents_succeeded"]
+					agents_succeeded = set()
 					for r in results:
-						agents_succeeded = agents_succeeded & r["agents_succeeded"]
+						if r[group_by] == x:
+							agents_succeeded = agents_succeeded & r["agents_succeeded"]
 
 				for r in results:
 					if r[group_by] == x and r["solver"] == solver:
