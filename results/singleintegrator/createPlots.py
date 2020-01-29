@@ -70,9 +70,10 @@ def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_labe
 						if aggregrate_successful_agent:
 							for a in agents_succeeded:
 								curr[r["num_model"]] += r[key][a]
+							curr_count[r["num_model"]] += len(agents_succeeded)
 						else:
 							curr[r["num_model"]] += r[key]
-						curr_count[r["num_model"]] += 1
+							curr_count[r["num_model"]] += 1
 
 			# curr = np.array(list(curr.values())) / num_agent / 10
 			curr = np.array([x / curr_count[key] for key, x in curr.items()])
