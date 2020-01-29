@@ -3,7 +3,7 @@ from param import Param
 from run import run, parse_args
 from sim import run_sim
 from systems.doubleintegrator import DoubleIntegrator
-from other_policy import APF, Empty_Net_wAPF
+from other_policy import APF, Empty_Net_wAPF, ZeroPolicy, GoToGoalPolicy
 import plotter 
 
 # standard
@@ -36,47 +36,54 @@ class DoubleIntegratorParam(Param):
 		self.a_max = 2.0
 		self.v_min = -1*self.v_max
 		self.a_min = -1*self.a_max
-		self.D_robot = 1.*(self.r_agent+self.r_agent)
-		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
-		self.circle_obstacles_on = True # square obstacles batch not implemented
 
-		self.Delta_R = 0.01
-
-		self.max_neighbors = 5
-		self.max_obstacles = 5
-		# Barrier function stuff
-		self.b_gamma = 0.05 # 0.1
-		self.b_exph = 1.0 # 1.0
-		# cbf 
-		self.cbf_kp = 1.0
-		# self.cbf_kv = 0.1
-		# self.a_noise = 0.002
-
-		# 
-		self.phi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
-		self.phi_min = -self.phi_max # -1*self.a_max
-		
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 25 #25
+		self.sim_tf = 100
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
 
+		# safety
+		self.D_robot = 1.*(self.r_agent+self.r_agent)
+		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
+		self.circle_obstacles_on = True # square obstacles batch not implemented
+
+		self.Delta_R = self.a_max*self.sim_dt
+		self.safety = "potential" # "potential", "fdbk"
+
+		self.max_neighbors = 6
+		self.max_obstacles = 6
+		# Barrier function stuff
+		self.b_gamma = 0.005 # 0.1
+		self.b_exph = 1.0 # 1.0
+		# cbf 
+		self.cbf_kp = 1.0
+		
+		# 
+		# self.eps_h = 1e-9
+		if self.safety is "potential":
+			# self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
+			self.pi_max = 0.9 * self.a_max
+			self.pi_min = -self.pi_max # -1*self.a_max
+		elif self.safety is "fdbk":
+			phi = -np.log((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
+			grad_phi_norm = (self.r_comm - self.r_agent) / (0.2 - self.r_agent)
+			self.pi_max = self.b_gamma * phi / grad_phi_norm + self.a_max
+		
 		# IL
-		# self.il_load_loader_on = True
 		self.il_load_loader_on = False
 		self.training_time_downsample = 50 #10
 		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/doubleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 10000 #512 #5000
-		self.il_n_epoch = 250
+		self.il_batch_size = 4096*2
+		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
-		self.il_n_data = 10000000000 # 100000 # 100000000
+		self.il_n_data = None # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Empty' # 'Empty','Barrier',
@@ -115,9 +122,9 @@ class DoubleIntegratorParam(Param):
 		# self.ad_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 
 		# 
-		self.il_empty_model_fn = '../models/doubleintegrator/empty.pt'
-		self.il_barrier_model_fn = '../models/doubleintegrator/barrier.pt'
-		self.il_adaptive_model_fn = '../models/doubleintegrator/adaptive.pt'
+		# self.il_empty_model_fn = '../models/singleintegrator/empty.pt'
+		# self.il_barrier_model_fn = '../models/singleintegrator/barrier.pt'
+		# self.il_adaptive_model_fn = '../models/singleintegrator/adaptive.pt'
 
 		# learning hyperparameters
 		n,m,h,l,p = 4,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
@@ -148,10 +155,6 @@ class DoubleIntegratorParam(Param):
 
 		self.il_network_activation = relu
 
-		# Sim
-		self.sim_rl_model_fn = '../models/doubleintegrator/rl_current.pt'
-		self.sim_il_model_fn = '../models/doubleintegrator/il_current.pt'
-
 		# plots
 		self.vector_plot_dx = 0.3
 
@@ -162,9 +165,10 @@ def load_instance(param, env, instance):
 		with open(instance) as map_file:
 			map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 	else:
-		# test map 
-		ex = '0001' # 4 is hard 
-		with open("../results/singleintegrator/instances/map_8by8_obst6_agents4_ex{}.yaml".format(ex)) as map_file:
+		# default
+		# instance = "map_8by8_obst6_agents4_ex0004.yaml"
+		instance = "map_8by8_obst6_agents64_ex0004.yaml"
+		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
 
@@ -239,6 +243,29 @@ if __name__ == '__main__':
 	s0 = load_instance(param, env, args.instance)
 
 	if args.batch:
+		if args.controller:
+			controllers = dict()
+			for ctrl in args.controller:
+				name,kind,path = ctrl.split(',')
+				if kind == "EmptyAPF":
+					controllers[name] = Empty_Net_wAPF(param,env,torch.load(path))
+				elif kind == "torch":
+					controllers[name] = torch.load(path)
+				elif kind == "apf":
+					controllers[name] = Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env))
+				else:
+					print("ERROR unknown ctrl kind", kind)
+					exit()
+
+		if args.Rsense:
+			param.r_comm = args.Rsense
+			param.r_obs_sense = args.Rsense
+		if args.maxNeighbors:
+			param.max_neighbors = args.maxNeighbors
+			param.max_obstacles = args.maxNeighbors
+		env.reset_param(param)
+
+		torch.set_num_threads(1)
 		run_batch(param, env, args.instance, controllers)
 
 	# elif args.export:
