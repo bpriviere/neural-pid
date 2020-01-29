@@ -24,7 +24,6 @@ static const float max_v = 0.5; // m/s
 
 // Barrier stuff
 static float barrier_grad_phi[2];
-static float barrier_phi;
 static bool barrier_alpha_condition;
 static const float deltaR = 0.075;
 static const float Rsense = 3.0;
@@ -135,7 +134,6 @@ void nn_reset()
 	memset(deepset_sum_obstacle, 0, sizeof(deepset_sum_obstacle));
 
 	memset(barrier_grad_phi, 0, sizeof(barrier_grad_phi));
-	barrier_phi = 0;
 	barrier_alpha_condition = false;
 }
 
@@ -148,15 +146,18 @@ void nn_add_neighbor(const float input[2])
 	}
 
 	// barrier
-	const float Rsafe = 2 * robot_radius;
-	const float dist = sqrtf(powf(input[0], 2) + powf(input[1], 2));
+	const float Rsafe = robot_radius;
+	const float dist = sqrtf(powf(input[0], 2) + powf(input[1], 2)) - robot_radius;
 
 	if (dist > Rsafe) {
 		const float denominator = dist * (dist - Rsafe);
-		barrier_grad_phi[0] += input[0] / denominator;
-		barrier_grad_phi[1] += input[1] / denominator;
+		// compute vector to the closest contact point
+		float x = input[0] * (1 - robot_radius / (dist+robot_radius));
+		float y = input[1] * (1 - robot_radius / (dist+robot_radius));
 
-		barrier_phi -= logf((dist - Rsafe)/(Rsense - Rsafe));
+		barrier_grad_phi[0] += x / denominator;
+		barrier_grad_phi[1] += y / denominator;
+
 		if (dist < Rsafe + deltaR) {
 			barrier_alpha_condition = true;
 		}
@@ -183,7 +184,6 @@ void nn_add_obstacle(const float input[2])
 		barrier_grad_phi[0] += closest_x / denominator;
 		barrier_grad_phi[1] += closest_y / denominator;
 
-		barrier_phi -= logf((dist - Rsafe)/(Rsense - Rsafe));
 		if (dist < Rsafe + deltaR) {
 			barrier_alpha_condition = true;
 		}
@@ -203,19 +203,16 @@ const float* nn_eval(const float goal[2])
 	memcpy(&pi_input[16], goal, 2 * sizeof(float));
 
 	const float* empty = psi(pi_input);
-	// temp1[0] = empty[0];
-	// temp1[1] = empty[1];
+	temp1[0] = empty[0];
+	temp1[1] = empty[1];
 
-	temp1[0] = -0.2;
-	temp1[1] = 0.0;
+	// temp1[0] = -0.2;
+	// temp1[1] = 0.0;
 
 	// Barrier:
-	float barrier_grad_phi_norm_sq = powf(barrier_grad_phi[0], 2) + powf(barrier_grad_phi[1], 2);
 	float b[2] = {0, 0};
-	if (barrier_grad_phi_norm_sq > 0) {
-		b[0] = barrier_grad_phi[0] / barrier_grad_phi_norm_sq * (-barrier_gamma * barrier_phi);
-		b[1] = barrier_grad_phi[1] / barrier_grad_phi_norm_sq * (-barrier_gamma * barrier_phi);
-	}
+	b[0] = -barrier_gamma * barrier_grad_phi[0];
+	b[1] = -barrier_gamma * barrier_grad_phi[1];
 
 	float alpha = 1.0;
 	if (barrier_alpha_condition) {
