@@ -275,7 +275,11 @@ class DoubleIntegrator(Env):
 			p_idx = np.arange(idx,idx+2)
 			v_idx = np.arange(idx+2,idx+4)
 			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
-			sp1[v_idx] = np.clip(self.s[v_idx] + a[agent_i.i,:]*dt, self.v_min, self.v_max)
+			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,:]*dt
+			# scale velocity if needed
+			vel = np.linalg.norm(sp1[v_idx])
+			if vel > self.v_max:
+				sp1[v_idx] = sp1[v_idx] / vel * self.v_max
 
 			# scale velocity 
 
