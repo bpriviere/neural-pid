@@ -59,10 +59,11 @@ if __name__ == "__main__":
     plt.rcParams['lines.linewidth'] = 4
 
     solvers = {
+      # 'central': 'Global',
       'orcaR3': 'ORCA',
-      'exp1Empty': '2-stage G2L',
-      'central': 'Central',
-      'exp1Barrier': 'End-to-end G2L'
+      'apf': 'Barrier',
+      'exp1Empty': 'Two-stage GTL',
+      'exp1Barrier': 'End-to-end GTL',
     }
 
     # default fig size is [6.4, 4.8]
@@ -90,8 +91,10 @@ if __name__ == "__main__":
 
       add_line_plot_agg(None, result_by_instance, "percent_agents_success",
         ax=axs[0, column])
-      add_line_plot_agg(None, result_by_instance, "control_effort",
-        ax=axs[1, column], aggregrate_successful_agent=True)
+      add_line_plot_agg(None, result_by_instance, "control_effort_mean",
+        ax=axs[1, column], aggregrate_successful_agent=False)
+      # add_line_plot_agg(None, result_by_instance, "control_effort",
+      #   ax=axs[1, column], aggregrate_successful_agent=True)
       add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
     
     pp.close()
@@ -102,7 +105,7 @@ if __name__ == "__main__":
       axs[1,column].set_xlabel("robot density [#robots/64m\u00B2]")
     
     axs[0,0].set_ylabel("robot success [%]")
-    axs[0,0].set_ylim([35,105])
+    axs[0,0].set_ylim([25,105])
     axs[1,0].set_ylabel("control effort")
 
     axs[0,0].set_title("10 % obstacles")
@@ -114,6 +117,9 @@ if __name__ == "__main__":
 
     fig.tight_layout()
     axs[0,0].legend()
+    # axs[1,0].legend()
+    # axs[0,1].legend()
+    # axs[1,1].legend()
     pp.savefig(fig)
     plt.close(fig)
     pp.close()
@@ -177,12 +183,12 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
   first_training = True
-  for i in range(5):
+  for i in range(2,5):
       # train policy
       param = run_singleintegrator.SingleIntegratorParam()
       env = SingleIntegrator(param)
       if args.train:
-        for cc in ['Empty', 'Barrier']:
+        for cc in ['Barrier']: #['Empty', 'Barrier']:
           param = run_singleintegrator.SingleIntegratorParam()
           param.il_controller_class = cc
           param.il_train_model_fn = 'singleintegrator/exp1{}_{}/il_current.pt'.format(cc,i)
@@ -204,7 +210,9 @@ if __name__ == "__main__":
 
         controller1 = "exp1Empty_{0},EmptyAPF,../results/singleintegrator/exp1Empty_{0}/il_current.pt".format(i)
         controller2 = "exp1Barrier_{0},torch,../results/singleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
-        rolloutargs = "--controller {} --controller {}".format(controller1, controller2)
+        # rolloutargs = "--controller {} --controller {}".format(controller1, controller2)
+
+        rolloutargs = "--controller {}".format(controller2)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
           for _ in executor.map(rollout_instance, instances, repeat(rolloutargs)):
