@@ -72,7 +72,7 @@ def stats(map_filename, schedule_filename):
 			inc = np.count_nonzero(distances < 2 * robot_radius - 1e-4)
 			num_agent_agent_collisions += inc
 			if inc > 0:
-				print("a2a, ", np.min(distances))
+				print("a2a, ", np.min(distances), schedule_filename)
 				agents_collided.add(i)
 				agents_collided.add(j)
 
@@ -88,7 +88,7 @@ def stats(map_filename, schedule_filename):
 			# inc = np.count_nonzero(distances < 0.5+0.2 - 1e-4)
 			num_agent_obstacle_collisions += inc
 			if inc > 0:
-				print("a2o, ", np.min(dist))
+				print("a2o, ", np.min(dist), schedule_filename)
 				agents_collided.add(i)
 
 	num_agents_success = len(agents_reached_goal - agents_collided)

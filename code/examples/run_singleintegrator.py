@@ -80,7 +80,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
 		self.il_batch_size = 4096*2
-		self.il_n_epoch = 100
+		self.il_n_epoch = 200
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
 		self.il_n_data = None # 100000 # 100000000
@@ -90,7 +90,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 2000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 2000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -197,6 +197,7 @@ def load_instance(param, env, instance):
 
 
 def run_batch(param, env, instance, controllers):
+	torch.set_num_threads(1)
 	s0 = load_instance(param, env, instance)
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
@@ -273,7 +274,6 @@ if __name__ == '__main__':
 			param.max_obstacles = args.maxNeighbors
 		env.reset_param(param)
 
-		torch.set_num_threads(1)
 		run_batch(param, env, args.instance, controllers)
 
 	# elif args.export:

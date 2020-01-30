@@ -24,6 +24,7 @@ import tempfile
 import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
 sys.path.insert(1, os.path.join(os.getcwd(),'singleintegrator'))
 from createPlots import add_line_plot_agg, add_bar_agg, add_scatter
@@ -46,13 +47,14 @@ if __name__ == "__main__":
   else:
     device = torch.device('cpu')
 
-  agents_lst = [2,16]
-  obst_lst = [6]
+  agents_lst = [4,8,16]
+  obst_lst = [6,12]
   # datasource = ["obst06_agents004", "obst06_agents008", "obst06_agents016",
                 # "obst12_agents004", "obst12_agents008", "obst12_agents016","mixed"]
   datasource = ["obst06_agents004", "obst06_agents016",
+                "obst12_agents004", "obst12_agents016",
                 "mixed"]
-  num_data = 250000
+  num_data = 1000000
 
   if args.plot:
     plt.rcParams.update({'font.size': 12})
@@ -62,10 +64,15 @@ if __name__ == "__main__":
       'orcaR3': 'ORCA',
       'central': 'Central',
       'apf': 'BF',
+      'exp3EmptySobst06_agents004': '10 % obst., 4 robots',
+      'exp3EmptySobst06_agents016': '20 % obst., 16 robots',
+      'exp3EmptySobst12_agents004': '10 % obst., 4 robots',
+      'exp3EmptySobst12_agents016': '20 % obst., 16 robots',
     }
     for src in datasource:
       # solvers['exp3BarrierS'+src] = src
-      solvers['exp3EmptyS'+src] = src
+      if 'exp3EmptyS'+src not in solvers: 
+        solvers['exp3EmptyS'+src] = src
 
     for obst in obst_lst:
       files = []
@@ -162,8 +169,7 @@ if __name__ == "__main__":
 
     # plot loss curve
     pp = PdfPages("exp3_loss.pdf")
-    fig,ax = plt.subplots()    
-    ax.set_yscale('log')
+    fig,ax = plt.subplots(figsize=[6.4 * 1.0, 4.8 * 0.8])    
     
     for solver in solvers.keys():
       files = glob.glob("singleintegrator/{}*/*.csv".format(solver), recursive=True)
@@ -200,7 +206,23 @@ if __name__ == "__main__":
         facecolor=line2.get_color(),
         linewidth=1e-3,
         alpha=0.5)
-      
+    
+    ax.set_yscale('log')
+    
+    # major ticks
+    ax.set_yticks([0.005, 0.01, 0.05])
+    ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    
+    # minor ticks
+    ax.set_yticks(np.arange(0.005, 0.05, 0.0025), True) # set minor ticks
+    ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+
+    ax.set_xlabel("epoch")
+    ax.set_ylabel("loss (L2 action)")
+
+    ax.grid(which='both')
+
+    fig.tight_layout()
     plt.legend()
     pp.savefig(fig)
     plt.close(fig)
@@ -214,7 +236,7 @@ if __name__ == "__main__":
       datadir.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*".format(obst,agents)))
   instances = sorted(datadir)
 
-  for i in range(0,1):
+  for i in range(0,10):
     # train policy
     
 
