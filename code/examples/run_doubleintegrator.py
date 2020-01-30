@@ -33,14 +33,14 @@ class DoubleIntegratorParam(Param):
 		self.r_agent = 0.15 #0.2
 		self.r_obstacle = 0.5
 		self.v_max = 0.5
-		self.a_max = 2.0
+		self.a_max = 4.0
 		self.v_min = -1*self.v_max
 		self.a_min = -1*self.a_max
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
-		self.sim_dt = 0.05
+		self.sim_tf = 25
+		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -56,7 +56,7 @@ class DoubleIntegratorParam(Param):
 		self.max_neighbors = 6
 		self.max_obstacles = 6
 		# Barrier function stuff
-		self.b_gamma = 0.005 # 0.1
+		self.b_gamma = 0.1 # 0.1
 		self.b_exph = 1.0 # 1.0
 		# cbf 
 		self.cbf_kp = 1.0
@@ -80,7 +80,7 @@ class DoubleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
 		self.il_batch_size = 4096*2
-		self.il_n_epoch = 100
+		self.il_n_epoch = 250
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
 		self.il_n_data = None # 100000 # 100000000
@@ -90,7 +90,7 @@ class DoubleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 100000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 10000000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -224,7 +224,11 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		'il':	torch.load(param.il_train_model_fn),
+		# 'il':	torch.load(param.il_train_model_fn),
+		# 'ilAPF' : Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
+		'ilAPF' : Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'ggp' : GoToGoalPolicy(param,env),
+
 		# 'empty_2': Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn)),
 		# 'empty': torch.load(param.il_empty_model_fn),
 		# 'ad':torch.load(param.ad_train_model_fn),
