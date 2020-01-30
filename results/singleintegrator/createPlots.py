@@ -53,10 +53,13 @@ def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_labe
 			for instance,results in result_by_instance.items():
 
 				if aggregrate_successful_agent:
-					agents_succeeded = set()
+					agents_succeeded = None
 					for r in results:
 						if r[group_by] == x:
-							agents_succeeded = agents_succeeded & r["agents_succeeded"]
+							if agents_succeeded is None:
+								agents_succeeded = r["agents_succeeded"]
+							else:
+								agents_succeeded = agents_succeeded & r["agents_succeeded"]
 
 				for r in results:
 					if r[group_by] == x and r["solver"] == solver:
@@ -72,9 +75,15 @@ def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_labe
 							for a in agents_succeeded:
 								curr[r["num_model"]] += r[key][a]
 							curr_count[r["num_model"]] += len(agents_succeeded)
+
+							print(agents_succeeded)
+
 						else:
 							curr[r["num_model"]] += r[key]
 							curr_count[r["num_model"]] += 1
+
+						
+
 
 			# curr = np.array(list(curr.values())) / num_agent / 10
 			curr = np.array([x / curr_count[key] for key, x in curr.items()])
