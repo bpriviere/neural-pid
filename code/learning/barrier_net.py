@@ -93,6 +93,12 @@ class Barrier_Net(nn.Module):
 			return A
 
 
+	def export_to_onnx(self, filename):
+		self.model_neighbors.export_to_onnx("{}_neighbors".format(filename))
+		self.model_obstacles.export_to_onnx("{}_obstacles".format(filename))
+		self.psi.export_to_onnx("{}_psi".format(filename))
+
+
 
 	def __call__(self,x):
 

@@ -103,19 +103,16 @@ if __name__ == "__main__":
 	parser.add_argument("--speed", type=int, default=1, help="speedup-factor")
 	args = parser.parse_args()
 
+	import sys
+	sys.path.insert(1, os.path.join(os.getcwd(),'../../results/singleintegrator'))
+	import stats
+
+	results = stats.stats(args.instance, args.schedule)
+	print(args.schedule, results["percent_agents_success"])
+
 	animation = Animation(args.instance, args.schedule)
 
 	if args.video:
 		animation.save(args.video, args.speed)
 	else:
 		animation.show()
-
-
-
-
-
-
-
-
-
-
