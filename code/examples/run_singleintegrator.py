@@ -194,6 +194,7 @@ def load_instance(param, env, instance):
 
 
 def run_batch(param, env, instance, controllers):
+	torch.set_num_threads(1)
 	s0 = load_instance(param, env, instance)
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
@@ -260,7 +261,6 @@ if __name__ == '__main__':
 			param.max_obstacles = args.maxNeighbors
 		env.reset_param(param)
 
-		torch.set_num_threads(1)
 		run_batch(param, env, args.instance, controllers)
 
 	# elif args.export:

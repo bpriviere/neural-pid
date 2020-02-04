@@ -49,16 +49,20 @@ if __name__ == "__main__":
   else:
     device = torch.device('cpu')
 
-  agents_lst = [8]
+  agents_lst = [4, 8, 16]
   obst_lst = [6,12]
-  radii = [1,2,4,6,8]
+  radii = [1,2,3,4,6,8]
   training_data = [30000, 300000, 3000000]
 
   if args.plot:
     plt.rcParams.update({'font.size': 12})
     plt.rcParams['lines.linewidth'] = 4
 
-    for obst in obst_lst:
+    # default fig size is [6.4, 4.8]
+    fig, axs = plt.subplots(1, len(obst_lst), sharex='all', sharey='row', figsize = [6.4 * 1.4, 4.8 * 1.4 * 0.6], squeeze=False)
+
+    pp = PdfPages("exp2_collisions.pdf")
+    for column, obst in enumerate(obst_lst):
       result_by_instance = dict()
       for r in radii:
         for agent in agents_lst:
@@ -100,18 +104,37 @@ if __name__ == "__main__":
             else:
               result_by_instance[instance] = [result]
 
-      # create plots
-      pp = PdfPages("exp2_{}.pdf".format(obst))
-      print(result_by_instance)
-
       # add_bar_agg(pp, result_by_instance, "num_agents_success", "# robots success")
-      add_line_plot_agg(pp, result_by_instance, "percent_agents_success", group_by="Rsense",
-        x_label="sensing radius [m]",
-        y_label="robot success [%]")
+      add_line_plot_agg(None, result_by_instance, "percent_agents_success", group_by="Rsense",
+        ax=axs[0, column])
       # add_line_plot_agg(pp, result_by_instance, "control_effort_sum", "control effort")
       add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
 
-      pp.close()
+    pp.close()
+
+    # create plots
+    pp = PdfPages("exp2.pdf")
+
+    for column in range(0, 2):
+      axs[0,column].set_xlabel("$R_{sense}$ [m]")
+    
+    axs[0,0].set_ylabel("robot success [%]")
+    axs[0,0].set_ylim([25,105])
+
+    axs[0,0].set_title("10 % obstacles")
+    axs[0,1].set_title("20 % obstacles")
+
+    for column in range(0, 2):
+        axs[0, column].minorticks_off()
+        axs[0, column].grid(which='major')
+
+    fig.tight_layout()
+    axs[0,0].legend()
+    pp.savefig(fig)
+    plt.close(fig)
+    pp.close()
+
+
     exit()
 
   datadir = []
@@ -121,7 +144,7 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
 
-  for i in range(0,1):
+  for i in range(0,10):
     # train policy
     for r in radii:
       for td in training_data:
@@ -130,21 +153,22 @@ if __name__ == "__main__":
             param = run_singleintegrator.SingleIntegratorParam()
             param.r_comm = r
             param.r_obs_sense = r
-            param.max_neighbors = 10
-            param.max_obstacles = 10
+            param.max_neighbors = 6
+            param.max_obstacles = 6
             param.il_load_loader_on = False
             param.il_controller_class = cc
             param.datadict["obst"] = td
 
             param.il_train_model_fn = 'singleintegrator/exp2{}R{}td{}_{}/il_current.pt'.format(cc,r,td,i)
             env = SingleIntegrator(param)
-            train_il(param, env, device)
+            if not os.path.exists(param.il_train_model_fn):
+              train_il(param, env, device)
             del env
             del param
 
         elif args.sim:
           controller = "exp2BarrierR{0}td{1}_{2},torch,../results/singleintegrator/exp2BarrierR{0}td{1}_{2}/il_current.pt".format(r,td,i)
-          rollout_args = "--controller {} --Rsense {} --maxNeighbors {}".format(controller, r, 10)
+          rollout_args = "--controller {} --Rsense {} --maxNeighbors {}".format(controller, r, 6)
 
           with concurrent.futures.ThreadPoolExecutor(max_workers=24) as executor:
             for _ in executor.map(rollout_instance, instances, repeat(rollout_args)):
