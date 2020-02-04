@@ -38,51 +38,59 @@ class SingleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
+		self.sim_tf = 50
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
 
 		# safety
-		self.D_robot = 1.*(self.r_agent+self.r_agent)
-		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
-		self.circle_obstacles_on = True # square obstacles batch not implemented
-
+		
 		self.Delta_R = self.a_max*self.sim_dt
-		self.safety = "potential" # "potential", "fdbk"
+		self.safety = "fdbk_si" # "potential", "fdbk_si"
+		self.rollout_batch_on = False
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
+
+
 		# Barrier function stuff
-		self.b_gamma = 0.005 # 0.1
+		self.b_gamma = .005 # 0.005 # for potential: 0.005,  
+		self.b_eps = 10.
+
 		self.b_exph = 1.0 # 1.0
 		# cbf 
 		self.cbf_kp = 1.0
-		
-		# 
-		# self.eps_h = 1e-9
+		self.cbf_kd = 0.5
+
 		if self.safety is "potential":
 			# self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
 			self.pi_max = 0.9 * self.a_max
 			self.pi_min = -self.pi_max # -1*self.a_max
-		elif self.safety is "fdbk":
+		elif self.safety is "fdbk_si":
 			phi = -np.log((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
 			grad_phi_norm = (self.r_comm - self.r_agent) / (0.2 - self.r_agent)
-			self.pi_max = self.b_gamma * phi / grad_phi_norm + self.a_max
+			# self.pi_max = self.b_gamma * phi / grad_phi_norm + self.a_max
+			self.pi_max = 0.9*self.a_max
+			self.pi_min = -self.pi_max
 		
+		# old
+		self.D_robot = 1.*(self.r_agent+self.r_agent)
+		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
+		self.circle_obstacles_on = True # square obstacles batch not implemented
+
 		# IL
 		self.il_load_loader_on = False
 		# self.il_load_loader_on = False
 		self.training_time_downsample = 50
-		self.il_train_model_fn = '../results/singleintegrator/barrier/il_current.pt'
+		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
 		self.il_batch_size = 4096*2
-		self.il_n_epoch = 100
+		self.il_n_epoch = 200
 		self.il_lr = 1e-3
-		self.il_wd = 0 #0.0002
+		self.il_wd = 0.00002
 		self.il_n_data = None # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
@@ -90,7 +98,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 2000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 100000 # 100000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -114,19 +122,7 @@ class SingleIntegratorParam(Param):
 		self.sim_rl_model_fn = '../models/singleintegrator/rl_current.pt'
 		# self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
-
-		# plots
-		self.vector_plot_dx = 0.25 		
-
-		# self.ad_tf = 25 #25
-		# self.ad_dt = 0.05
-		# self.ad_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
-
-		# 
-		# self.il_empty_model_fn = '../models/singleintegrator/empty.pt'
-		# self.il_barrier_model_fn = '../models/singleintegrator/barrier.pt'
-		# self.il_adaptive_model_fn = '../models/singleintegrator/adaptive.pt'
-
+	
 		# learning hyperparameters
 		n,m,h,l,p = 2,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
@@ -169,6 +165,7 @@ def load_instance(param, env, instance):
 		# default
 		# instance = "map_8by8_obst6_agents4_ex0004.yaml"
 		instance = "map_8by8_obst6_agents64_ex0004.yaml"
+		# instance = "map_8by8_obst6_agents16_ex0000.yaml"
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
@@ -229,23 +226,13 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		# 'il':	torch.load(param.sim_il_model_fn),
-		# 'empty_2': Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn)),
-		# 'empty': torch.load(param.il_empty_model_fn),
-		# 'ad':torch.load(param.ad_train_model_fn),
-		# 'adAPF': Empty_Net_wAPF(param,env,torch.load(param.ad_train_model_fn)),
-		#'emptywAPF' : Empty_Net_wAPF(param,env),
-		# 'barrier' : torch.load(param.sim_il_model_fn)
-		# 'e1M': torch.load('../models/singleintegrator/empty_1M_agent4_data.pt'),
-		# 'ad1M': torch.load('../models/singleintegrator/ad_current.pt'),
-		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
-		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
-		# 'barrier' : torch.load(param.il_barrier_model_fn),
-		# 'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/empty/il_current.pt')),
-		# 'barrier': torch.load('../results/singleintegrator/barrier/il_current.pt'),
-		'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt')),
+		# exp1 
+		# 'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt')),
 		# 'barrier': torch.load('../results/singleintegrator/exp1Barrier_0/il_current.pt'),
-		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 
+		# testing
+		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'current': torch.load(param.il_train_model_fn),
 	}
 
 	s0 = load_instance(param, env, args.instance)
