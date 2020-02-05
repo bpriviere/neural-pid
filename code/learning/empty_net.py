@@ -10,7 +10,7 @@ import numpy as np
 import concurrent
 
 # my package
-from learning.deepset import DeepSet
+from learning.deepset import DeepSet, DeepSetObstacles
 from learning.feedforward import FeedForward
 
 class Empty_Net(nn.Module):
@@ -26,7 +26,7 @@ class Empty_Net(nn.Module):
 				param.il_network_activation,
 				param.env_name
 				)
-			self.model_obstacles = DeepSet(
+			self.model_obstacles = DeepSetObstacles(
 				param.il_phi_obs_network_architecture,
 				param.il_rho_obs_network_architecture,
 				param.il_network_activation,
@@ -116,7 +116,10 @@ class Empty_Net(nn.Module):
 		num_obstacles = int((x.size()[1] - (1 + self.dim_state + self.dim_neighbor*num_neighbors))/2)
 
 		rho_neighbors = self.model_neighbors.forward(x[:,self.get_agent_idx_all(x)])
-		rho_obstacles = self.model_obstacles.forward(x[:,self.get_obstacle_idx_all(x)])
+		# rho_obstacles = self.model_obstacles.forward(x[:,self.get_obstacle_idx_all(x)])
+		vel = x[:,3:5]
+		rho_obstacles = self.model_obstacles.forward(x[:,self.get_obstacle_idx_all(x)], vel)
+		
 		g = x[:,self.get_goal_idx(x)]
 
 		x = torch.cat((rho_neighbors, rho_obstacles, g),1)
