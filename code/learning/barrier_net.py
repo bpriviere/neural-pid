@@ -51,8 +51,22 @@ class Barrier_Net(nn.Module):
 		self.device = device
 		self.model_neighbors.to(device)
 		self.model_obstacles.to(device)
+		self.psi.to(device)
 		self.bf.to(device)
 		return super().to(device)
+
+	def save_weights(self, filename):
+		torch.save({
+			'neighbors_state_dict': self.model_neighbors.state_dict(),
+			'obstacles_state_dict': self.model_obstacles.state_dict(),
+			'psi_state_dict': self.psi.state_dict(),
+			}, filename)
+
+	def load_weights(self, filename):
+		checkpoint = torch.load(filename)
+		self.model_neighbors.load_state_dict(checkpoint['neighbors_state_dict'])
+		self.model_obstacles.load_state_dict(checkpoint['obstacles_state_dict'])
+		self.psi.load_state_dict(checkpoint['psi_state_dict'])
 
 	def policy(self,x):
 

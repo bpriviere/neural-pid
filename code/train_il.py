@@ -300,6 +300,9 @@ def train_il(param, env, device):
 		print('Error in Train Gains, programmatic controller not recognized')
 		exit()
 
+	if param.il_pretrain_weights is not None:
+		model.load_weights(param.il_pretrain_weights)
+
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
 	adaptive_dataset_len_lst = []
 	num_unique_points_lst = []
@@ -404,6 +407,7 @@ def train_il(param, env, device):
 						best_test_loss = test_epoch_loss
 						print('      saving @ best test loss:', best_test_loss)
 						torch.save(model.to('cpu'), param.il_train_model_fn)
+						model.save_weights(param.il_train_model_fn + ".tar")
 						model.to(device)
 				log_file.write("{},{},{},{}\n".format(time.time() - start_time, epoch, train_epoch_loss, test_epoch_loss))
 
