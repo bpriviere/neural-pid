@@ -26,31 +26,48 @@ from systems.singleintegrator import SingleIntegrator
 plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
 
+# from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
+def is_collision_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):
+	# Find the closest point to the circle within the rectangle
+	closest = np.clip(circle_pos, rect_tl, rect_br)
+	# Calculate the distance between the circle's center and this closest point
+	dist = np.linalg.norm(circle_pos - closest)
+	# If the distance is less than the circle's radius, an intersection occurs
+	return dist + 1e-4 < circle_r
+
 
 def plot_policy_vector_field(fig,ax,policy,map_data,i,param):
 	
 	obstacles = map_data["map"]["obstacles"]
+	agents = [np.array(agent["start"]) + 0.5 for agent in map_data["agents"]]
 	transformation = [[np.eye(2)]]
 	dx = 0.5 #param.vector_plot_dx
 
-	X = np.arange(0,map_data["map"]["dimensions"][0]+dx,dx)
-	Y = np.arange(0,map_data["map"]["dimensions"][1]+dx,dx)
-	U = np.zeros((len(Y),len(X)))
-	V = np.zeros((len(Y),len(X)))
-	C = np.zeros((len(Y),len(X)))
+	# X = np.arange(0,map_data["map"]["dimensions"][0]+dx,dx)
+	# Y = np.arange(0,map_data["map"]["dimensions"][1]+dx,dx)
+	# U = np.zeros((len(Y),len(X)))
+	# V = np.zeros((len(Y),len(X)))
+	# C = np.zeros((len(Y),len(X)))
 
-	o = [] 
-	for i_x,x in enumerate(X):
-		for i_y,y in enumerate(Y):
-			if not collision((x,y),obstacles):
+	X = []
+	Y = []
+	U = []
+	V = []
+	C = []
+
+	for i_x,x in enumerate(np.arange(0,map_data["map"]["dimensions"][0]+dx,dx)):
+		for i_y,y in enumerate(np.arange(0,map_data["map"]["dimensions"][1]+dx,dx)):
+			if not collision((x,y),obstacles,agents):
 
 				o_xy = get_observation_i_at_xy_from_data(map_data,x,y,i,param)
-				a = policy.policy(o_xy,transformation)
+				a = policy.policy(o_xy)
 				print(len(X), len(Y))
 
-				U[i_y,i_x] = a[0][0]
-				V[i_y,i_x] = a[0][1]
-				C[i_y,i_x] = np.linalg.norm( np.array([a[0][0],a[0][1]]))
+				X.append(x)
+				Y.append(y)
+				U.append(a[0][0])
+				V.append(a[0][1])
+				C.append(np.linalg.norm( np.array([a[0][0],a[0][1]])))
 
 	# normalize arrow length
 	# U = U / np.sqrt(U**2 + V**2);
@@ -60,7 +77,15 @@ def plot_policy_vector_field(fig,ax,policy,map_data,i,param):
 	# fig.colorbar(im)
 
 
-def collision(p,o_lst):
+def collision(p,o_lst,agents):
+	p = np.array(p)
+	for o in o_lst:
+		o = np.array(o)
+		if is_collision_circle_rectangle(p, 0.15, o, o+1.0):
+			return True
+	for a in agents:
+		if np.linalg.norm(p - a) < 0.35:
+			return True
 	return False
 
 
@@ -138,7 +163,7 @@ if __name__ == '__main__':
 	env = SingleIntegrator(param)
 
 	if args.barrier:
-		policy_fn = '../models/singleintegrator/barrier.pt'
+		policy_fn = '../results/singleintegrator/exp1Barrier_3/il_current.pt'
 		policy = torch.load(policy_fn)
 	elif args.empty:
 		policy_fn = '../models/singleintegrator/empty.pt'
@@ -191,10 +216,10 @@ if __name__ == '__main__':
 	# 	ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
 
 	for j in range(num_agents):
-		if not agent == j:
-			agent_j_p = np.array(map_data["agents"][j]["start"]) + 0.5
-			ax.add_patch(Circle(agent_j_p, 0.2, alpha=0.5, color='gray'))
-		else:
+		# if not agent == j:
+		agent_j_p = np.array(map_data["agents"][j]["start"]) + 0.5
+		ax.add_patch(Circle(agent_j_p, 0.15, alpha=0.5, color='gray'))
+		if agent == j:
 			goal = np.array(map_data["agents"][j]["goal"])
 			ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color='blue'))
 

@@ -32,15 +32,15 @@ class DoubleIntegratorParam(Param):
 		self.r_obs_sense = 3.
 		self.r_agent = 0.15 #0.2
 		self.r_obstacle = 0.5
-		self.v_max = 0.5
-		self.a_max = 4.0
+		self.v_max = np.inf
+		self.a_max = np.inf # 0.5
 		self.v_min = -1*self.v_max
 		self.a_min = -1*self.a_max
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 25
-		self.sim_dt = 0.01
+		self.sim_tf = 20
+		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -51,27 +51,24 @@ class DoubleIntegratorParam(Param):
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
 		self.Delta_R = self.a_max*self.sim_dt
-		self.safety = "potential" # "potential", "fdbk"
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
-		# Barrier function stuff
-		self.b_gamma = 0.1 # 0.1
-		self.b_exph = 1.0 # 1.0
+		
 		# cbf 
-		self.cbf_kp = 1.0
+		self.cbf_kp = 2.0
+		self.cbf_kd = 20.0
 		
-		# 
-		# self.eps_h = 1e-9
-		if self.safety is "potential":
-			# self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
-			self.pi_max = 0.9 * self.a_max
-			self.pi_min = -self.pi_max # -1*self.a_max
-		elif self.safety is "fdbk":
-			phi = -np.log((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
-			grad_phi_norm = (self.r_comm - self.r_agent) / (0.2 - self.r_agent)
-			self.pi_max = self.b_gamma * phi / grad_phi_norm + self.a_max
+		self.pi_max = 0.3 #0.10 #1.0*self.a_max
 		
+		self.safety = "fdbk_di" # potential, fdbk_di
+		self.rollout_batch_on = False
+		# Barrier function stuff
+		self.b_gamma = .05 # 0.1
+		self.b_k = [0.01,.001]
+		self.b_eps = 100
+		self.b_exph = 1.0 # 1.0
+
 		# IL
 		self.il_load_loader_on = False
 		self.training_time_downsample = 50 #10
@@ -90,7 +87,7 @@ class DoubleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 10000000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 500000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -166,8 +163,8 @@ def load_instance(param, env, instance):
 			map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 	else:
 		# default
-		# instance = "map_8by8_obst6_agents4_ex0004.yaml"
-		instance = "map_8by8_obst6_agents64_ex0004.yaml"
+		# instance = "map_8by8_obst6_agents64_ex0006.yaml"
+		instance = "map_8by8_obst6_agents8_ex0004.yaml"
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
@@ -224,24 +221,11 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		# 'il':	torch.load(param.il_train_model_fn),
-		# 'ilAPF' : Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
-		'ilAPF' : Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
-		# 'ggp' : GoToGoalPolicy(param,env),
-
-		# 'empty_2': Empty_Net_wAPF(param,env,torch.load(param.sim_il_model_fn)),
-		# 'empty': torch.load(param.il_empty_model_fn),
-		# 'ad':torch.load(param.ad_train_model_fn),
-		# 'adAPF': Empty_Net_wAPF(param,env,torch.load(param.ad_train_model_fn)),
-		# 'emptywAPF' : Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
-		# 'APF' : GoToGoalPolicy(param,env),
-		# 'barrier' : torch.load(param.sim_il_model_fn)
-		# 'e1M': torch.load('../models/singleintegrator/empty_1M_agent4_data.pt'),
-		# 'ad1M': torch.load('../models/singleintegrator/ad_current.pt'),
-		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_mixed.pt')),
-		# 'e1M4APF' : Empty_Net_wAPF(param,env,torch.load('../models/singleintegrator/empty_1M_agent4_data.pt')),
-		# 'barrier' : torch.load(param.il_barrier_model_fn),
-		# 'current': torch.load(param.il_train_model_fn)
+		# 'current':torch.load(param.il_train_model_fn),
+		# 'empty_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
+		# 'gg': GoToGoalPolicy(param,env),
+		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'zero': Empty_Net_wAPF(param,env,ZeroPolicy(env))
 	}
 
 	s0 = load_instance(param, env, args.instance)

@@ -16,4 +16,18 @@
 # rm obs_central*.png
 # rm obs_agent*.png
 
-python3 animate.py --video large.mp4 --speed 8 ../../results/singleintegrator/instances/map_35by20_obst70_agents350_ex000000.yaml ../../results/singleintegrator/cBF/map_35by20_obst70_agents350_ex000000.npy
+# create video for large case
+# python3 animate.py --video large.mp4 --speed 16 ../../results/singleintegrator/instances/map_35by20_obst70_agents350_ex000000.yaml ../../results/singleintegrator/exp1Barrier_3/map_35by20_obst70_agents350_ex000000.npy
+python3 animate.py --video large-orca.mp4 --speed 16 ../../results/singleintegrator/instances/map_35by20_obst70_agents350_ex000000.yaml ../../results/singleintegrator/orca/map_35by20_obst70_agents350_ex000000.npy
+
+# python3 animate.py --video validation_central_obst6_agents8.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst6_agents8_ex0000.yaml ../../results/singleintegrator/central/map_8by8_obst6_agents8_ex0000.npy
+# python3 animate.py --video validation_orca_obst6_agents8.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst6_agents8_ex0000.yaml ../../results/singleintegrator/orcaR3/map_8by8_obst6_agents8_ex0000.npy
+# python3 animate.py --video validation_apf_obst6_agents8.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst6_agents8_ex0000.yaml ../../results/singleintegrator/apf/map_8by8_obst6_agents8_ex0000.npy
+# python3 animate.py --video validation_barrier_obst6_agents8.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst6_agents8_ex0000.yaml ../../results/singleintegrator/exp1Barrier_3/map_8by8_obst6_agents8_ex0000.npy
+# python3 animate.py --video validation_empty_obst6_agents8.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst6_agents8_ex0000.yaml ../../results/singleintegrator/exp1Empty_0/map_8by8_obst6_agents8_ex0000.npy
+
+# python3 animate.py --video validation_central_obst12_agents16.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst12_agents16_ex0000.yaml ../../results/singleintegrator/central/map_8by8_obst12_agents16_ex0000.npy
+# python3 animate.py --video validation_orca_obst12_agents16.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst12_agents16_ex0000.yaml ../../results/singleintegrator/orcaR3/map_8by8_obst12_agents16_ex0000.npy
+# python3 animate.py --video validation_apf_obst12_agents16.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst12_agents16_ex0000.yaml ../../results/singleintegrator/apf/map_8by8_obst12_agents16_ex0000.npy
+# python3 animate.py --video validation_barrier_obst12_agents16.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst12_agents16_ex0000.yaml ../../results/singleintegrator/exp1Barrier_3/map_8by8_obst12_agents16_ex0000.npy
+# python3 animate.py --video validation_empty_obst12_agents16.mp4 --speed 8 ../../results/singleintegrator/instances/map_8by8_obst12_agents16_ex0000.yaml ../../results/singleintegrator/exp1Empty_0/map_8by8_obst12_agents16_ex0000.npy
