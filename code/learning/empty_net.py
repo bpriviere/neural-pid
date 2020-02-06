@@ -130,7 +130,7 @@ class Empty_Net(nn.Module):
 
 		rho_neighbors = self.model_neighbors.forward(x[:,self.get_agent_idx_all(x)])
 		# rho_obstacles = self.model_obstacles.forward(x[:,self.get_obstacle_idx_all(x)])
-		vel = x[:,3:5]
+		vel = -x[:,3:5]
 		rho_obstacles = self.model_obstacles.forward(x[:,self.get_obstacle_idx_all(x)], vel)
 		
 		g = x[:,self.get_goal_idx(x)]
