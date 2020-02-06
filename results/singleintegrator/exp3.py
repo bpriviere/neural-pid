@@ -65,8 +65,8 @@ if __name__ == "__main__":
       'central': 'Central',
       'apf': 'BF',
       'exp3EmptySobst06_agents004': '10 % obst., 4 robots',
-      'exp3EmptySobst06_agents016': '20 % obst., 16 robots',
-      'exp3EmptySobst12_agents004': '10 % obst., 4 robots',
+      'exp3EmptySobst06_agents016': '10 % obst., 16 robots',
+      'exp3EmptySobst12_agents004': '20 % obst., 4 robots',
       'exp3EmptySobst12_agents016': '20 % obst., 16 robots',
     }
     for src in datasource:
