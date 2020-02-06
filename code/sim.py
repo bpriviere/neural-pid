@@ -29,7 +29,7 @@ def run_sim(param, env, controller, initial_state):
 		observation = env.observe()
 
 		action = controller.policy(observation)
-		next_state, r, done, _ = env.step(action, compute_reward = False)
+		next_state, r, done, _ = env.step(action, compute_reward = True)
 		reward += r
 		
 		states[step + 1] = next_state

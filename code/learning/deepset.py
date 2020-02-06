@@ -92,19 +92,16 @@ class DeepSetObstacles(nn.Module):
 	def forward(self, x, vel):
 		# print(x)
 		X = torch.zeros((len(x),self.rho.in_dim), device=self.device)
-		if self.phi.in_dim == 4:
-			# In this case, we also add our own velocity information
-			num_elements = int(x.size()[1] / 2)
-			for i in range(num_elements):
-				X += self.phi(torch.cat((x[:,i*2:(i+1)*2], vel), dim=1))
-			return self.rho(X)
-		elif self.phi.in_dim == 4:
-			# regular case: only relative positions
-			num_elements = int(x.size()[1] / self.phi.in_dim)
-			for i in range(num_elements):
+		num_elements = int(x.size()[1] / 2)#self.phi.in_dim)
+		for i in range(num_elements):
+			# print(x[:,i*self.phi.in_dim:(i+1)*self.phi.in_dim].shape, vel.shape, torch.cat((x[:,i*self.phi.in_dim:(i+1)*self.phi.in_dim], vel),dim=1).shape)
+			if self.env_name == "SingleIntegrator":
 				X += self.phi(x[:,i*self.phi.in_dim:(i+1)*self.phi.in_dim])
-			return self.rho(X)
-		else:
-			print('unknown phi in dim!')
-			exit()
+			elif self.env_name == "DoubleIntegrator":
+				X += self.phi(torch.cat((x[:,i*2:(i+1)*2], vel), dim=1))
+			else:
+				exit('env_name {} invalid'.format(self.env_name))
+
+			# X += self.phi(x[:,i*self.phi.in_dim:(i+1)*self.phi.in_dim])
+		return self.rho(X)
 

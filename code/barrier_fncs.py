@@ -37,8 +37,6 @@ class Barrier_Fncs():
 
 	# torch functions, optimzied for batch 
 	def torch_fdbk_di(self,x,P,H):
-
-		# todo...
 		
 		bs = x.shape[0]
 
@@ -51,31 +49,12 @@ class Barrier_Fncs():
 		g[:,2:4,:] = torch.eye(2)
 
 		grad_phi = self.torch_get_grad_phi(x,P,H)
-		gradp2_phi = self.torch_get_gradp2_phi(x,P,H)
-		phi = self.torch_get_phi(x,P,H)
-		phidot = torch.bmm(grad_phi.unsqueeze(1),v.unsqueeze(2))
+		# gradp2_phi = self.torch_get_gradp2_phi(x,P,H)
+		# phi = self.torch_get_phi(x,P,H)
+		phidot = torch.bmm(grad_phi.unsqueeze(1),v.unsqueeze(2)).squeeze(2)
 
-		grad_phidot = torch.zeros((bs,1,4),device=self.device)
-		grad_phidot[:,0,0:2] = torch.bmm(v.unsqueeze(1),gradp2_phi).squeeze()
-		grad_phidot[:,0,2:4] = grad_phi
-
-		Lf2 = torch.zeros((bs,1),device=self.device)
-		Lf2 = torch.bmm(grad_phidot,f)
-
-		LgLf = torch.zeros((bs,1,2),device=self.device)
-		LgLf = torch.bmm(grad_phidot,g)
-		LgLf_pinv = torch.zeros((bs,2,1),device=self.device)
-		LgLf_pinv = self.torch_pinv_vec(LgLf)
-
-		K = torch.tensor(self.param.b_k,device=self.device)
-		K = K.repeat(3,1).unsqueeze(1)
-		eta = torch.zeros((bs,2,1),device=self.device)
-		eta[:,0] = phi.unsqueeze(1)
-		eta[:,1] = phidot.squeeze().unsqueeze(1)
-
-		b = torch.bmm(LgLf_pinv, -Lf2 - torch.bmm(K,eta)).permute(0,2,1) - 1/self.param.b_eps * LgLf
-		b = b.squeeze()
-
+		# our controller
+		b = -1*self.param.b_gamma*grad_phi -1/self.param.b_eps*torch.mul(phidot,grad_phi)
 		return b
 
 	def torch_pinv_vec(self,x):
