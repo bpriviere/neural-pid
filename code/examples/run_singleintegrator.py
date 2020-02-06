@@ -95,7 +95,7 @@ class SingleIntegratorParam(Param):
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
-		self.il_pretrain_weights = None # None or path to *.tar file
+		self.il_pretrain_weights_fn = None # None or path to *.tar file
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data

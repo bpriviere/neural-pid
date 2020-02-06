@@ -300,8 +300,8 @@ def train_il(param, env, device):
 		print('Error in Train Gains, programmatic controller not recognized')
 		exit()
 
-	if param.il_pretrain_weights is not None:
-		model.load_weights(param.il_pretrain_weights)
+	if param.il_pretrain_weights_fn is not None:
+		model.load_weights(param.il_pretrain_weights_fn)
 
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
 	adaptive_dataset_len_lst = []

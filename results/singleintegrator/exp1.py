@@ -188,7 +188,7 @@ if __name__ == "__main__":
       param = run_singleintegrator.SingleIntegratorParam()
       env = SingleIntegrator(param)
       if args.train:
-        for cc in ['Barrier']: #['Empty', 'Barrier']:
+        for cc in ['Empty', 'Barrier']:
           param = run_singleintegrator.SingleIntegratorParam()
           param.il_controller_class = cc
           param.il_train_model_fn = 'singleintegrator/exp1{}_{}/il_current.pt'.format(cc,i)
@@ -198,6 +198,11 @@ if __name__ == "__main__":
             first_training = False
           else:
             param.il_load_loader_on = True
+
+          # For the barrier net, use the pre-trained empty net as starting point
+          if cc == 'Barrier':
+            param.il_pretrain_weights_fn = 'singleintegrator/exp1Empty_{}/il_current.pt.tar'.format(i)
+
           env = SingleIntegrator(param)
           train_il(param, env, device)
 
