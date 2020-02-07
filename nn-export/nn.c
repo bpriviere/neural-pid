@@ -2,9 +2,6 @@
 #include <math.h> //tanhf
 #include <stdbool.h>
 
-// Debug
-#include <stdio.h>
-
 #include "nn.h"
 
 // unconventional: include generated c-file in here
@@ -23,7 +20,7 @@ static float min_distance;
 // static const float b_gamma = 0.1;
 // static const float b_exph = 1.0;
 static const float robot_radius = 0.15; // m
-static const float max_v = 0.5; // m/s
+static const float max_v = 0.3;//0.5; // m/s
 static const float pi_max = 0.9f * 0.5f;
 
 // Barrier stuff
@@ -31,7 +28,7 @@ static float barrier_grad_phi[2];
 static bool barrier_alpha_condition;
 static const float deltaR = 0.5 * 0.05;
 static const float Rsense = 3.0;
-static const float barrier_gamma = 0.005;
+static const float barrier_gamma = 0.01;//0.005;
 
 static float relu(float num) {
 	if (num > 0) {
@@ -158,7 +155,6 @@ void nn_add_neighbor(const float input[2])
 		// compute vector to the closest contact point
 		float x = input[0] * (1 - robot_radius / (dist+robot_radius));
 		float y = input[1] * (1 - robot_radius / (dist+robot_radius));
-		printf("P N: %f,%f\n", x, y);
 
 		barrier_grad_phi[0] += x / denominator;
 		barrier_grad_phi[1] += y / denominator;
@@ -186,7 +182,6 @@ void nn_add_obstacle(const float input[2])
 
 	if (dist > Rsafe) {
 		const float denominator = dist * (dist - Rsafe) / (Rsense - Rsafe);
-		printf("P O: %f,%f\n",closest_x, closest_y);
 		barrier_grad_phi[0] += closest_x / denominator;
 		barrier_grad_phi[1] += closest_y / denominator;
 
@@ -210,8 +205,6 @@ const float* nn_eval(const float goal[2])
 
 	const float* empty = psi(pi_input);
 
-	printf("empty: %f %f\n", empty[0], empty[1]);
-
 	// // fun hack: goToGoal policy
 	// const float kp = 1.0;
 	// temp1[0] = kp*goal[0];
@@ -232,8 +225,6 @@ const float* nn_eval(const float goal[2])
 	float b[2] = {0, 0};
 	b[0] = -barrier_gamma * barrier_grad_phi[0];
 	b[1] = -barrier_gamma * barrier_grad_phi[1];
-
-	printf("barrier: %f %f\n", b[0], b[1]);
 
 	float alpha = 1.0;
 	if (barrier_alpha_condition) {

@@ -60,23 +60,97 @@ def policy(map_data,x,y,i):
 		nnexport.nn_add_obstacle(o)
 	return nnexport.nn_eval(relative_goal)
 
+def randomGenPositions(num_agents):
+	start = np.empty((num_agents,2))
+	for i in range(num_agents):
+		while True:
+			pos = np.random.uniform(low=[-1.0,-0.5],high=[1.0,1.2],size=2)
+			collision = False
+			for j in range(0, num_agents):
+				dist = np.linalg.norm(pos - start[j])
+				if dist < 0.3:
+					collision = True
+			if not collision:
+				start[i] = pos
+				break
+	return start
+
 
 if __name__ == '__main__':
 
+	# # exp1
 	# start = np.array([
-	# 	[1.3,0.4],
-	# 	[-1.3,0.4],
+	# 	[0.92,1.0],
+	# 	[-1.0,0.23],
 	# 	# [1.4,-0.3],
 	# 	])
 	# goal = np.array([
-	# 	[-1.3,0],
-	# 	[1.3,-0.4],
+	# 	[-1.0,0.23],
+	# 	[0.92,1.0],
+	# 	# [-1.4,0.2],
+	# 	])
+	# obstacles = np.array([
+	# 	[-0.43079,1.26188],
+	# 	[0.0172923,-0.366721],
+	# ])
+
+	# # exp 2
+	# start = np.array([
+	# 	[1.0,1.1],
+	# 	[-0.8,-0.55],
+	# 	# [1.4,-0.3],
+	# 	])
+	# goal = np.array([
+	# 	[-0.7,-0.55],
+	# 	[0.8,0.5],
+	# 	])
+	# obstacles = np.array([
+	# 	[-0.06,0.4],
+	# 	[0.52,-0.59],
+	# 	[-0.7,-1.5],
+	# ])
+
+	# # exp 3: ring
+	# num_agents = 7
+	# r = 1.0
+	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
+	# start = np.empty((num_agents,2))
+	# start[:,0] = r * np.cos(theta)
+	# start[:,1] = r * np.sin(theta)
+	# goal = -start
+	# obstacles = np.array([[0,0.0]])
+
+	# offset = np.array([0,0.3])
+	# start += offset
+	# goal += offset
+	# obstacles += offset
+
+	# print(goal)
+	# exit()
+
+
+	# # exp 4: random movement
+	# num_agents = 8
+	# start = randomGenPositions(num_agents)
+	# goal = randomGenPositions(num_agents)
+
+	# obstacles = np.array([
+	# ])
+
+	# start = np.array([
+	# 	[1.0,0.4],
+	# 	[-1.0,0.4],
+	# 	# [1.4,-0.3],
+	# 	])
+	# goal = np.array([
+	# 	[-1.0,0],
+	# 	[1.0,-0.4],
 	# 	# [-1.4,0.2],
 	# 	])
 
 	# obstacles = np.array([
-	# 	[-0.2,-0.9],
-	# 	[-0.4,0.8],
+	# 	[0.1,-0.8],
+	# 	[-0.3,0.8],
 	# ])
 
 	# start = np.array([
@@ -96,24 +170,47 @@ if __name__ == '__main__':
 	# 	# [-0.2,-2.0],
 	# ])
 
-	start = np.random.uniform(low=[-1,-1],high=[1.5,1],size=(10,2))
-	print(start)
-
-	goal = np.random.uniform(low=[-1,-1],high=[1.5,1],size=(10,2))
-	print(goal)
 
 
+	# # Raytheon exp 1
+	# start = np.array([
+	# 	[0.8,0.9],
+	# 	[-0.9,-0.5],
+	# 	])
+	# goal = np.array([
+	# 	[-0.9,-0.1],
+	# 	[1.2,0.8],
+	# 	])
+	# obstacles = np.array([
+	# 	[0.52,-0.53],
+	# 	[-0.06,0.43]
+	# ])
+
+	# # Raytheon exp 1
+	# start = np.array([
+	# 	[0.8,0.9],
+	# 	[-0.9,-0.5],
+	# 	])
+	# goal = np.array([
+	# 	[-0.9,-0.1],
+	# 	[1.2,0.8],
+	# 	])
+	# obstacles = np.array([
+	# 	[0.52,-0.53],
+	# 	[-0.1,1.12]
+	# ])
+
+	# head-on
+	start = np.array([
+		[1.0,0.0],
+		[-1.0,0.0],
+		])
+	goal = np.array([
+		[-1.0,0.0],
+		[1.0,0.0],
+		])
 	obstacles = np.array([
 	])
-
-	# num_agents = 6
-	# r = 1.0
-	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
-	# start = np.empty((num_agents,2))
-	# start[:,0] = r * np.cos(theta)
-	# start[:,1] = r * np.sin(theta)
-	# goal = -start
-	# obstacles = np.array([[0,0]])
 
 
 	num_agents = len(start)
@@ -175,8 +272,8 @@ if __name__ == '__main__':
 	# ax.set_xlim([-1,1.5])
 	# ax.set_ylim([-1,1])
 
-	ax.set_xlim([-2,2])
-	ax.set_ylim([-2,2])
+	ax.set_xlim([-1.25,1.25])
+	ax.set_ylim([-0.7,1.5])
 
 	for o in obstacles:
 		ax.add_patch(Rectangle(o-0.5, 1.0, 1.0, facecolor='gray', alpha=0.5))
