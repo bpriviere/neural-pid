@@ -59,13 +59,13 @@ class DoubleIntegratorParam(Param):
 		self.cbf_kp = 2.0
 		self.cbf_kd = 20.0
 		
-		self.pi_max = 0.3 #0.10 #1.0*self.a_max
+		self.pi_max = 0.5 #0.10 #1.0*self.a_max
 		
 		self.safety = "fdbk_di" # potential, fdbk_di
-		self.rollout_batch_on = False
+		self.rollout_batch_on = True
 		# Barrier function stuff
 		self.b_gamma = .05 # 0.1
-		self.b_k = [0.01,.001]
+		# self.b_k = [0.01,.001]
 		self.b_eps = 100
 		self.b_exph = 1.0 # 1.0
 
@@ -77,17 +77,18 @@ class DoubleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
 		self.il_batch_size = 4096*2
-		self.il_n_epoch = 250
+		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
 		self.il_n_data = None # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Empty' # 'Empty','Barrier',
+		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
+		self.il_pretrain_weights = None # None or path to *.tar file
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 500000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 100000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -221,10 +222,10 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		# 'current':torch.load(param.il_train_model_fn),
-		# 'empty_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
+		'current':torch.load(param.il_train_model_fn),
+		# 'current_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 		# 'gg': GoToGoalPolicy(param,env),
-		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'zero': Empty_Net_wAPF(param,env,ZeroPolicy(env))
 	}
 

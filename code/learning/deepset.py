@@ -98,13 +98,13 @@ class DeepSetObstacles(nn.Module):
 			for i in range(num_elements):
 				X += self.phi(torch.cat((x[:,i*2:(i+1)*2], vel), dim=1))
 			return self.rho(X)
-		elif self.phi.in_dim == 4:
+		elif self.phi.in_dim == 2:
 			# regular case: only relative positions
 			num_elements = int(x.size()[1] / self.phi.in_dim)
 			for i in range(num_elements):
 				X += self.phi(x[:,i*self.phi.in_dim:(i+1)*self.phi.in_dim])
 			return self.rho(X)
 		else:
-			print('unknown phi in dim!')
+			print('unknown phi.in_dim!', self.phi.in_dim)
 			exit()
 

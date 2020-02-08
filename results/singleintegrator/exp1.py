@@ -60,8 +60,8 @@ if __name__ == "__main__":
 
     solvers = {
       # 'central': 'Global',
-      'orcaR3': 'ORCA',
-      'apf': 'Barrier',
+      #'orcaR3': 'ORCA',
+      #'apf': 'Barrier',
       'exp1Empty': 'Two-stage GTL',
       'exp1Barrier': 'End-to-end GTL',
     }
@@ -166,8 +166,8 @@ if __name__ == "__main__":
         alpha=0.5)
 
     ax.set_yscale('log')
-    ax.set_yticks([0.0001, 0.001, 0.01, 0.1])
-    ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    # ax.set_yticks([0.0001, 0.001, 0.01, 0.1])
+    # ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
       
     plt.legend()
     pp.savefig(fig)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
   first_training = True
-  for i in range(2,5):
+  for i in range(0,1):
       # train policy
       param = run_singleintegrator.SingleIntegratorParam()
       env = SingleIntegrator(param)
@@ -215,9 +215,7 @@ if __name__ == "__main__":
 
         controller1 = "exp1Empty_{0},EmptyAPF,../results/singleintegrator/exp1Empty_{0}/il_current.pt".format(i)
         controller2 = "exp1Barrier_{0},torch,../results/singleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
-        # rolloutargs = "--controller {} --controller {}".format(controller1, controller2)
-
-        rolloutargs = "--controller {}".format(controller2)
+        rolloutargs = "--controller {} --controller {}".format(controller1, controller2)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
           for _ in executor.map(rollout_instance, instances, repeat(rolloutargs)):

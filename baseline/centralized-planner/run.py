@@ -132,6 +132,7 @@ def run(input_fn, output_fn, use_grid_planner = True):
 		subprocess.run(["matlab",
 			"-nosplash",
 			"-nodesktop",
+			"-singleCompThread",
 			"-r", cmd],
 			cwd="multi-robot-trajectory-planning/smoothener",
 			timeout=5*60)
