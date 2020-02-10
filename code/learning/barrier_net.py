@@ -134,17 +134,20 @@ class Barrier_Net(nn.Module):
 				empty_action = self.empty(x)
 				empty_action = self.bf.torch_scale(empty_action, self.param.pi_max)
 				
-				action = empty_action + barrier_action
-				action = self.bf.torch_scale(action, self.param.a_max)
+				adaptive_scaling = self.bf.torch_get_adaptive_scaling_si(x,empty_action,barrier_action,P,H)
+				action = torch.mul(adaptive_scaling,empty_action)+barrier_action 
+				action = self.bf.torch_scale(action, self.param.a_max)				
 
 			elif self.param.safety == "fdbk_di":
+				
 				P,H = self.bf.torch_get_relative_positions_and_safety_functions(x)
 				barrier_action = self.bf.torch_fdbk_di(x,P,H)
 								
 				empty_action = self.empty(x)
 				empty_action = self.bf.torch_scale(empty_action, self.param.pi_max)
 				
-				action = empty_action + barrier_action
+				adaptive_scaling = self.bf.torch_get_adaptive_scaling_di(x,empty_action,barrier_action,P,H)
+				action = torch.mul(adaptive_scaling,empty_action)+barrier_action 
 				action = self.bf.torch_scale(action, self.param.a_max)
 
 			else:
@@ -160,7 +163,7 @@ class Barrier_Net(nn.Module):
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 				empty_action = self.bf.numpy_scale(empty_action, self.param.pi_max)
 
-				adaptive_scaling = self.bf.numpy_get_adaptive_scaling(x,empty_action,barrier_action,P,H)
+				adaptive_scaling = self.bf.numpy_get_adaptive_scaling_si(x,empty_action,barrier_action,P,H)
 				action = adaptive_scaling*empty_action+barrier_action 
 				action = self.bf.numpy_scale(action, self.param.a_max)
 
@@ -172,8 +175,9 @@ class Barrier_Net(nn.Module):
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 				empty_action = self.bf.numpy_scale(empty_action, self.param.pi_max)
 
-				action = empty_action+barrier_action 
-				action = self.bf.numpy_scale(action, self.param.a_max)
+				adaptive_scaling = self.bf.numpy_get_adaptive_scaling_si(x,empty_action,barrier_action,P,H)
+				action = adaptive_scaling*empty_action+barrier_action 
+				action = self.bf.numpy_scale(action, self.param.a_max)				
 
 			elif self.param.safety == "fdbk_di":
 
@@ -183,7 +187,8 @@ class Barrier_Net(nn.Module):
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 				empty_action = self.bf.numpy_scale(empty_action, self.param.pi_max)
 
-				action = empty_action + barrier_action 
+				adaptive_scaling = self.bf.numpy_get_adaptive_scaling_di(x,empty_action,barrier_action,P,H)
+				action = adaptive_scaling*empty_action + barrier_action 
 				action = self.bf.numpy_scale(action, self.param.a_max)
 
 			else:
