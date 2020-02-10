@@ -179,6 +179,12 @@ class DoubleIntegrator(Env):
 		# check with respect to other agents
 		results = self.kd_tree_neighbors.query_pairs(2*self.r_agent)
 		if len(results) > 0:
+			for result in results:
+				p_i = self.agents[result[0]].p
+				p_j = self.agents[result[1]].p
+				dist = np.linalg.norm(p_i-p_j)
+				print('   a2a dist {} at time {}'.format(dist,self.times[self.time_step]))
+				exit()
 			return -1
 
 		# check with respect to obstacles
@@ -192,6 +198,8 @@ class DoubleIntegrator(Env):
 				coll, dist = not_batch_is_collision_circle_rectangle(np.array(agent.p), self.param.r_agent, np.array(o), np.array(o) + np.array([1.0,1.0]))
 				inc = np.count_nonzero(coll)
 				if inc > 0:
+					print('   a2o dist {} at time {}'.format(dist,self.times[self.time_step]))
+					exit()
 					return -inc 
 
 		return 0

@@ -205,10 +205,10 @@ const float* nn_eval(const float goal[4])
 
 	const float* empty = psi(pi_input);
 
-	// // fun hack: goToGoal policy
-	// const float kp = 1.0;
-	// temp1[0] = kp*goal[0];
-	// temp1[1] = kp*goal[1];
+	// fun hack: goToGoal policy
+	const float kp = 1.0;
+	temp1[0] = kp*goal[0];
+	temp1[1] = kp*goal[1];
 
 	// // for barrier, we need to scale empty to pi_max:
 	// float empty_norm = sqrtf(powf(empty[0], 2) + powf(empty[1], 2));

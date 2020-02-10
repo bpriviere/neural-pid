@@ -30,7 +30,7 @@ class DoubleIntegratorParam(Param):
 		self.n_agents = 4
 		self.r_comm = 3. #0.5
 		self.r_obs_sense = 3.
-		self.r_agent = 0.18 #0.2
+		self.r_agent = 0.2 #0.2
 		self.r_obstacle = 0.5
 		self.v_max = 0.5
 		self.a_max = 2.0
@@ -41,7 +41,7 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 40
+		self.sim_tf = 100
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -93,7 +93,7 @@ class DoubleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 100000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 5000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -266,7 +266,9 @@ if __name__ == '__main__':
 		run_batch(param, env, args.instance, controllers)
 
 	elif args.export:
-		model = torch.load('/home/whoenig/pCloudDrive/caltech/neural_pid_results/doubleintegrator/il_current.pt')
+		# model = torch.load('/home/whoenig/pCloudDrive/caltech/neural_pid_results/doubleintegrator/il_current.pt')
+		# change path 
+		model = torch.load('/home/ben/pCloudDrive/arcl/neural_pid/results/neural_pid_results/doubleintegrator/il_current.pt')
 		model.export_to_onnx("IL")
 
 	else:

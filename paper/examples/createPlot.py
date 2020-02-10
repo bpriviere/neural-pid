@@ -65,7 +65,7 @@ if __name__ == '__main__':
 		plt.axis('off')
 		output_fn = "{}.pdf".format(solver)
 		plt.savefig(output_fn, bbox_inches='tight')
-		subprocess.run(["pdfcrop", output_fn, output_fn])
+		# subprocess.run(["pdfcrop", output_fn, output_fn])
 		print(solver, results["percent_agents_success"])
 
 

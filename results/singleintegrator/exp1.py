@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # default fig size is [6.4, 4.8]
     fig, axs = plt.subplots(2, len(obst_lst), sharex='all', sharey='row', figsize = [6.4 * 1.4, 4.8 * 1.4])
 
-    pp = PdfPages("exp1_collisions.pdf")
+    pp = PdfPages("exp1_collisions_si.pdf")
     for column, obst in enumerate(obst_lst):
       files = []
       result_by_instance = dict()
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     
     pp.close()
     
-    pp = PdfPages("exp1.pdf")
+    pp = PdfPages("exp1_si.pdf")
 
     for column in range(0, 2):
       axs[1,column].set_xlabel("robot density [#robots/64m\u00B2]")
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     pp.close()
 
     # plot loss curve
-    pp = PdfPages("exp1_loss.pdf")
+    pp = PdfPages("exp1_loss_si.pdf")
     fig,ax = plt.subplots()    
    
     for solver in solvers.keys():
@@ -202,6 +202,7 @@ if __name__ == "__main__":
           # For the barrier net, use the pre-trained empty net as starting point
           if cc == 'Barrier':
             param.il_pretrain_weights_fn = 'singleintegrator/exp1Empty_{}/il_current.pt.tar'.format(i)
+            param.il_lr /= 10 
 
           env = SingleIntegrator(param)
           train_il(param, env, device)
