@@ -3,8 +3,8 @@ import argparse
 import yaml
 import os
 
-robot_radius = 0.15
-goal_dist = 0.5 # minimum distance to count as goal
+robot_radius = 0.2
+goal_dist = 0.2 # minimum distance to count as goal
 
 # from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
 def is_collision_circle_rectangle(circle_pos, circle_r, rect_tl, rect_br):

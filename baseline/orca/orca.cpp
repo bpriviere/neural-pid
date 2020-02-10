@@ -209,7 +209,7 @@ int main(int argc, char** argv)
     ("input,i", po::value<std::string>(&inputFile)->required(),"input file (YAML)")
     ("output,o", po::value<std::string>(&outputFile)->required(),"output file (csv)")
     ("Rsense", po::value<float>(&Rsense)->default_value(3.0),"sensing radius in meter")
-    ("robotRadius", po::value<float>(&robotRadius)->default_value(0.16f),"radius of robots")
+    ("robotRadius", po::value<float>(&robotRadius)->default_value(0.20f),"radius of robots")
   ;
 
   try

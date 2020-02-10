@@ -307,7 +307,7 @@ class SingleIntegratorVelSensing(Env):
 		# load map
 		instance = os.path.splitext(os.path.basename(filename))[0]
 
-		filename_map = "{}/../instances/{}.yaml".format(os.path.dirname(filename), instance)
+		filename_map = "{}/../instances3/{}.yaml".format(os.path.dirname(filename), instance)
 		with open(filename_map) as map_file:
 			map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 		obstacles = []
@@ -344,7 +344,7 @@ class SingleIntegratorVelSensing(Env):
 		dataset = []
 		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
-		for t in range(50,data.shape[0]-1):
+		for t in range(0,data.shape[0]-1):
 			if t%self.param.training_time_downsample != 0:
 				continue
 

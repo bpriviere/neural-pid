@@ -4,7 +4,7 @@ spars:
   sparseDelta: 0.24
   stretchFactor: 1.1
   maxFailures: 500
-  maxIter: 50000
+  maxIter: 10000
 grid:
   gridSize: 0.5
   xOffset: 0.25
