@@ -30,16 +30,18 @@ class DoubleIntegratorParam(Param):
 		self.n_agents = 4
 		self.r_comm = 3. #0.5
 		self.r_obs_sense = 3.
-		self.r_agent = 0.15 #0.2
+		self.r_agent = 0.18 #0.2
 		self.r_obstacle = 0.5
-		self.v_max = np.inf
-		self.a_max = np.inf # 0.5
+		self.v_max = 0.5
+		self.a_max = 2.0
+		# self.v_max = np.inf
+		# self.a_max = np.inf 
 		self.v_min = -1*self.v_max
 		self.a_min = -1*self.a_max
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 20
+		self.sim_tf = 40
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -50,7 +52,7 @@ class DoubleIntegratorParam(Param):
 		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
-		self.Delta_R = self.a_max*self.sim_dt
+		self.Delta_R = self.v_max*self.sim_dt + 1/2*self.a_max*self.sim_dt**2
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
@@ -68,9 +70,12 @@ class DoubleIntegratorParam(Param):
 		# self.b_k = [0.01,.001]
 		self.b_eps = 100
 		self.b_exph = 1.0 # 1.0
+		
+		self.kp = 0.075
+		self.kv = 0.075
 
 		# IL
-		self.il_load_loader_on = False
+		self.il_load_loader_on = True
 		self.training_time_downsample = 50 #10
 		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/doubleintegrator/rl_current.pt'
@@ -84,11 +89,11 @@ class DoubleIntegratorParam(Param):
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
 		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
-		self.il_pretrain_weights = None # None or path to *.tar file
+		self.il_pretrain_weights_fn = None # None or path to *.tar file
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 100000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 100000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -165,7 +170,7 @@ def load_instance(param, env, instance):
 	else:
 		# default
 		# instance = "map_8by8_obst6_agents64_ex0006.yaml"
-		instance = "map_8by8_obst6_agents8_ex0004.yaml"
+		instance = "map_8by8_obst6_agents4_ex0003.yaml"
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
@@ -201,7 +206,10 @@ def run_batch(param, env, instance, controllers):
 		print("Running simulation with " + name)
 
 		states, observations, actions, step = run_sim(param, env, controller, s0)
-		result = np.hstack((param.sim_times[0:step].reshape(-1,1), states))
+		# print(states[0:step].shape)
+		# print(param.sim_times[0:step].shape)
+		# exit()
+		result = np.hstack((param.sim_times[0:step].reshape(-1,1), states[0:step]))
 		# store in binary format
 		basename = os.path.splitext(os.path.basename(instance))[0]
 		folder_name = "../results/doubleintegrator/{}".format(name)

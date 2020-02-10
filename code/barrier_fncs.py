@@ -29,33 +29,49 @@ class Barrier_Fncs():
 
 	# torch 
 	def torch_fdbk_si(self,x,P,H):
-		bs = x.shape[0]
 		grad_phi = self.torch_get_grad_phi(x,P,H)
-		Lg = grad_phi
-		b = -1*self.param.b_gamma*grad_phi - 1/self.param.b_eps*Lg
+		b = -self.param.kp*grad_phi 
 		return b
 
 	# torch functions, optimzied for batch 
 	def torch_fdbk_di(self,x,P,H):
-		
-		bs = x.shape[0]
-
 		v = -1*x[:,3:5]
-
-		f = torch.zeros((bs,4,1),device=self.device)
-		f[:,0:2,:] = v.unsqueeze(2)
-
-		g = torch.zeros((bs,4,2),device=self.device)
-		g[:,2:4,:] = torch.eye(2)
-
 		grad_phi = self.torch_get_grad_phi(x,P,H)
-		# gradp2_phi = self.torch_get_gradp2_phi(x,P,H)
-		# phi = self.torch_get_phi(x,P,H)
-		phidot = torch.bmm(grad_phi.unsqueeze(1),v.unsqueeze(2)).squeeze(2)
-
-		# our controller
-		b = -1*self.param.b_gamma*grad_phi -1/self.param.b_eps*torch.mul(phidot,grad_phi)
+		grad_phi_dot = self.torch_get_grad_phi_dot(x,P,H)
+		b = -self.param.kv*(v + self.param.kp*grad_phi) - self.param.kp*grad_phi_dot - self.param.kp*grad_phi
 		return b
+
+	def torch_get_grad_phi_dot(self,x,P,H):
+		bs = x.shape[0]
+		grad_phi_dot = torch.zeros((bs,1,2),device=self.device)
+
+		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
+			normP = torch.norm(P[:,j,:],p=2,dim=1).unsqueeze(1)
+			if j < self.get_num_neighbors(x):
+				idx = self.get_agent_vel_idx_j(x,j)
+			else:
+				idx = np.array([3,4],dtype=int)
+
+			v_rel = x[:,idx].unsqueeze(2)
+			p_rel = P[:,j,:].unsqueeze(1)
+			normp = torch.norm(p_rel,p=2,dim=2) # bsx1
+
+			f1 = p_rel
+			f2 = torch.pow(normp,-1)
+			f3 = torch.pow(normp-self.param.r_agent,-1)
+
+			f1dot = torch.transpose(v_rel,1,2)
+			f2dot = -torch.mul(torch.bmm(p_rel,v_rel).squeeze(2),torch.pow(normp,-3))
+			f3dot = -torch.mul(torch.bmm(p_rel,v_rel).squeeze(2),torch.mul(torch.pow(normp,-1),torch.pow(normp-self.param.r_agent,-2)))
+
+			idx = (normp > 0).squeeze()
+
+			grad_phi_dot[idx] += \
+				torch.mul(f1dot[idx],torch.mul(f2[idx],f3[idx]).unsqueeze(2)) + \
+				torch.mul(f1[idx],torch.mul(f2dot[idx],f3[idx]).unsqueeze(2)) + \
+				torch.mul(f1[idx],torch.mul(f2[idx],f3dot[idx]).unsqueeze(2))
+
+		return grad_phi_dot.squeeze(1)
 
 	def torch_pinv_vec(self,x):
 		pinv_x = torch.mul( x.squeeze().unsqueeze(2),\
@@ -134,7 +150,7 @@ class Barrier_Fncs():
 			/(self.param.r_comm - self.param.r_agent)
 		return grad_phi
 
-	def torch_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
+	def torch_get_adaptive_scaling_si(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = torch.ones(H.shape[0],device=self.device)
 		# print('H',H)
 		if not H.nelement() == 0:
@@ -145,6 +161,19 @@ class Barrier_Fncs():
 			adaptive_scaling[idx] = torch.min(\
 				torch.mul(normb[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
 		return adaptive_scaling.unsqueeze(1)
+
+	def torch_get_adaptive_scaling_di(self,x,empty_action,barrier_action,P,H):
+		adaptive_scaling = torch.ones(H.shape[0],device=self.device)
+		# print('H',H)
+		if not H.nelement() == 0:
+			minH = torch.min(H,dim=1)[0]
+			LgV = -1*x[:,3:5] + self.param.kp*self.torch_get_grad_phi(x,P,H)
+			normLgV = torch.norm(LgV,p=2,dim=1)
+			normpi = torch.norm(empty_action,p=2,dim=1)
+			idx = minH < self.param.Delta_R
+			adaptive_scaling[idx] = torch.min(\
+				torch.mul(normLgV[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
+		return adaptive_scaling.unsqueeze(1)		
 
 	def torch_scale(self,action,max_action):
 		inv_alpha = action.norm(p=2,dim=1)/max_action
@@ -170,7 +199,7 @@ class Barrier_Fncs():
 		curr_idx = 0
 
 		for j in range(nn):
-			idx = self.get_agent_idx_j(x,j)
+			idx = self.get_agent_pos_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx] * (1 - self.param.r_agent * torch.pow(torch.norm(x[:,idx], p=2, dim=1).unsqueeze(1), -1))
 			H[:,curr_idx] = (torch.norm(P[:,curr_idx,:], p=2, dim=1) - self.param.r_agent)/(self.param.r_comm - self.param.r_agent)
 			curr_idx += 1 
@@ -191,107 +220,57 @@ class Barrier_Fncs():
 
 	# numpy 
 	def numpy_fdbk_si(self,x,P,H):
-
-		f = np.zeros((2,1))
-		g = np.eye(2)
-
 		grad_phi = self.numpy_get_grad_phi(x,P,H) # in 1x2
-		phi = self.numpy_get_phi(x,P,H)
-
-		Lf = np.zeros((1))
-
-		Lg = np.zeros((1,2))
-		Lg = np.dot(grad_phi,g)
-		Lg_pinv = np.zeros((2,1))
-		Lg_pinv = self.numpy_pinv_vec(Lg)
-
-		K = self.param.b_gamma 
-		eta = np.zeros((1,1))
-		eta[0] = phi
-
-		# fdbk linearization
-		# b = np.dot(Lg_pinv, -Lf - np.dot(K,eta)).T - 1.0/self.param.b_eps * Lg
-
-		b = -K*grad_phi - 1./self.param.b_eps*Lg
-		return b 
+		b = -self.param.kp*grad_phi
+		return b
 
 	def numpy_pinv_vec(self,x):
 		x_inv = x.T/np.linalg.norm(x)**2.
 		return x_inv
 
 	def numpy_fdbk_di(self,x,P,H):
-
-		# print('v',v)
-		# exit()
-
 		v = -1*x[0,3:5]
-
-		f = np.zeros((4,1))
-		f[0:2] = np.expand_dims(v,1) 
-
-		g = np.zeros((4,2))
-		g[2:4,:] = np.eye(2)
-
 		grad_phi = self.numpy_get_grad_phi(x,P,H) # in 1x2
-		gradp2_phi = self.numpy_get_gradp2_phi(x,P,H)
-		phi = self.numpy_get_phi(x,P,H)
-		phidot = np.dot(grad_phi, v)
-		
-		grad_phidot = np.zeros((1,4))
-		grad_phidot[0,0:2] = np.dot(v,gradp2_phi)
-		grad_phidot[0,2:4] = grad_phi
-
-		Lf2 = np.zeros((1))
-		Lf2 = np.dot(grad_phidot,f)
-
-		LgLf = np.zeros((1,2))
-		LgLf = np.dot(grad_phidot,g)
-		LgLf_pinv = np.zeros((2,1))
-		LgLf_pinv = self.numpy_pinv_vec(LgLf)
-
-		K = np.array(self.param.b_k)
-		eta = np.zeros((2,1))
-		eta[0] = phi
-		eta[1] = phidot
-
-		# --------
-		# this is what the proof says
-		q = (np.dot(v.T,np.dot(gradp2_phi,v) + phi))/np.dot(grad_phi,grad_phi.T)
-		if np.dot(grad_phi,v) > 0:
-			gamma = self.param.b_gamma 
-			# gamma = np.max((self.param.b_gamma,q))
-		elif np.dot(grad_phi,v) < 0:
-			gamma = 0 
-			# gamma = np.min((self.param.b_gamma,q))
-		else:
-			print(np.dot(grad_phi,v))
-			gamma = 0 
-
-		# (forget ^^ because this is smoother and also apparently safe )
-		gamma = self.param.b_gamma
-		b = -gamma*grad_phi -1/self.param.b_eps*np.dot(grad_phi,v)*grad_phi
-		# --------
-
-		# --------
-		# this works 
-		# b = -self.param.b_gamma * grad_phi - 1/self.param.b_eps * LgLf
-		# --------
-
-
+		grad_phi_dot = self.numpy_get_grad_phi_dot(x,P,H)
+		b = -1*self.param.kv*(v + self.param.kp*grad_phi) - self.param.kp*grad_phi_dot - self.param.kp*grad_phi
 		return b 
+
+	def numpy_get_grad_phi_dot(self,x,P,H):
+		grad_phi_dot = np.zeros((1,2))
+		
+		for j in range(self.get_num_neighbors(x)+self.get_num_obstacles(x)):
+			
+			if j < self.get_num_neighbors(x):
+				idx = self.get_agent_vel_idx_j(x,j)
+			else:
+				idx = np.array([3,4],dtype=int)
+
+			v_rel = x[:,idx] # 1x2
+			p_rel = P[:,j,:] # 1x2 
+			normp = np.linalg.norm(p_rel)
+			if normp > 0:
+				f1 = p_rel
+				f2 = 1/normp
+				f3 = 1/(normp-self.param.r_agent)
+				f1dot = v_rel
+				f2dot = -1/(normp**3)*np.dot(p_rel,v_rel.T)
+				f3dot = -1/(normp*(normp-self.param.r_agent)**2)*np.dot(p_rel,v_rel.T)
+				grad_phi_dot += f1dot*f2*f3 + f1*f2dot*f3 + f1*f2*f3dot
+
+		return grad_phi_dot
 
 	def numpy_get_gradp2_phi(self,x,P,H):
 		gradp2_phi = np.zeros((2,2))
 		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
 			normp = np.linalg.norm(P[:,j,:])
 			if normp > 0:
-				f1 = 1/normp
+				f1 = P[:,j,:].T # in 2x1 
 				f2 = 1/(normp - self.param.r_agent)
-				f3 = P[:,j,:].T # in 2x1 
-				grad_f1 = f3.T / normp**3. # in 1x2
-				grad_f2 = f3.T / (normp * f2**2)
-				grad_f3 = -1*np.eye(2)
-				gradp2_phi += f1*f2*grad_f3 + f1*np.dot(f3, grad_f1) + f1*np.dot(f3,grad_f2)
+				f3 = 1/normp
+				grad_f1 = -1*np.eye(2)
+				grad_f2 = f1.T / (normp * (normp - self.param.r_agent)**2)
+				grad_f3 = f1.T / normp**3. # in 1x2
+				gradp2_phi += grad_f1*f2*f3 + np.dot(f1,grad_f2)*f3 + np.dot(f1,grad_f3)*f2
 		return gradp2_phi
 
 	# numpy function, otpimized for rollout
@@ -327,13 +306,22 @@ class Barrier_Fncs():
 		alpha = np.min((phi_max*self.param.b_gamma,self.param.alpha_fdbk))
 		return alpha
 
-	def numpy_get_adaptive_scaling(self,x,empty_action,barrier_action,P,H):
+	def numpy_get_adaptive_scaling_si(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = 1.0 
 		if not H.size == 0 and np.min(H) < self.param.Delta_R:
 			normb = np.linalg.norm(barrier_action)
 			normpi = np.linalg.norm(empty_action)
 			adaptive_scaling = np.min((normb/normpi,1))
 		return adaptive_scaling
+
+	def numpy_get_adaptive_scaling_di(self,x,empty_action,barrier_action,P,H):
+		adaptive_scaling = 1.0 
+		if not H.size == 0 and np.min(H) < self.param.Delta_R:
+			LgV = -1*x[:,3:5] + self.param.kp*self.numpy_get_grad_phi(x,P,H)
+			normLgV = np.linalg.norm(LgV)
+			normpi = np.linalg.norm(empty_action)
+			adaptive_scaling = np.min((normLgV/normpi,1))
+		return adaptive_scaling		
 
 	def numpy_scale(self,action,max_action):
 		alpha = max_action/np.linalg.norm(action)
@@ -352,7 +340,7 @@ class Barrier_Fncs():
 		curr_idx = 0
 
 		for j in range(nn):
-			idx = self.get_agent_idx_j(x,j)
+			idx = self.get_agent_pos_idx_j(x,j)
 			P[:,curr_idx,:] = x[:,idx] * (1 - self.param.r_agent / np.linalg.norm(x[:,idx]))
 			H[:,curr_idx] = (np.linalg.norm(P[:,curr_idx,:]) - self.param.r_agent)/(self.param.r_obs_sense-self.param.r_agent)
 			curr_idx += 1 
@@ -378,9 +366,13 @@ class Barrier_Fncs():
 		nn = self.get_num_neighbors(x)
 		return int((x.shape[1] - 1 - self.dim_state - nn*self.dim_neighbor) / 2)  # number of obstacles 
 
-	def get_agent_idx_j(self,x,j):
+	def get_agent_pos_idx_j(self,x,j):
 		idx = 1+self.dim_state + self.dim_neighbor*j+np.arange(0,2,dtype=int)
 		return idx
+
+	def get_agent_vel_idx_j(self,x,j):
+		idx = 2+1+self.dim_state + self.dim_neighbor*j+np.arange(0,2,dtype=int)
+		return idx		
 
 	def get_obstacle_idx_j(self,x,j):
 		nn = self.get_num_neighbors(x)

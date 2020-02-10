@@ -30,7 +30,7 @@ class SingleIntegratorParam(Param):
 		self.n_agents = 1
 		self.r_comm = 3 
 		self.r_obs_sense = 3.
-		self.r_agent = 0.15 #5
+		self.r_agent = 0.2 #5
 		self.r_obstacle = 0.5
 		
 		self.a_max = 0.5
@@ -38,7 +38,7 @@ class SingleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 50
+		self.sim_tf = 20
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -46,20 +46,21 @@ class SingleIntegratorParam(Param):
 
 		# safety
 		
-		self.Delta_R = self.a_max*self.sim_dt
+		self.Delta_R = 2*self.a_max*self.sim_dt
 		self.safety = "fdbk_si" # "potential", "fdbk_si"
 		self.rollout_batch_on = True
 
-		self.max_neighbors = 6
-		self.max_obstacles = 6
+		self.max_neighbors = 12
+		self.max_obstacles = 12
 
 
 		# Barrier function stuff
-		self.b_gamma = .005 # 0.005 # for potential: 0.005,
-		self.b_eps = 100.
+		self.kp = 0.005
 
+		# obsolete barrier param 
+		self.b_gamma = .05 # 0.005 # for potential: 0.005,
+		self.b_eps = 50.
 		self.b_exph = 1.0 # 1.0
-		# cbf 
 		self.cbf_kp = 1.0
 		self.cbf_kd = 0.5
 
@@ -94,7 +95,7 @@ class SingleIntegratorParam(Param):
 		self.il_n_data = None # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
-		self.il_controller_class = 'Barrier' # 'Empty','Barrier',
+		self.il_controller_class = 'Empty' # 'Empty','Barrier',
 		self.il_pretrain_weights_fn = None # None or path to *.tar file
 		
 		self.datadict = dict()
@@ -164,9 +165,9 @@ def load_instance(param, env, instance):
 			map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 	else:
 		# default
-		instance = "map_8by8_obst6_agents4_ex0006.yaml"
-		# instance = "map_8by8_obst6_agents64_ex0004.yaml"
-		# instance = "map_8by8_obst6_agents16_ex0000.yaml"
+		# instance = "map_8by8_obst6_agents4_ex0006.yaml"
+		instance = "map_8by8_obst12_agents64_ex0004.yaml"
+		# instance = "map_8by8_obst6_agents32_ex0000.yaml"
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
@@ -233,8 +234,9 @@ if __name__ == '__main__':
 		# 'barrier': torch.load('../results/singleintegrator/exp1Barrier_0/il_current.pt'),
 		# 
 		# testing
-		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
-		'current': torch.load(param.il_train_model_fn),
+		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'current': torch.load(param.il_train_model_fn),
+		# 'currentwapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 	}
 
 	s0 = load_instance(param, env, args.instance)
