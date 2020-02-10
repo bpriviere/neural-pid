@@ -265,9 +265,9 @@ if __name__ == '__main__':
 		torch.set_num_threads(1)
 		run_batch(param, env, args.instance, controllers)
 
-	# elif args.export:
-	# 	model = torch.load(param.il_train_model_fn)
-	# 	model.export_to_onnx("IL")
+	elif args.export:
+		model = torch.load('/home/whoenig/pCloudDrive/caltech/neural_pid_results/doubleintegrator/il_current.pt')
+		model.export_to_onnx("IL")
 
 	else:
 		run(param, env, controllers, s0, args)

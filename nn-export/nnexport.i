@@ -34,10 +34,10 @@
 }
 
 %{
-#include "nn.h"
+#include "nn_double_integrator.h"
 %}
 
 %apply unsigned long long { uint64_t }
 
-%include "nn.h"
+%include "nn_double_integrator.h"
 
