@@ -3,7 +3,7 @@ import argparse
 import yaml
 import os
 
-robot_radius = 0.2 + 1e-5
+robot_radius = 0.2 + 1e-9
 goal_dist = 0.2 # minimum distance to count as goal
 
 # from https://stackoverflow.com/questions/401847/circle-rectangle-collision-detection-intersection
@@ -29,6 +29,15 @@ def stats(map_filename, schedule_filename):
 
 	with open(map_filename) as map_file:
 		map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
+
+	obstacles = map_data["map"]["obstacles"]
+	for x in range(-1,map_data["map"]["dimensions"][0]+1):
+		obstacles.append([x,-1])
+		obstacles.append([x,map_data["map"]["dimensions"][1]])
+	for y in range(map_data["map"]["dimensions"][0]):
+		obstacles.append([-1,y])
+		obstacles.append([map_data["map"]["dimensions"][0],y])
+
 
 	# find goal times
 	goal_times = []
@@ -87,7 +96,7 @@ def stats(map_filename, schedule_filename):
 
 	for i in range(num_agents):
 		pos_i = data[:,(i*4+1):(i*4+3)]
-		for o in map_data["map"]["obstacles"]:
+		for o in obstacles: 
 			coll, dist = is_collision_circle_rectangle(pos_i, robot_radius, np.array(o), np.array(o) + np.array([1.0,1.0]))
 			inc = np.count_nonzero(coll)
 
