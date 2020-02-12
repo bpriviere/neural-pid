@@ -30,7 +30,7 @@ class SingleIntegratorParam(Param):
 		self.n_agents = 1
 		self.r_comm = 3 
 		self.r_obs_sense = 3.
-		self.r_agent = 0.2 #5
+		self.r_agent = 0.2
 		self.r_obstacle = 0.5
 		
 		self.a_max = 0.5
@@ -46,19 +46,19 @@ class SingleIntegratorParam(Param):
 
 		# safety
 		
-		self.Delta_R = 2*self.a_max*self.sim_dt
+		self.Delta_R = self.a_max*self.sim_dt
 		self.safety = "fdbk_si" # "potential", "fdbk_si"
 		self.rollout_batch_on = True
 
-		self.max_neighbors = 12
-		self.max_obstacles = 12
+		self.max_neighbors = 6
+		self.max_obstacles = 6
 
 
 		# Barrier function stuff
-		self.kp = 0.005
+		self.kp = 0.005 * 2.85
 
 		# obsolete barrier param 
-		self.b_gamma = .05 # 0.005 # for potential: 0.005,
+		self.b_gamma = 0.005 * 2.85 # 0.005 # for potential: 0.005,
 		self.b_eps = 50.
 		self.b_exph = 1.0 # 1.0
 		self.cbf_kp = 1.0
