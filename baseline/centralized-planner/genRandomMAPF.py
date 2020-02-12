@@ -10,7 +10,7 @@ import yaml
 import numpy as np 
 
 
-r_agent = 0.2
+r_agent = 0.2 + 1e-3
 
 def reachable(map_size, start, goal, obstacles):
     visited = set()
@@ -78,7 +78,7 @@ def interesting(map_size, start, goal, obstacles):
     if np.linalg.norm(line[0,:]-line[-1,:]) < 2.0:
         return False
 
-    # return True
+    return True
 
     for point in line:
         if check_collision(point,obstacles):
@@ -194,12 +194,15 @@ if __name__ == "__main__":
     # map_size = [32, 32]
     continuous = False
     map_size = [8, 8]
-    agents_lst = [32] #[2,4,8,16,32] #,64] #[4,10,20,30] [40,50,100] # np.arange(50,51,10,dtype=int) # [35] 
+    agents_lst = [4,8,16] #,64] #[4,10,20,30] [40,50,100] # np.arange(50,51,10,dtype=int) # [35] 
     obst_lst = [6,12] #int(map_size[0] * map_size[1] * 0.1)
-    cases = range(10)
+    # cases = range(2000,20000)
     # cases = []
 
     for num_agents in agents_lst:
+        old_end = int(200000/num_agents)
+        new_end = int(240000/num_agents)
+        cases = range(old_end, new_end)
         print('num_agents: ', num_agents)
         for num_obstacles in obst_lst:
             print('   num_obstacles: ', num_obstacles)
@@ -207,7 +210,8 @@ if __name__ == "__main__":
             for i in cases:
               print('      ',i)
               groups, obstacles = randAgents1(map_size, num_agents, num_agents, num_obstacles)
-              writeFile(obstacles, map_size, groups, "map_{0}by{1}_obst{2}_agents{3}_ex{4:04}.yaml".format(
+              writeFile(obstacles, map_size, groups, "map_{0}by{1}_obst{2:02}_agents{3:03}_ex{4:06}.yaml".format(
+              # writeFile(obstacles, map_size, groups, "map_{0}by{1}_obst{2}_agents{3}_ex{4:04}.yaml".format(
                   map_size[0],
                   map_size[1],
                   num_obstacles,
