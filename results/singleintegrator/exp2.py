@@ -16,7 +16,7 @@ import torch
 import concurrent.futures
 from itertools import repeat
 import glob
-# from multiprocessing import cpu_count
+from multiprocessing import cpu_count
 # from torch.multiprocessing import Pool
 from multiprocessing import Pool
 import tempfile
@@ -173,7 +173,7 @@ if __name__ == "__main__":
           controller = "exp2BarrierR{0}td{1}_{2},torch,../results/singleintegrator/exp2BarrierR{0}td{1}_{2}/il_current.pt".format(r,td,i)
           rollout_args = "--controller {} --Rsense {} --maxNeighbors {}".format(controller, r, 6)
 
-          with concurrent.futures.ThreadPoolExecutor(max_workers=24) as executor:
+          with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count()) as executor:
             for _ in executor.map(rollout_instance, instances, repeat(rollout_args)):
               pass
 

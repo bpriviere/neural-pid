@@ -218,6 +218,6 @@ if __name__ == "__main__":
         controller2 = "exp1Barrier_{0},torch,../results/singleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
         rolloutargs = "--controller {} --controller {}".format(controller1, controller2)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count()) as executor:
           for _ in executor.map(rollout_instance, instances, repeat(rolloutargs)):
             pass

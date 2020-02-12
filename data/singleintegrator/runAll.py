@@ -5,6 +5,7 @@ import subprocess
 import numpy as np
 import argparse
 import concurrent.futures
+from multiprocessing import cpu_count
 import tempfile
 
 def rollout_instance(file):
@@ -61,6 +62,6 @@ if __name__ == "__main__":
   #   rollout_instance(file)
 
   # parallel version
-  with concurrent.futures.ThreadPoolExecutor(max_workers=24) as executor:
+  with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count()) as executor:
     for _ in executor.map(rollout_instance, datadir):
       pass

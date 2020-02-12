@@ -277,7 +277,7 @@ if __name__ == "__main__":
         # for instance in instances:
           # run_singleintegrator.run_batch(instance, controllers)
 
-        with Pool(24) as p:
+        with Pool(cpu_count()) as p:
           # p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
           p.starmap(run_singleintegrator_vel_sensing.run_batch, zip(repeat(param), repeat(env), instances, repeat(controllers)))
 

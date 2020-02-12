@@ -10,6 +10,7 @@ import shutil
 import yaml
 import utilities
 import concurrent.futures
+from multiprocessing import cpu_count
 from itertools import repeat
 import time
 
@@ -250,7 +251,7 @@ def train_il(param, env, device):
 				random.shuffle(datadir)
 
 				len_case = 0
-				with concurrent.futures.ProcessPoolExecutor(max_workers=24) as executor:
+				with concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count()) as executor:
 					for dataset in executor.map(env.load_dataset_action_loss, datadir):
 				# for file in datadir:
 					# dataset = env.load_dataset_action_loss(file)
