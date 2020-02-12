@@ -32,7 +32,7 @@ def run_orca_r(file, r):
 
 	with tempfile.TemporaryDirectory() as tmpdirname:
 		output_file = tmpdirname + "/orca.csv"
-		subprocess.run("../baseline/orca/build/orca -i {} -o {} --Rsense {} --robotRadius 0.21".format(file, output_file, r), shell=True)
+		subprocess.run("../baseline/orca/build/orca -i {} -o {} --Rsense {} --robotRadius 0.16".format(file, output_file, r), shell=True)
 		# load file and convert to binary
 		data = np.loadtxt(output_file, delimiter=',', skiprows=1, dtype=np.float32)
 		# store in binary format
