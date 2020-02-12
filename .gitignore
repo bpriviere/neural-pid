@@ -6,3 +6,4 @@ gurobi.log
 *rl_current.pt
 *il_current.pt
 models/
+preprocessed_data/
