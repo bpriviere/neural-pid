@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     solvers = {
       # 'central': 'Global',
-      #'orcaR3': 'ORCA',
+      'orcaR3': 'ORCA',
       #'apf': 'Barrier',
       'exp1Empty': 'Two-stage GTL',
       'exp1Barrier': 'End-to-end GTL',
@@ -91,10 +91,10 @@ if __name__ == "__main__":
 
       add_line_plot_agg(None, result_by_instance, "percent_agents_success",
         ax=axs[0, column])
-      add_line_plot_agg(None, result_by_instance, "control_effort_mean",
-        ax=axs[1, column], aggregrate_successful_agent=False)
-      # add_line_plot_agg(None, result_by_instance, "control_effort",
-      #   ax=axs[1, column], aggregrate_successful_agent=True)
+      # add_line_plot_agg(None, result_by_instance, "control_effort_mean",
+        # ax=axs[1, column], aggregrate_successful_agent=False)
+      add_line_plot_agg(None, result_by_instance, "control_effort",
+        ax=axs[1, column], aggregrate_successful_agent=True)
       add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
     
     pp.close()
@@ -199,10 +199,10 @@ if __name__ == "__main__":
           else:
             param.il_load_loader_on = True
 
-          # For the barrier net, use the pre-trained empty net as starting point
-          if cc == 'Barrier':
-            param.il_pretrain_weights_fn = 'singleintegrator/exp1Empty_{}/il_current.pt.tar'.format(i)
-            param.il_lr /= 10 
+          # # For the barrier net, use the pre-trained empty net as starting point
+          # if cc == 'Barrier':
+          #   param.il_pretrain_weights_fn = 'singleintegrator/exp1Empty_{}/il_current.pt.tar'.format(i)
+          #   param.il_lr /= 10 
 
           env = SingleIntegrator(param)
           train_il(param, env, device)

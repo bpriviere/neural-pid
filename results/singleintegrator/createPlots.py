@@ -92,6 +92,7 @@ def add_line_plot_agg(pp,result_by_instance,key,title=None, x_label=None, y_labe
 			result_array[i_s,i_a,0] = np.mean(curr)
 			result_array[i_s,i_a,1] = np.std(curr)
 
+		# line = ax.plot(x_array, result_array[i_s,:,0], 'o', label=solver)[0]
 		line = ax.plot(x_array, result_array[i_s,:,0], label=solver)[0]
 		ax.fill_between(x_array,
 			result_array[i_s,:,0]-result_array[i_s,:,1],

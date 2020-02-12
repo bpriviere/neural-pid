@@ -53,6 +53,7 @@ if __name__ == "__main__":
   obst_lst = [6,12]
   radii = [1,2,3,4,6,8]
   training_data = [30000, 300000, 3000000]
+  training_data = [30000, 300000, 3000000, 30000000]
 
   if args.plot:
     plt.rcParams.update({'font.size': 12})
@@ -80,6 +81,8 @@ if __name__ == "__main__":
                 result["solver"] = "|D| = 300k"
               elif td == 3000000:
                 result["solver"] = "|D| = 3M"
+              elif td == 30000000:
+                result["solver"] = "|D| = 30M"
               else:
                 result["solver"] = "Empty{}".format(td)
               result["Rsense"] = r
@@ -144,7 +147,7 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
 
-  for i in range(0,10):
+  for i in range(0,1):
     # train policy
     for r in radii:
       for td in training_data:
