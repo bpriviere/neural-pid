@@ -22,9 +22,10 @@ from torch.multiprocessing import Pool
 import matplotlib.pyplot as plt
 import numpy as np
 import subprocess
+import yaml
 
 sys.path.insert(1, os.path.join(os.getcwd(),'doubleintegrator'))
-from createPlots import add_line_plot_agg, add_bar_agg, add_scatter
+from createPlots import add_line_plot_agg, add_bar_agg, add_scatter, add_state_space
 import stats
 import matplotlib
 from matplotlib.backends.backend_pdf import PdfPages
@@ -91,10 +92,10 @@ if __name__ == "__main__":
 
       add_line_plot_agg(None, result_by_instance, "percent_agents_success",
         ax=axs[0, column])
-      add_line_plot_agg(None, result_by_instance, "control_effort_mean",
-        ax=axs[1, column], aggregrate_successful_agent=False)
-      # add_line_plot_agg(None, result_by_instance, "control_effort",
-      #   ax=axs[1, column], aggregrate_successful_agent=True)
+      # add_line_plot_agg(None, result_by_instance, "control_effort_mean",
+        # ax=axs[1, column], aggregrate_successful_agent=False)
+      add_line_plot_agg(None, result_by_instance, "control_effort",
+        ax=axs[1, column], aggregrate_successful_agent=True)
       add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
     
     pp.close()
@@ -174,6 +175,20 @@ if __name__ == "__main__":
     plt.close(fig)
     pp.close()
 
+    # state space plot
+    pp = PdfPages("exp1_statespace_di.pdf")
+    instance = "map_8by8_obst6_agents8_ex0000"
+    map_filename = "singleintegrator/instances/{}.yaml".format(instance)
+    with open(map_filename) as map_file:
+      map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
+
+    for key, value in solvers.items():
+      if key != "apf":
+        key += "_0"
+      data = np.load("doubleintegrator/{}/{}.npy".format(key, instance))
+      add_state_space(pp, map_data, data, value)
+    pp.close()
+
     exit()
 
   datadir = []
@@ -217,6 +232,6 @@ if __name__ == "__main__":
         # controller2 = "exp1Barrier_{0},torch,../results/doubleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
         # rolloutargs = "--controller {}".format(controller2)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count()) as executor:
           for _ in executor.map(rollout_instance, instances, repeat(rolloutargs)):
             pass
