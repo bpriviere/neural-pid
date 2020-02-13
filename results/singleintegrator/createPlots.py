@@ -324,7 +324,7 @@ if __name__ == '__main__':
 			for x in range(-1,map_data["map"]["dimensions"][0]+1):
 				ax.add_patch(Rectangle([x,-1], 1.0, 1.0, facecolor='gray', alpha=0.5))
 				ax.add_patch(Rectangle([x,map_data["map"]["dimensions"][1]], 1.0, 1.0, facecolor='gray', alpha=0.5))
-			for y in range(map_data["map"]["dimensions"][0]):
+			for y in range(map_data["map"]["dimensions"][1]):
 				ax.add_patch(Rectangle([-1,y], 1.0, 1.0, facecolor='gray', alpha=0.5))
 				ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
 
