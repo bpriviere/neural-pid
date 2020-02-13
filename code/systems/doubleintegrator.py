@@ -184,7 +184,7 @@ class DoubleIntegrator(Env):
 				p_j = self.agents[result[1]].p
 				dist = np.linalg.norm(p_i-p_j)
 				print('   a2a dist {} at time {}'.format(dist,self.times[self.time_step]))
-				exit()
+				# exit()
 			return -1
 
 		# check with respect to obstacles
@@ -199,7 +199,7 @@ class DoubleIntegrator(Env):
 				inc = np.count_nonzero(coll)
 				if inc > 0:
 					print('   a2o dist {} at time {}'.format(dist,self.times[self.time_step]))
-					exit()
+					# exit()
 					return -inc 
 
 		return 0
@@ -390,12 +390,18 @@ class DoubleIntegrator(Env):
 				time_to_goal = data[-1,0] - data[t,0]
 
 				# query visible neighbors
-				_, neighbor_idx = kd_tree_neighbors.query(
+				neighbor_dist, neighbor_idx = kd_tree_neighbors.query(
 					s_i[0:2].numpy(),
 					k=self.param.max_neighbors+1,
 					distance_upper_bound=self.param.r_comm)
+
 				if type(neighbor_idx) is not np.ndarray:
 					neighbor_idx = [neighbor_idx]
+					neighbor_dist = [neighbor_dist]
+
+				if neighbor_idx[1] < positions.shape[0] and neighbor_dist[1] < 2*self.param.r_agent:
+					exit('agent collision in filename {}'.format(filename))
+
 				relative_neighbors = []
 				for k in neighbor_idx[1:]: # skip first entry (self)
 					if k < positions.shape[0]:
@@ -405,12 +411,19 @@ class DoubleIntegrator(Env):
 
 				# query visible obstacles
 				if self.param.max_obstacles > 0:
-					_, obst_idx = kd_tree_obstacles.query(
+					obst_dist, obst_idx = kd_tree_obstacles.query(
 						s_i[0:2].numpy(),
 						k=self.param.max_obstacles,
 						distance_upper_bound=self.param.r_obs_sense)
 					if type(obst_idx) is not np.ndarray:
 						obst_idx = [obst_idx]
+						obst_dist = [obst_dist]
+
+					if obst_idx[0] < obstacles.shape[0]:
+						coll, dist = not_batch_is_collision_circle_rectangle(s_i[0:2].numpy(), self.param.r_agent, obstacles[obst_idx[0],:]-0.5, obstacles[obst_idx[0],:]+0.5)
+						if coll:
+							exit('obst collision in filename {}'.format(filename))
+
 				else:
 					obst_idx = []
 				relative_obstacles = []

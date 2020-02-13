@@ -30,7 +30,7 @@ class DoubleIntegratorParam(Param):
 		self.n_agents = 4
 		self.r_comm = 3. #0.5
 		self.r_obs_sense = 3.
-		self.r_agent = 0.2 #0.2
+		self.r_agent = 0.15 #0.2
 		self.r_obstacle = 0.5
 		self.v_max = 0.5
 		self.a_max = 2.0
@@ -41,18 +41,14 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
-		self.sim_dt = 0.05
+		self.sim_tf = 50
+		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
 
 		# safety
-		self.D_robot = 1.*(self.r_agent+self.r_agent)
-		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
-		self.circle_obstacles_on = True # square obstacles batch not implemented
-
-		self.Delta_R = self.v_max*self.sim_dt + 1/2*self.a_max*self.sim_dt**2
+		self.Delta_R = 2*(self.v_max*self.sim_dt + 1/2*self.a_max*self.sim_dt**2) + 1e-6
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
@@ -61,21 +57,23 @@ class DoubleIntegratorParam(Param):
 		self.cbf_kp = 2.0
 		self.cbf_kd = 20.0
 		
-		self.pi_max = 0.5 #0.10 #1.0*self.a_max
+		self.pi_max = 0.45 #0.10 #1.0*self.a_max
 		
 		self.safety = "fdbk_di" # potential, fdbk_di
 		self.rollout_batch_on = True
-		# Barrier function stuff
-		self.b_gamma = .05 # 0.1
-		# self.b_k = [0.01,.001]
+		self.kp = 0.01
+		self.kv = 0.005
+
+		# obsolete parameters 
+		self.b_gamma = .05 
 		self.b_eps = 100
-		self.b_exph = 1.0 # 1.0
-		
-		self.kp = 0.075
-		self.kv = 0.075
+		self.b_exph = 1.0 
+		self.D_robot = 1.*(self.r_agent+self.r_agent)
+		self.D_obstacle = 1.*(self.r_agent + self.r_obstacle)
+		self.circle_obstacles_on = True # square obstacles batch not implemented		
 
 		# IL
-		self.il_load_loader_on = True
+		self.il_load_loader_on = False
 		self.training_time_downsample = 50 #10
 		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/doubleintegrator/rl_current.pt'
@@ -93,7 +91,7 @@ class DoubleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 5000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 1000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -170,7 +168,9 @@ def load_instance(param, env, instance):
 	else:
 		# default
 		# instance = "map_8by8_obst6_agents64_ex0006.yaml"
-		instance = "map_8by8_obst6_agents4_ex0003.yaml"
+		# instance = "map_8by8_obst6_agents8_ex0005.yaml"
+		instance = "map_8by8_obst6_agents4_ex0001.yaml"
+		# with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
@@ -215,6 +215,7 @@ def run_batch(param, env, instance, controllers):
 		folder_name = "../results/doubleintegrator/{}".format(name)
 		if not os.path.exists(folder_name):
 			os.mkdir(folder_name)
+
 		output_file = "{}/{}.npy".format(folder_name, basename)
 		with open(output_file, "wb") as f:
 			np.save(f, result.astype(np.float32), allow_pickle=False)
@@ -230,10 +231,14 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		'current':torch.load(param.il_train_model_fn),
+		# 'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
+		# 'barrier':torch.load('../results/doubleintegrator/exp1Barrier_0/il_current.pt'),
+		# 'empty':torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt'),
+		# 
+		# 'current':torch.load(param.il_train_model_fn),
 		# 'current_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 		# 'gg': GoToGoalPolicy(param,env),
-		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'zero': Empty_Net_wAPF(param,env,ZeroPolicy(env))
 	}
 
