@@ -33,7 +33,7 @@ def rollout_instance(file):
           np.save(f, data, allow_pickle=False)
 
   if args.il:
-    subprocess.run("python3 examples/run_singleintegrator.py -i {} --batch".format(os.path.abspath(file)),
+    subprocess.run("python examples/run_singleintegrator.py -i {} --batch".format(os.path.abspath(file)),
       cwd="../../code",
       shell=True)
 
@@ -47,8 +47,8 @@ if __name__ == "__main__":
 
   # datadir = sorted(glob.glob("instances/*"))
 
-  agents_lst = [2] #[2,4,8,16,32,64]
-  obst_lst = [12] #int(map_size[0] * map_size[1] * 0.1)
+  agents_lst = [64] #[2,4,8,16,32,64]
+  obst_lst = [6,12] #int(map_size[0] * map_size[1] * 0.1)
 
   datadir = []
   for agents in agents_lst:

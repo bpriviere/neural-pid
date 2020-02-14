@@ -1,3 +1,4 @@
+
 import glob
 import os
 import stats
@@ -308,12 +309,10 @@ if __name__ == '__main__':
 	# files = sorted(files)
 
 
-	agents_lst = [2,4,8,16,32,64]
+	agents_lst = [4,16,64] # [2,4,8,16,32,64]
 	obst_lst = [6] #,9,12] #int(map_size[0] * map_size[1] * 0.1)
 
-	# solvers = ['il', 'ilAPF', 'ad', 'adAPF']
-	# solvers = ['orca', 'ilvsAPF', 'ilAPF']
-	# solvers = ['orca', 'ilAPF', 'central', 'barrier']
+	# solvers = ['exp1Empty_0','exp1Barrier_0']
 	solvers = ['apf']
 
 	files = []

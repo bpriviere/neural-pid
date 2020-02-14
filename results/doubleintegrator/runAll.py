@@ -22,8 +22,8 @@ if __name__ == "__main__":
   parser.add_argument("--apf", action='store_true')
   args = parser.parse_args()
 
-  agents_lst = [2,4,8,16,32,64]
-  obst_lst = [12] #[6,12]
+  agents_lst = [4,16,64] #[2,4,8,16,32,64]
+  obst_lst = [6] #[6,12]
 
   datadir = []
   for agents in agents_lst:
@@ -45,7 +45,7 @@ if __name__ == "__main__":
   for controller in controllers:
     rolloutargs += " --controller {}".format(controller)
 
-  print(rolloutargs)
+  # print(rolloutargs)
   # exit()
 
   # serial version
@@ -55,6 +55,6 @@ if __name__ == "__main__":
     # exit()
 
   # parallel version
-  with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+  with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
     for _ in executor.map(rollout_instance, datadir, repeat(rolloutargs)):
       pass

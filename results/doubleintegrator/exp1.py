@@ -169,7 +169,10 @@ if __name__ == "__main__":
     ax.set_yscale('log')
     # ax.set_yticks([0.0001, 0.001, 0.01, 0.1])
     # ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-      
+    
+    # ax.set_xticks(agents_lst)
+    # ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+
     plt.legend()
     pp.savefig(fig)
     plt.close(fig)

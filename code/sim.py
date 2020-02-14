@@ -23,13 +23,13 @@ def run_sim(param, env, controller, initial_state):
 	env.reset(initial_state)
 	states[0] = np.copy(env.s)
 	for step, time in enumerate(param.sim_times[:-1]):
-		# print('t: {}/{}'.format(time,param.sim_times[-1]))
+		print('t: {}/{}'.format(time,param.sim_times[-1]))
 
 		state = states[step]
 		observation = env.observe()
 
 		action = controller.policy(observation)
-		next_state, r, done, _ = env.step(action, compute_reward = False)
+		next_state, r, done, _ = env.step(action, compute_reward = True)
 		reward += r
 		
 		states[step + 1] = next_state

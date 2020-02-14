@@ -183,7 +183,7 @@ class DoubleIntegrator(Env):
 				p_i = self.agents[result[0]].p
 				p_j = self.agents[result[1]].p
 				dist = np.linalg.norm(p_i-p_j)
-				print('   a2a dist {} at time {}'.format(dist,self.times[self.time_step]))
+				# print('   a2a dist {} at time {}'.format(dist,self.times[self.time_step]))
 				# exit()
 			return -1
 
@@ -198,7 +198,7 @@ class DoubleIntegrator(Env):
 				coll, dist = not_batch_is_collision_circle_rectangle(np.array(agent.p), self.param.r_agent, np.array(o), np.array(o) + np.array([1.0,1.0]))
 				inc = np.count_nonzero(coll)
 				if inc > 0:
-					print('   a2o dist {} at time {}'.format(dist,self.times[self.time_step]))
+					# print('   a2o dist {} at time {}'.format(dist,self.times[self.time_step]))
 					# exit()
 					return -inc 
 
@@ -332,7 +332,9 @@ class DoubleIntegrator(Env):
 		# load map
 		instance = os.path.splitext(os.path.basename(filename))[0]
 
-		filename_map = "{}/../../singleintegrator/instances3/{}.yaml".format(os.path.dirname(filename), instance)
+		# filename_map = "{}/../../singleintegrator/instances3/{}.yaml".format(os.path.dirname(filename), instance)
+		filename_map = "{}/../instances3/{}.yaml".format(os.path.dirname(filename), instance)
+		
 		with open(filename_map) as map_file:
 			map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 		obstacles = []
