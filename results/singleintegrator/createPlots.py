@@ -237,6 +237,50 @@ def add_bar_chart(pp, results, key, title):
 	plt.close(fig)
 
 
+def add_state_space(pp, map_data, data, name):
+	fig, ax = plt.subplots()
+	ax.set_title("State Space " + name)
+	ax.set_aspect('equal')
+
+	for o in map_data["map"]["obstacles"]:
+		ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
+	for x in range(-1,map_data["map"]["dimensions"][0]+1):
+		ax.add_patch(Rectangle([x,-1], 1.0, 1.0, facecolor='gray', alpha=0.5))
+		ax.add_patch(Rectangle([x,map_data["map"]["dimensions"][1]], 1.0, 1.0, facecolor='gray', alpha=0.5))
+	for y in range(map_data["map"]["dimensions"][0]):
+		ax.add_patch(Rectangle([-1,y], 1.0, 1.0, facecolor='gray', alpha=0.5))
+		ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
+
+	num_agents = len(map_data["agents"])
+	dt = data[1,0] - data[0,0]
+	for i in range(num_agents):
+		# plot trajectory
+		line = ax.plot(data[:,1+i*4], data[:,1+i*4+1],alpha=0.5)
+		color = line[0].get_color()
+
+		# plot velocity vectors:
+		X = []
+		Y = []
+		U = []
+		V = []
+		for k in np.arange(0,data.shape[0], int(5.0 / dt)):
+			X.append(data[k,1+i*4+0])
+			Y.append(data[k,1+i*4+1])
+			U.append(data[k,1+i*4+2])
+			V.append(data[k,1+i*4+3])
+
+		ax.quiver(X,Y,U,V,angles='xy', scale_units='xy',scale=0.5,color=color,width=0.005)
+
+		# plot start and goal
+		start = np.array(map_data["agents"][i]["start"])
+		goal = np.array(map_data["agents"][i]["goal"])
+		ax.add_patch(Circle(start + np.array([0.5,0.5]), 0.2, alpha=0.5, color=color))
+		ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))
+
+	pp.savefig(fig)
+	plt.close(fig)
+
+
 if __name__ == '__main__':
 
 	result_by_instance = dict()
@@ -315,49 +359,7 @@ if __name__ == '__main__':
 
 		for r in results:
 			print("state space" + r["solver"])
-			fig, ax = plt.subplots()
-			ax.set_title("State Space " + r["solver"])
-			ax.set_aspect('equal')
-
-			for o in map_data["map"]["obstacles"]:
-				ax.add_patch(Rectangle(o, 1.0, 1.0, facecolor='gray', alpha=0.5))
-			for x in range(-1,map_data["map"]["dimensions"][0]+1):
-				ax.add_patch(Rectangle([x,-1], 1.0, 1.0, facecolor='gray', alpha=0.5))
-				ax.add_patch(Rectangle([x,map_data["map"]["dimensions"][1]], 1.0, 1.0, facecolor='gray', alpha=0.5))
-			for y in range(map_data["map"]["dimensions"][1]):
-				ax.add_patch(Rectangle([-1,y], 1.0, 1.0, facecolor='gray', alpha=0.5))
-				ax.add_patch(Rectangle([map_data["map"]["dimensions"][0],y], 1.0, 1.0, facecolor='gray', alpha=0.5))
-
 			data = np.load("{}/{}.npy".format(r["solver"], instance))
-			num_agents = len(map_data["agents"])
-			dt = data[1,0] - data[0,0]
-			for i in range(num_agents):
-				# plot trajectory
-				line = ax.plot(data[:,1+i*4], data[:,1+i*4+1],alpha=0.5)
-				color = line[0].get_color()
-
-				# plot velocity vectors:
-				X = []
-				Y = []
-				U = []
-				V = []
-				for k in np.arange(0,data.shape[0], int(5.0 / dt)):
-					X.append(data[k,1+i*4+0])
-					Y.append(data[k,1+i*4+1])
-					U.append(data[k,1+i*4+2])
-					V.append(data[k,1+i*4+3])
-
-				ax.quiver(X,Y,U,V,angles='xy', scale_units='xy',scale=0.5,color=color,width=0.005)
-
-				# plot start and goal
-				start = np.array(map_data["agents"][i]["start"])
-				goal = np.array(map_data["agents"][i]["goal"])
-				ax.add_patch(Circle(start + np.array([0.5,0.5]), 0.2, alpha=0.5, color=color))
-				ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))
-
-			pp.savefig(fig)
-			plt.close(fig)
-
-
+			add_state_space(pp, map_data, data, r["solver"])
 
 	pp.close()
