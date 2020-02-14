@@ -24,6 +24,8 @@ class Barrier_Fncs():
 
 		self.device = torch.device('cpu')
 
+		self.sigmoid = torch.nn.Sigmoid()
+
 	def to(self,device):
 		self.device = device
 
@@ -40,6 +42,71 @@ class Barrier_Fncs():
 		grad_phi_dot = self.torch_get_grad_phi_dot(x,P,H)
 		b = -self.param.kv*(v + self.param.kp*grad_phi) - self.param.kp*grad_phi_dot - self.param.kp*grad_phi
 		return b
+
+	# OLD TORCH CF SI
+	# def torch_get_cf_si(self,x,P,H,pi,b):
+	# 	bs = x.shape[0]
+	# 	ni = self.get_num_neighbors(x)+self.get_num_obstacles(x)
+	# 	dr = self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
+
+	# 	cf_alpha = torch.ones((bs,1),device=self.device) # bsx1 
+	# 	grad_phi = self.torch_get_grad_phi(x,P,H) # bsx2
+	# 	logterm = torch.log(torch.abs(torch.mul(
+	# 		torch.bmm(grad_phi.unsqueeze(1),b.unsqueeze(2)),\
+	# 		torch.pow(torch.bmm(grad_phi.unsqueeze(1),pi.unsqueeze(2)),-1)) + 1e-6 )).squeeze(2) # bsx1 
+
+	# 	for j in range(ni):
+	# 		dh = (H[:,j] - dr).unsqueeze(1)
+	# 		s = self.sigmoid(-logterm-dh)
+	# 		cf_alpha = torch.mul(cf_alpha,s)
+	# 	if ni > 0:
+	# 		cf_alpha = torch.pow(cf_alpha,1/ni)
+	# 	return cf_alpha
+
+	def torch_get_cf_si(self,x,P,H,pi,b):
+		bs = x.shape[0]
+		ni = self.get_num_neighbors(x)+self.get_num_obstacles(x)
+		dr = self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
+		cf_alpha = torch.ones((bs,1),device=self.device) # bsx1 
+
+		grad_phi = self.torch_get_grad_phi(x,P,H)  
+		A1 = self.param.kp * torch.pow(torch.norm(grad_phi,p=2,dim=1),2).unsqueeze(1)
+		A2 = torch.bmm( grad_phi.unsqueeze(1), pi.unsqueeze(2)).squeeze(2)
+		
+		A = torch.mul(A1, torch.pow(A1 + torch.abs(A2),-1))
+		logterm = torch.log( torch.mul(A, torch.pow(1 - A,-1)))
+		for j in range(ni):	
+			dh = (H[:,j] - dr).unsqueeze(1)
+			s = self.sigmoid(dh - logterm)
+			cf_alpha = torch.mul(cf_alpha,s)
+		if ni > 0:
+			cf_alpha = torch.pow(cf_alpha,1/ni)
+		return cf_alpha	
+
+	def torch_get_cf_di(self,x,P,H,pi,b):
+		bs = x.shape[0]
+		ni = self.get_num_neighbors(x)+self.get_num_obstacles(x)
+		dr = self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
+		cf_alpha = torch.ones((bs,1),device=self.device) # bsx1 
+
+		grad_phi = self.torch_get_grad_phi(x,P,H) 
+		grad_phi_dot = self.torch_get_grad_phi_dot(x,P,H) 
+		v = -x[:,3:5]
+		vmk = v + self.param.kp * grad_phi 
+		A1 = self.param.kp**2 * (torch.bmm(grad_phi.unsqueeze(1),grad_phi.unsqueeze(2)) + \
+			self.param.kv * torch.bmm( vmk.unsqueeze(1),vmk.unsqueeze(2))).squeeze(2)
+		A2 = (torch.bmm(vmk.unsqueeze(1), (pi - self.param.kp*grad_phi_dot).unsqueeze(2)) + \
+			self.param.kp * torch.bmm(grad_phi.unsqueeze(1), v.unsqueeze(2))).squeeze(2)
+		
+		A = torch.mul(A1, torch.pow(A1 + torch.abs(A2),-1))
+		logterm = torch.log( torch.mul(A, torch.pow(1 - A,-1)))
+		for j in range(ni):	
+			dh = (H[:,j] - dr).unsqueeze(1)
+			s = self.sigmoid(dh - logterm)
+			cf_alpha = torch.mul(cf_alpha,s)
+		if ni > 0:
+			cf_alpha = torch.pow(cf_alpha,1/ni)
+		return cf_alpha # bsx1 
 
 	def torch_get_grad_phi_dot(self,x,P,H):
 		bs = x.shape[0]
@@ -135,20 +202,26 @@ class Barrier_Fncs():
 	def torch_get_grad_phi(self,x,P,H):
 		grad_phi = torch.zeros((len(x),self.dim_action),device=self.device)
 		for j in range(self.get_num_neighbors(x) + self.get_num_obstacles(x)):
-			grad_phi += self.torch_get_grad_phi_contribution(P[:,j,:],H[:,j])
+			pj = P[:,j,:]
+			hj = H[:,j]
+			normp = torch.norm(pj,p=2,dim=1)
+			denom = torch.mul(normp,hj)
+			idx = normp > 0 
+			grad_phi[idx] += torch.mul(pj[idx].transpose(0,1),torch.pow(denom[idx],-1)).transpose(0,1) \
+				/(self.param.r_comm - self.param.r_agent) 
 		return grad_phi
 
-	def torch_get_grad_phi_contribution(self,P,H):
-		grad_phi = torch.zeros(P.shape,device=self.device)
-		normP = torch.norm(P,p=2,dim=1)
-		normP = normP.unsqueeze(1)
-		normP = torch_tile(normP,1,P.shape[1])
-		H = H.unsqueeze(1)
-		H = torch_tile(H,1,P.shape[1])
-		idx = normP > 0 
-		grad_phi[idx] = torch.mul(torch.mul(torch.pow(H[idx],-1),torch.pow(normP[idx],-1)),P[idx])\
-			/(self.param.r_comm - self.param.r_agent)
-		return grad_phi
+	# def torch_get_grad_phi_contribution(self,P,H):
+	# 	grad_phi = torch.zeros(P.shape,device=self.device)
+	# 	normP = torch.norm(P,p=2,dim=1)
+	# 	normP = normP.unsqueeze(1)
+	# 	normP = torch_tile(normP,1,P.shape[1])
+	# 	H = H.unsqueeze(1)
+	# 	H = torch_tile(H,1,P.shape[1])
+	# 	idx = normP > 0 
+	# 	grad_phi[idx] = torch.mul(torch.mul(torch.pow(H[idx],-1),torch.pow(normP[idx],-1)),P[idx])\
+	# 		/(self.param.r_comm - self.param.r_agent)
+	# 	return grad_phi
 
 	def torch_get_adaptive_scaling_si(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = torch.ones(H.shape[0],device=self.device)
@@ -178,9 +251,7 @@ class Barrier_Fncs():
 	def torch_scale(self,action,max_action):
 		inv_alpha = action.norm(p=2,dim=1)/max_action
 		inv_alpha = torch.clamp(inv_alpha,min=1)
-		inv_alpha = inv_alpha.unsqueeze(0).T
-		inv_alpha = torch_tile(inv_alpha,1,2)
-		action = action*inv_alpha.pow_(-1)
+		action = torch.mul(action.transpose(0,1),torch.pow(inv_alpha,-1)).transpose(0,1)
 		return action
 
 	def torch_get_alpha_fdbk(self):
@@ -234,6 +305,88 @@ class Barrier_Fncs():
 		grad_phi_dot = self.numpy_get_grad_phi_dot(x,P,H)
 		b = -1*self.param.kv*(v + self.param.kp*grad_phi) - self.param.kp*grad_phi_dot - self.param.kp*grad_phi
 		return b 
+
+	# THIS VERSION WORKS, WANT TO STANDARDIZE TO DI 	
+	# def numpy_get_cf_si(self,x,P,H,pi,b):
+	# 	cf_alpha = 1
+	# 	ni = self.get_num_neighbors(x)+self.get_num_obstacles(x)
+	# 	dr = self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
+
+	# 	grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
+	# 	logterm = np.log(np.abs(np.dot(grad_phi,b.T)/np.dot(grad_phi,pi.T)))
+	# 	for j in range(ni):		
+	# 		dh = H[:,j] - dr
+	# 		s = self.numpy_sigmoid(-logterm-dh)
+	# 		# s = self.numpy_sigmoid(-logterm+dh)
+	# 		cf_alpha *= s
+	# 	if ni > 0:
+	# 		cf_alpha = cf_alpha ** (1/ni)
+	# 	return cf_alpha
+	# old cf di
+		# A = (self.param.kp**2 * np.dot(grad_phi, grad_phi.T) + self.param.kv * np.dot(vmk,vmk.T)) / \
+		# 	np.abs(np.dot(vmk, (pi-b).T))
+		# logterm = np.log(A / (1 - A))
+
+		# A = (self.param.kp**2 * np.dot(grad_phi, grad_phi.T) + self.param.kv * np.dot(vmk,vmk.T)) / \
+		# 	np.dot(vmk, (pi-b).T)
+		# logterm = np.log(np.abs(A / (1 - A)))
+		# logterm = np.log(np.abs(A**ni / (1 - A**ni)))
+
+		# A = (self.param.kp**2 * np.dot(grad_phi, grad_phi.T) + self.param.kv * np.dot(vmk,vmk.T)) / \
+		# 	np.abs(np.dot(vmk, (pi-b).T))
+
+		# A = (self.param.kp**2 * np.dot(grad_phi, grad_phi.T) + self.param.kv * np.dot(vmk,vmk.T)) / \
+		# 	np.dot(vmk, (pi-b).T)
+		# A = np.min((A,1-1e-6))
+		# A = np.max((A,1e-6))
+
+
+	def numpy_get_cf_si(self,x,P,H,pi,b):
+		cf_alpha = 1
+		ni = self.get_num_neighbors(x)+self.get_num_obstacles(x)
+		dr = self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
+
+		grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
+		A1 = self.param.kp*np.dot(grad_phi, grad_phi.T)
+		A2 = np.dot(grad_phi,pi.T)
+
+		A = A1/(A1 + np.abs(A2))		
+		logterm = np.log(A / (1 - A))
+		# logterm = np.log(A**ni / (1 - A**ni))		
+		for j in range(ni):	
+			dh = H[:,j] - dr
+			s = self.numpy_sigmoid( dh - logterm)
+			cf_alpha *= s
+		if ni > 0:
+			cf_alpha = cf_alpha ** (1/ni)
+		return cf_alpha
+
+	def numpy_get_cf_di(self,x,P,H,pi,b):
+		cf_alpha = 1
+		ni = self.get_num_neighbors(x)+self.get_num_obstacles(x)
+		dr = self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
+
+		grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
+		grad_phi_dot = self.numpy_get_grad_phi_dot(x,P,H) # 1x2		
+		v = -x[:,3:5]
+		vmk = v + self.param.kp * grad_phi 
+
+		A1 = self.param.kp**2 * np.dot(grad_phi,grad_phi.T) + self.param.kv * np.dot( vmk,vmk.T)
+		A2 = np.dot(vmk, (pi - self.param.kp*grad_phi_dot).T) + self.param.kp * np.dot(grad_phi, v.T)
+		A = A1 / (A1 + np.abs(A2)) 
+
+		logterm = np.log(A / (1 - A))
+		# logterm = np.log(A**ni / (1 - A**ni))
+		for j in range(ni):	
+			dh = H[:,j] - dr
+			s = self.numpy_sigmoid(dh - logterm)
+			cf_alpha *= s
+		if ni > 0:
+			cf_alpha = cf_alpha ** (1/ni)
+		return cf_alpha
+
+	def numpy_sigmoid(self,x):
+		return 1/(1 + np.exp(-x))
 
 	def numpy_get_grad_phi_dot(self,x,P,H):
 		grad_phi_dot = np.zeros((1,2))

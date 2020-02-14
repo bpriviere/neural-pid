@@ -150,8 +150,53 @@ class Barrier_Net(nn.Module):
 				action = torch.mul(adaptive_scaling,empty_action)+barrier_action 
 				action = self.bf.torch_scale(action, self.param.a_max)
 
+			elif self.param.safety == "cf_si":
+
+				P,H = self.bf.torch_get_relative_positions_and_safety_functions(x)
+				barrier_action = self.bf.torch_fdbk_si(x,P,H)
+
+				empty_action = self.empty(x)
+				empty_action = self.bf.torch_scale(empty_action, self.param.pi_max)
+
+				cf_alpha = self.bf.torch_get_cf_si(x,P,H,empty_action,barrier_action)
+				if torch.min(cf_alpha) < 5e-4:
+					cf_alpha = cf_alpha.detach()
+				if torch.max(cf_alpha) > 1-5e-4:
+					cf_alpha = cf_alpha.detach()
+
+				action = torch.mul(cf_alpha,empty_action) + torch.mul(1-cf_alpha,barrier_action)
+				action = self.bf.torch_scale(action, self.param.a_max)
+				
+				if torch.isnan(action).any():
+					print('torch.max(cf_alpha)',torch.max(cf_alpha))
+					print('torch.min(cf_alpha)',torch.min(cf_alpha))
+					exit('nan detected')
+
+			elif self.param.safety == "cf_di":
+
+				P,H = self.bf.torch_get_relative_positions_and_safety_functions(x)
+				barrier_action = self.bf.torch_fdbk_di(x,P,H)
+				# barrier_action = self.bf.torch_scale(barrier_action, self.param.pi_max)
+
+				empty_action = self.empty(x)
+				empty_action = self.bf.torch_scale(empty_action, self.param.pi_max)
+
+				cf_alpha = self.bf.torch_get_cf_di(x,P,H,empty_action,barrier_action)
+				if torch.min(cf_alpha) < 5e-4:
+					cf_alpha = cf_alpha.detach()
+				if torch.max(cf_alpha) > 1-5e-4:
+					cf_alpha = cf_alpha.detach()
+
+				action = torch.mul(cf_alpha,empty_action) + torch.mul(1-cf_alpha,barrier_action)
+				action = self.bf.torch_scale(action, self.param.a_max)
+
+				if torch.isnan(action).any():
+					print('torch.max(cf_alpha)',torch.max(cf_alpha))
+					print('torch.min(cf_alpha)',torch.min(cf_alpha))
+					exit('nan detected')
+
 			else:
-				exit('self.param.safety: {} not recognized'.format(self.param.safety))				
+				exit('self.param.safety: {} not recognized'.format(self.param.safety))
 
 
 		elif type(x) is np.ndarray:
@@ -189,6 +234,30 @@ class Barrier_Net(nn.Module):
 
 				adaptive_scaling = self.bf.numpy_get_adaptive_scaling_di(x,empty_action,barrier_action,P,H)
 				action = adaptive_scaling*empty_action + barrier_action 
+				action = self.bf.numpy_scale(action, self.param.a_max)
+
+			elif self.param.safety == "cf_si":
+
+				P,H = self.bf.numpy_get_relative_positions_and_safety_functions(x)
+				barrier_action = self.bf.numpy_fdbk_si(x,P,H)
+
+				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
+				empty_action = self.bf.numpy_scale(empty_action, self.param.pi_max)
+
+				cf_alpha = self.bf.numpy_get_cf_si(x,P,H,empty_action,barrier_action)
+				action = cf_alpha*empty_action + (1-cf_alpha)*barrier_action 
+				action = self.bf.numpy_scale(action, self.param.a_max)
+
+			elif self.param.safety == "cf_di":
+
+				P,H = self.bf.numpy_get_relative_positions_and_safety_functions(x)
+				barrier_action = self.bf.numpy_fdbk_di(x,P,H)
+
+				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
+				empty_action = self.bf.numpy_scale(empty_action, self.param.pi_max)
+
+				cf_alpha = self.bf.numpy_get_cf_di(x,P,H,empty_action,barrier_action)
+				action = cf_alpha*empty_action + (1-cf_alpha)*barrier_action 
 				action = self.bf.numpy_scale(action, self.param.a_max)
 
 			else:

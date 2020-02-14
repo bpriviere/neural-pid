@@ -46,8 +46,8 @@ class SingleIntegratorParam(Param):
 
 		# safety
 		
-		self.Delta_R = self.a_max*self.sim_dt
-		self.safety = "fdbk_si" # "potential", "fdbk_si"
+		self.Delta_R = 2*self.a_max*self.sim_dt
+		self.safety = "cf_si" # "potential", "fdbk_si", "cf_si"
 		self.rollout_batch_on = True
 
 		self.max_neighbors = 6
@@ -55,25 +55,16 @@ class SingleIntegratorParam(Param):
 
 
 		# Barrier function stuff
-		self.kp = 0.005 * 2.85
+		self.kp = 0.005 *2.85
+		self.pi_max = 0.5
+		self.pi_min = -self.pi_max
 
 		# obsolete barrier param 
-		self.b_gamma = 0.005 * 2.85 # 0.005 # for potential: 0.005,
+		self.b_gamma = .005 # 0.005 # for potential: 0.005,
 		self.b_eps = 50.
 		self.b_exph = 1.0 # 1.0
 		self.cbf_kp = 1.0
-		self.cbf_kd = 0.5
-
-		if self.safety is "potential":
-			# self.pi_max = 1.1 * (self.a_max + self.b_gamma/(0.2-self.r_agent)) # 1*self.a_max
-			self.pi_max = 0.9 * self.a_max
-			self.pi_min = -self.pi_max # -1*self.a_max
-		elif self.safety is "fdbk_si":
-			# phi = -np.log((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
-			# grad_phi_norm = (self.r_comm - self.r_agent) / (0.2 - self.r_agent)
-			# self.pi_max = self.b_gamma * phi / grad_phi_norm + self.a_max
-			self.pi_max = 0.9*self.a_max
-			self.pi_min = -self.pi_max
+		self.cbf_kd = 0.5			
 		
 		# old
 		self.D_robot = 1.*(self.r_agent+self.r_agent)
@@ -81,7 +72,7 @@ class SingleIntegratorParam(Param):
 		self.circle_obstacles_on = True # square obstacles batch not implemented
 
 		# IL
-		self.il_load_loader_on = True
+		self.il_load_loader_on = False
 		# self.il_load_loader_on = False
 		self.training_time_downsample = 50
 		self.il_train_model_fn = '../models/singleintegrator/il_current.pt'
@@ -89,7 +80,7 @@ class SingleIntegratorParam(Param):
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
 		self.il_batch_size = 4096*2
-		self.il_n_epoch = 200
+		self.il_n_epoch = 100
 		self.il_lr = 1e-3
 		self.il_wd = 0*0.00002
 		self.il_n_data = None # 100000 # 100000000
@@ -100,7 +91,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 100000000000000000000000000000000 # 100000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 7000000 # 100000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -126,7 +117,7 @@ class SingleIntegratorParam(Param):
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 	
 		# learning hyperparameters
-		n,m,h,l,p = 2,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
+		n,m,h,l,p = 2,2,64,16,16 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(2,h),
 			nn.Linear(h,h),
@@ -165,8 +156,8 @@ def load_instance(param, env, instance):
 			map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 	else:
 		# default
-		# instance = "map_8by8_obst6_agents4_ex0006.yaml"
-		instance = "map_8by8_obst12_agents64_ex0004.yaml"
+		instance = "map_8by8_obst6_agents4_ex0007.yaml"
+		# instance = "map_8by8_obst12_agents64_ex0004.yaml"
 		# instance = "map_8by8_obst6_agents32_ex0000.yaml"
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset

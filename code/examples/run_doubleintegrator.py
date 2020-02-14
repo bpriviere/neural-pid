@@ -41,8 +41,8 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 50
-		self.sim_dt = 0.01
+		self.sim_tf = 100
+		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -57,12 +57,12 @@ class DoubleIntegratorParam(Param):
 		self.cbf_kp = 2.0
 		self.cbf_kd = 20.0
 		
-		self.pi_max = 0.45 #0.10 #1.0*self.a_max
+		self.pi_max = 1.0 #0.5 #0.10 #1.0*self.a_max
 		
-		self.safety = "fdbk_di" # potential, fdbk_di
+		self.safety = "cf_di" # potential, fdbk_di, cf_di
 		self.rollout_batch_on = True
-		self.kp = 0.01
-		self.kv = 0.005
+		self.kp = 0.05
+		self.kv = 0.05
 
 		# obsolete parameters 
 		self.b_gamma = .05 
@@ -91,7 +91,7 @@ class DoubleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 1000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 7000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -168,8 +168,8 @@ def load_instance(param, env, instance):
 	else:
 		# default
 		# instance = "map_8by8_obst6_agents64_ex0006.yaml"
-		# instance = "map_8by8_obst6_agents8_ex0005.yaml"
-		instance = "map_8by8_obst6_agents4_ex0001.yaml"
+		# instance = "map_8by8_obst6_agents32_ex0005.yaml"
+		instance = "map_8by8_obst6_agents4_ex0002.yaml"
 		# with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
