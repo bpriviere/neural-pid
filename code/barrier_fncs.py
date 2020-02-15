@@ -77,7 +77,7 @@ class Barrier_Fncs():
 		logterm = torch.log( torch.mul(A, torch.pow(1 - A,-1)))
 		for j in range(ni):	
 			dh = (H[:,j] - dr).unsqueeze(1)
-			s = self.sigmoid(dh - logterm)
+			s = self.sigmoid(dh + logterm)
 			cf_alpha = torch.mul(cf_alpha,s)
 		if ni > 0:
 			cf_alpha = torch.pow(cf_alpha,1/ni)
@@ -95,14 +95,14 @@ class Barrier_Fncs():
 		vmk = v + self.param.kp * grad_phi 
 		A1 = self.param.kp**2 * (torch.bmm(grad_phi.unsqueeze(1),grad_phi.unsqueeze(2)) + \
 			self.param.kv * torch.bmm( vmk.unsqueeze(1),vmk.unsqueeze(2))).squeeze(2)
-		A2 = (torch.bmm(vmk.unsqueeze(1), (pi - self.param.kp*grad_phi_dot).unsqueeze(2)) + \
+		A2 = (torch.bmm(vmk.unsqueeze(1), (pi + self.param.kp*grad_phi_dot).unsqueeze(2)) + \
 			self.param.kp * torch.bmm(grad_phi.unsqueeze(1), v.unsqueeze(2))).squeeze(2)
 		
 		A = torch.mul(A1, torch.pow(A1 + torch.abs(A2),-1))
 		logterm = torch.log( torch.mul(A, torch.pow(1 - A,-1)))
 		for j in range(ni):	
 			dh = (H[:,j] - dr).unsqueeze(1)
-			s = self.sigmoid(dh - logterm)
+			s = self.sigmoid(dh + logterm)
 			cf_alpha = torch.mul(cf_alpha,s)
 		if ni > 0:
 			cf_alpha = torch.pow(cf_alpha,1/ni)
@@ -355,7 +355,7 @@ class Barrier_Fncs():
 		# logterm = np.log(A**ni / (1 - A**ni))		
 		for j in range(ni):	
 			dh = H[:,j] - dr
-			s = self.numpy_sigmoid( dh - logterm)
+			s = self.numpy_sigmoid( dh + logterm)
 			cf_alpha *= s
 		if ni > 0:
 			cf_alpha = cf_alpha ** (1/ni)
@@ -372,14 +372,14 @@ class Barrier_Fncs():
 		vmk = v + self.param.kp * grad_phi 
 
 		A1 = self.param.kp**2 * np.dot(grad_phi,grad_phi.T) + self.param.kv * np.dot( vmk,vmk.T)
-		A2 = np.dot(vmk, (pi - self.param.kp*grad_phi_dot).T) + self.param.kp * np.dot(grad_phi, v.T)
-		A = A1 / (A1 + np.abs(A2)) 
+		A2 = np.dot(vmk, (pi + self.param.kp*grad_phi_dot).T) + self.param.kp * np.dot(grad_phi, v.T)
+		A = A1 / (A1 + np.abs(A2))
 
 		logterm = np.log(A / (1 - A))
 		# logterm = np.log(A**ni / (1 - A**ni))
 		for j in range(ni):	
 			dh = H[:,j] - dr
-			s = self.numpy_sigmoid(dh - logterm)
+			s = self.numpy_sigmoid(dh + logterm)
 			cf_alpha *= s
 		if ni > 0:
 			cf_alpha = cf_alpha ** (1/ni)
@@ -480,7 +480,7 @@ class Barrier_Fncs():
 		alpha = max_action/np.linalg.norm(action)
 		alpha = np.min((alpha,1))
 		action = action*alpha
-		return action		
+		return action
 
 	def numpy_get_relative_positions_and_safety_functions(self,x):
 		
@@ -511,7 +511,7 @@ class Barrier_Fncs():
 		return P,H 
 
 
-	# helper fnc		
+	# helper fnc	
 	def get_num_neighbors(self,x):
 		return int(x[0,0])
 

@@ -57,12 +57,12 @@ class DoubleIntegratorParam(Param):
 		self.cbf_kp = 2.0
 		self.cbf_kd = 20.0
 		
-		self.pi_max = 1.0 #0.5 #0.10 #1.0*self.a_max
+		self.pi_max = 0.05 #0.5 #0.5 #0.10 #1.0*self.a_max
 		
 		self.safety = "cf_di" # potential, fdbk_di, cf_di
 		self.rollout_batch_on = True
-		self.kp = 0.05
-		self.kv = 0.05
+		self.kp = 0.005
+		self.kv = 0.005
 
 		# obsolete parameters 
 		self.b_gamma = .05 
@@ -73,14 +73,14 @@ class DoubleIntegratorParam(Param):
 		self.circle_obstacles_on = True # square obstacles batch not implemented		
 
 		# IL
-		self.il_load_loader_on = False
+		self.il_load_loader_on = True
 		self.training_time_downsample = 50 #10
 		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/doubleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 4096*2
-		self.il_n_epoch = 100
+		self.il_batch_size = 4096*8
+		self.il_n_epoch = 200
 		self.il_lr = 1e-3
 		self.il_wd = 0 #0.0002
 		self.il_n_data = None # 100000 # 100000000
@@ -169,7 +169,8 @@ def load_instance(param, env, instance):
 		# default
 		# instance = "map_8by8_obst6_agents64_ex0006.yaml"
 		# instance = "map_8by8_obst6_agents32_ex0005.yaml"
-		instance = "map_8by8_obst6_agents4_ex0002.yaml"
+		instance = "map_8by8_obst6_agents16_ex0003.yaml"
+		# instance = "head_test.yaml"
 		# with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		# test map test dataset
@@ -232,14 +233,14 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		# 'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
+		'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
 		# 'barrier':torch.load('../results/doubleintegrator/exp1Barrier_0/il_current.pt'),
 		# 'empty':torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt'),
 		# 
 		# 'current':torch.load(param.il_train_model_fn),
 		# 'current_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 		# 'gg': GoToGoalPolicy(param,env),
-		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'zero': Empty_Net_wAPF(param,env,ZeroPolicy(env))
 	}
 
