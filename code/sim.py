@@ -92,8 +92,8 @@ def sim(param, env, controllers, initial_state, visualize):
 					Y.append(result.states[k,env.agent_idx_to_state_idx(agent.i)+1])
 					if param.env_name in ['SingleIntegrator','SingleIntegratorVelSensing']:
 						# Singleintegrator: plot actions
-						U.append(result.actions[k,2*agent.i+0])
-						V.append(result.actions[k,2*agent.i+1])
+						U.append(result.actions[k,env.action_dim_per_agent*agent.i+0])
+						V.append(result.actions[k,env.action_dim_per_agent*agent.i+1])
 					elif param.env_name in ['DoubleIntegrator']:
 						# doubleintegrator: plot velocities
 						U.append(result.states[k,env.agent_idx_to_state_idx(agent.i)+2])

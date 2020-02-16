@@ -41,7 +41,7 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
+		self.sim_tf = 30
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -55,14 +55,15 @@ class DoubleIntegratorParam(Param):
 		
 		# cbf 
 		self.cbf_kp = 2.0
-		self.cbf_kd = 20.0
+		self.cbf_kd = 4.0
 		
-		self.pi_max = 0.05 #0.5 #0.5 #0.10 #1.0*self.a_max
+		self.pi_max = 2.0 #0.5 #0.5 #0.10 #1.0*self.a_max
+		self.sigmoid_scale = 1.0
 		
 		self.safety = "cf_di" # potential, fdbk_di, cf_di
 		self.rollout_batch_on = True
-		self.kp = 0.005
-		self.kv = 0.005
+		self.kp = 0.05
+		self.kv = 0.05
 
 		# obsolete parameters 
 		self.b_gamma = .05 
@@ -169,7 +170,8 @@ def load_instance(param, env, instance):
 		# default
 		# instance = "map_8by8_obst6_agents64_ex0006.yaml"
 		# instance = "map_8by8_obst6_agents32_ex0005.yaml"
-		instance = "map_8by8_obst6_agents16_ex0003.yaml"
+		# instance = "map_8by8_obst6_agents16_ex0003.yaml"
+		instance = "map_8by8_obst6_agents4_ex0007.yaml"
 		# instance = "head_test.yaml"
 		# with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
 		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
@@ -233,14 +235,14 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
+		# 'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
 		# 'barrier':torch.load('../results/doubleintegrator/exp1Barrier_0/il_current.pt'),
 		# 'empty':torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt'),
 		# 
 		# 'current':torch.load(param.il_train_model_fn),
 		# 'current_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 		# 'gg': GoToGoalPolicy(param,env),
-		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'zero': Empty_Net_wAPF(param,env,ZeroPolicy(env))
 	}
 

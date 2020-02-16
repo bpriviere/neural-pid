@@ -40,7 +40,7 @@ class DoubleIntegrator(Env):
 
 		self.n_agents = param.n_agents
 		self.state_dim_per_agent = 4
-		self.action_dim_per_agent = 2
+		self.action_dim_per_agent = 2+3 # last 3 for debugging only
 		self.r_agent = param.r_agent
 		self.r_obstacle = param.r_obstacle
 		self.r_obs_sense = param.r_obs_sense
@@ -77,7 +77,10 @@ class DoubleIntegrator(Env):
 			]
 		self.actions_name = [
 			'x-Acceleration [m/s^2]',
-			'y-Acceleration [m/s^2]'
+			'y-Acceleration [m/s^2]',
+			'alpha',
+			'||action_desired||',
+			'||barrier||',
 			]
 
 		self.param = param
@@ -283,7 +286,7 @@ class DoubleIntegrator(Env):
 			p_idx = np.arange(idx,idx+2)
 			v_idx = np.arange(idx+2,idx+4)
 			sp1[p_idx] = self.s[p_idx] + self.s[v_idx]*dt
-			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,:]*dt
+			sp1[v_idx] = self.s[v_idx] + a[agent_i.i,0:2]*dt
 			# scale velocity if needed
 			vel = np.linalg.norm(sp1[v_idx])
 			if vel > self.v_max:
@@ -586,7 +589,7 @@ class DoubleIntegrator(Env):
 				
 				# transform action
 				if classification is not None: 
-					transformed_classification[k,:] = np.matmul(R,classification[k])
+					transformed_classification[k,:] = np.concatenate((np.matmul(R,classification[k,0:2]), classification[k,2:]))
 				transformed_dataset[k,:] = transformed_row
 				transformations[k,:,:] = R
 

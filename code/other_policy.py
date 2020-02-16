@@ -22,7 +22,7 @@ class Empty_Net_wAPF():
 		self.bf = Barrier_Fncs(param)
 		self.device = torch.device('cpu')
 		self.dim_neighbor = param.il_phi_network_architecture[0].in_features
-		self.dim_action = param.il_psi_network_architecture[-1].out_features
+		self.dim_action = 5 #param.il_psi_network_architecture[-1].out_features
 		self.dim_state = param.il_psi_network_architecture[0].in_features - \
 						param.il_rho_network_architecture[-1].out_features - \
 						param.il_rho_obs_network_architecture[-1].out_features
@@ -113,6 +113,7 @@ class Empty_Net_wAPF():
 			else:
 				exit('self.param.safety: {} not recognized'.format(self.param.safety))
 
+			action = torch.cat((action, cf_alpha, empty_action.norm(p=2,dim=1,keepdim=True), barrier_action.norm(p=2,dim=1,keepdim=True)),dim=1)
 
 		elif type(x) is np.ndarray:
 
@@ -178,6 +179,8 @@ class Empty_Net_wAPF():
 			else:
 				exit('self.param.safety: {} not recognized'.format(self.param.safety))
 
+			action = np.concatenate((action, cf_alpha, np.linalg.norm(empty_action,axis=1,keepdims=True), np.linalg.norm(barrier_action,axis=1,keepdims=True)),axis=1)
+
 		else:
 			exit('type(x) not recognized: ', type(x))
 
@@ -234,14 +237,14 @@ class GoToGoalPolicy:
 		self.env = env
 
 	def policy(self, o):
-		A = np.empty((len(o),self.env.action_dim_per_agent))
+		A = np.empty((len(o),2))
 		for i,o_i in enumerate(o):
 			a_i = self(o_i)
 			A[i,:] = a_i 
 		return A
 
 	def __call__(self, o):
-		A = torch.empty((len(o),self.env.action_dim_per_agent))
+		A = torch.empty((len(o),2))
 		for i, observation_i in enumerate(o):
 			relative_goal = np.array(observation_i[1:3])
 			relative_vel = np.array(observation_i[3:5])
@@ -251,10 +254,10 @@ class GoToGoalPolicy:
 				# print('adding damping')
 				a_nom += self.param.cbf_kd*relative_vel
 
-			# # a_nom = relative_goal
-			# scale = np.linalg.norm(a_nom)/self.param.pi_max
-			# if scale > 1:
-			# 	a_nom = a_nom/scale 
+			# a_nom = relative_goal
+			scale = np.linalg.norm(a_nom)/self.param.pi_max
+			if scale > 1:
+				a_nom = a_nom/scale 
 
 			A[i,:] = torch.tensor(a_nom)
 

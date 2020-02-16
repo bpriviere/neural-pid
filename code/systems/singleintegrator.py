@@ -40,7 +40,7 @@ class SingleIntegrator(Env):
 
 		self.n_agents = param.n_agents
 		self.state_dim_per_agent = 2
-		self.action_dim_per_agent = 2
+		self.action_dim_per_agent = 2+3 # last 3 for debugging only
 		self.r_agent = param.r_agent
 		self.r_obstacle = param.r_obstacle
 		self.r_obs_sense = param.r_obs_sense
@@ -73,7 +73,10 @@ class SingleIntegrator(Env):
 			]
 		self.actions_name = [
 			'x-Velocity [m/s]',
-			'y-Velocity [m/s]'
+			'y-Velocity [m/s]',
+			'alpha',
+			'||action_desired||',
+			'||barrier||',
 			]
 
 		self.param = param
@@ -277,8 +280,8 @@ class SingleIntegrator(Env):
 		for agent_i in self.agents:
 			idx = self.agent_idx_to_state_idx(agent_i.i)
 			p_idx = np.arange(idx,idx+2)
-			sp1[p_idx] = self.s[p_idx] + a[agent_i.i,:]*dt
-			agent_i.v = a[agent_i.i,:]
+			sp1[p_idx] = self.s[p_idx] + a[agent_i.i,0:2]*dt
+			agent_i.v = a[agent_i.i,0:2]
 			# sp1[v_idx] = np.clip(a[agent_i.i,:],self.a_max,self.a_min)
 
 		self.update_agents(sp1)
@@ -566,7 +569,7 @@ class SingleIntegrator(Env):
 				
 				# transform action
 				if classification is not None: 
-					transformed_classification[k,:] = np.matmul(R,classification[k])
+					transformed_classification[k,:] = np.concatenate((np.matmul(R,classification[k,0:2]), classification[k,2:]))
 				transformed_dataset[k,:] = transformed_row
 				transformations[k,:,:] = R
 

@@ -38,7 +38,7 @@ class SingleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
+		self.sim_tf = 30
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -58,6 +58,7 @@ class SingleIntegratorParam(Param):
 		self.kp = 0.005 *2.85
 		self.pi_max = 0.5
 		self.pi_min = -self.pi_max
+		self.sigmoid_scale = 2
 
 		# obsolete barrier param 
 		self.b_gamma = .005 # 0.005 # for potential: 0.005,
@@ -226,6 +227,7 @@ if __name__ == '__main__':
 		# 
 		# testing
 		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'goToGoal': GoToGoalPolicy(param,env),
 		# 'current': torch.load(param.il_train_model_fn),
 		# 'currentwapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 	}
