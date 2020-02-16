@@ -74,13 +74,18 @@ class Barrier_Fncs():
 		A2 = torch.bmm( grad_phi.unsqueeze(1), pi.unsqueeze(2)).squeeze(2)
 		
 		A = torch.mul(A1, torch.pow(A1 + torch.abs(A2),-1))
-		logterm = torch.log( torch.mul(A, torch.pow(1 - A,-1)))
-		for j in range(ni):	
-			dh = (H[:,j] - dr).unsqueeze(1)
-			s = self.sigmoid(dh + logterm)
-			cf_alpha = torch.mul(cf_alpha,s)
+		# logterm = torch.log( torch.mul(A, torch.pow(1 - A,-1)))
+		logterm = torch.log( A / (1 - A) )
+		# logterm = torch.log( torch.mul(torch.pow(A,ni), torch.pow(1 - torch.pow(A,ni),-1)))
+		# for j in range(ni):	
+		# 	dh = (H[:,j] - dr).unsqueeze(1)
+		# 	s = self.sigmoid(dh + logterm)
+		# 	cf_alpha = torch.mul(cf_alpha,s)
+		# if ni > 0:
+		# 	cf_alpha = torch.pow(cf_alpha,1/ni)
 		if ni > 0:
-			cf_alpha = torch.pow(cf_alpha,1/ni)
+			dh = torch.min(H - dr,axis=1).values.unsqueeze(1)
+			cf_alpha = self.sigmoid(dh / dr + logterm)
 		return cf_alpha	
 
 	def torch_get_cf_di(self,x,P,H,pi,b):
@@ -353,12 +358,15 @@ class Barrier_Fncs():
 		A = A1/(A1 + np.abs(A2))		
 		logterm = np.log(A / (1 - A))
 		# logterm = np.log(A**ni / (1 - A**ni))		
-		for j in range(ni):	
-			dh = H[:,j] - dr
-			s = self.numpy_sigmoid( dh + logterm)
-			cf_alpha *= s
+		# for j in range(ni):	
+		# 	dh = H[:,j] - dr
+		# 	s = self.numpy_sigmoid( dh + logterm)
+		# 	cf_alpha *= s
+		# if ni > 0:
+		# 	cf_alpha = cf_alpha ** (1/ni)
 		if ni > 0:
-			cf_alpha = cf_alpha ** (1/ni)
+			dh = np.min(H - dr,axis=1)
+			cf_alpha = self.numpy_sigmoid(dh / dr + logterm)
 		return cf_alpha
 
 	def numpy_get_cf_di(self,x,P,H,pi,b):
