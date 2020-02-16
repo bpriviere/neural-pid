@@ -41,7 +41,7 @@ class Barrier_Net(nn.Module):
 		self.device = torch.device('cpu')
 
 		self.dim_neighbor = param.il_phi_network_architecture[0].in_features
-		self.dim_action = param.il_psi_network_architecture[-1].out_features
+		self.dim_action = 5 #param.il_psi_network_architecture[-1].out_features
 		self.dim_state = param.il_psi_network_architecture[0].in_features - \
 						param.il_rho_network_architecture[-1].out_features - \
 						param.il_rho_obs_network_architecture[-1].out_features
@@ -198,6 +198,7 @@ class Barrier_Net(nn.Module):
 			else:
 				exit('self.param.safety: {} not recognized'.format(self.param.safety))
 
+			action = torch.cat((action, cf_alpha, empty_action.norm(p=2,dim=1,keepdim=True), barrier_action.norm(p=2,dim=1,keepdim=True)),dim=1)
 
 		elif type(x) is np.ndarray:
 
@@ -262,6 +263,8 @@ class Barrier_Net(nn.Module):
 
 			else:
 				exit('self.param.safety: {} not recognized'.format(self.param.safety))
+
+			action = np.concatenate((action, cf_alpha, np.linalg.norm(empty_action,axis=1,keepdims=True), np.linalg.norm(barrier_action,axis=1,keepdims=True)),axis=1)
 
 		else:
 			exit('type(x) not recognized: ', type(x))

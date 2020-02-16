@@ -41,7 +41,7 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 30
+		self.sim_tf = 100
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -58,12 +58,12 @@ class DoubleIntegratorParam(Param):
 		self.cbf_kd = 4.0
 		
 		self.pi_max = 2.0 #0.5 #0.5 #0.10 #1.0*self.a_max
-		self.sigmoid_scale = 1.0
+		self.sigmoid_scale = 0.9
 		
 		self.safety = "cf_di" # potential, fdbk_di, cf_di
 		self.rollout_batch_on = True
-		self.kp = 0.05
-		self.kv = 0.05
+		self.kp = 0.2
+		self.kv = 4.0
 
 		# obsolete parameters 
 		self.b_gamma = .05 

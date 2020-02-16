@@ -199,7 +199,7 @@ def train(param,env,model,optimizer,loader):
 	epoch_loss = 0
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 		prediction = model(b_x)     # input x and predict based on x
-		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
+		loss = loss_func(prediction[:,0:2], b_y)     # must be (1. nn output, 2. target)
 		optimizer.zero_grad()   # clear gradients for next train
 		loss.backward()         # backpropagation, compute gradients
 		optimizer.step()        # apply gradients
@@ -213,7 +213,7 @@ def test(param,env,model,loader):
 	epoch_loss = 0
 	for step, (b_x, b_y) in enumerate(loader): # for each training step
 		prediction = model(b_x)     # input batch state and predict batch action
-		loss = loss_func(prediction, b_y)     # must be (1. nn output, 2. target)
+		loss = loss_func(prediction[:,0:2], b_y)     # must be (1. nn output, 2. target)
 		epoch_loss += float(loss)
 	return epoch_loss/(step+1)
 
