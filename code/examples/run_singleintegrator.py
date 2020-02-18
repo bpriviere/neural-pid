@@ -35,7 +35,7 @@ class SingleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 30
+		self.sim_tf = 100
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -53,12 +53,12 @@ class SingleIntegratorParam(Param):
 		if self.safety == "cf_si":
 			self.a_max = 0.5
 			self.pi_max = 1.5
-			self.sigmoid_scale = 0.25
+			self.sigmoid_scale = 1.0
 			self.kp = 0.025 # 0.1
 			self.cbf_kp = 0.5 # (pi control is usually saturated)
 
 			# pimax = norm(b) = kp / h  @ |p^ji| = 0.05
-			pi_max_thresh = self.kp / ((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
+			pi_max_thresh = self.kp / (0.2 - self.r_agent)
 			print('pi_max_thresh = ',pi_max_thresh)
 			print('pi_max = ',self.pi_max)
 
@@ -206,7 +206,7 @@ def run_batch(param, env, instance, controllers):
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
 
-		states, observations, actions, step = run_sim(param, env, controller, s0)
+		states, observations, actions, step = run_sim(param, env, controller, s0, name=instance)
 		states_and_actions = np.zeros((step, 4*param.n_agents), dtype=np.float32)
 		states_and_actions[:,0::4] = states[:step,0::env.state_dim_per_agent]
 		states_and_actions[:,1::4] = states[:step,1::env.state_dim_per_agent]
