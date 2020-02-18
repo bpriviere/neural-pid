@@ -32,40 +32,50 @@ class SingleIntegratorParam(Param):
 		self.r_obs_sense = 3.
 		self.r_agent = 0.15
 		self.r_obstacle = 0.5
-		
-		self.a_max = 0.5
-		self.a_min = -1*self.a_max
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
+		self.sim_tf = 30
 		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
 
 		# safety
-		
-		self.Delta_R = 2*self.a_max*self.sim_dt
 		self.safety = "cf_si" # "potential", "fdbk_si", "cf_si"
-		self.rollout_batch_on = True
+		self.default_instance = "map_8by8_obst12_agents4_ex0007.yaml"
+		self.rollout_batch_on = False
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
 
-
 		# Barrier function stuff
-		self.kp = 0.05
-		self.pi_max = 0.5
-		self.pi_min = -self.pi_max
-		self.sigmoid_scale = 4
+		if self.safety == "cf_si":
+			self.a_max = 0.5
+			self.pi_max = 1.5
+			self.sigmoid_scale = 0.25
+			self.kp = 0.025 # 0.1
+			self.cbf_kp = 0.5 # (pi control is usually saturated)
 
-		# obsolete barrier param 
-		self.b_gamma = .005 # 0.005 # for potential: 0.005,
-		self.b_eps = 50.
-		self.b_exph = 1.0 # 1.0
-		self.cbf_kp = 1.0
-		self.cbf_kd = 0.5			
+			# pimax = norm(b) = kp / h  @ |p^ji| = 0.05
+			pi_max_thresh = self.kp / ((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
+			print('pi_max_thresh = ',pi_max_thresh)
+			print('pi_max = ',self.pi_max)
+
+		elif self.safety == "potential":
+			self.a_max = 0.5
+			self.pi_max = 0.05
+			self.sigmoid_scale = 0.5
+			self.kp = 0.01
+			self.cbf_kp = 0.5
+
+		self.Delta_R = 2*self.a_max*self.sim_dt
+		self.a_min  = -self.a_max
+		self.pi_min = -self.pi_max
+
+		# obsolete
+		self.b_gamma = 0.005
+		self.b_exph = 1.0
 		
 		# old
 		self.D_robot = 1.*(self.r_agent+self.r_agent)
@@ -92,7 +102,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 40000000 # 100000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 7000000 # 100000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -157,10 +167,12 @@ def load_instance(param, env, instance):
 			map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 	else:
 		# default
-		instance = "map_8by8_obst6_agents4_ex0007.yaml"
+		# instance = "map_8by8_obst6_agents4_ex0007.yaml"
 		# instance = "map_8by8_obst12_agents64_ex0004.yaml"
 		# instance = "map_8by8_obst6_agents32_ex0000.yaml"
-		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
+		
+		# with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
+		with open("../results/singleintegrator/instances/{}".format(param.default_instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
 
