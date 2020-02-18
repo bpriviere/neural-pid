@@ -49,11 +49,14 @@ if __name__ == '__main__':
 	parser.add_argument('--apf', action='store_true')
 	args = parser.parse_args()
 
-	torch.multiprocessing.set_start_method('spawn')
 
 	agents_lst = [2,4,8,16,32,64]
 	obst_lst = [6,9,12]
 	radii = [1,2,3,4,5,6,7,8] #[1,2,3,4]
+	files = []
+	for agent in agents_lst:
+		for obst in obst_lst:
+			files.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*.yaml".format(obst,agent), recursive=True))
 
 	if args.apf:
 
@@ -67,16 +70,13 @@ if __name__ == '__main__':
 		controller = {
 			'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env))}
 
-		for agent in agents_lst:
-			for obst in obst_lst:
-				files = glob.glob("singleintegrator/instances/*obst{}_agents{}_*.yaml".format(obst,agent), recursive=True)
-				with Pool(12) as p:
-					p.starmap(run_singleintegrator.run_batch, zip(repeat(param), repeat(env), files, repeat(controller)))
+		with concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count()) as executor:
+			for _ in executor.map(run_singleintegrator.run_batch, repeat(param), repeat(env), files, repeat(controller)):
+				pass
 
 	if args.orca:
 		for r in radii:
-			for agent in agents_lst:
-				for obst in obst_lst:
-					files = glob.glob("singleintegrator/instances/*obst{}_agents{}_*.yaml".format(obst,agent), recursive=True)
-					with Pool(12) as p:
-						p.starmap(run_orca_r, zip(files, repeat(r)))
+
+			with concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count()) as executor:
+				for _ in executor.map(run_orca_r, files, repeat(r)):
+					pass

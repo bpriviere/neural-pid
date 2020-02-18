@@ -133,7 +133,7 @@ class DoubleIntegrator(Env):
 					break
 
 			# query visible obstacles
-			if self.param.max_obstacles > 0:
+			if self.param.max_obstacles > 0 and self.kd_tree_obstacles is not None:
 				_, obst_idx = self.kd_tree_obstacles.query(p_i,
 					k=self.param.max_obstacles,
 					distance_upper_bound=self.param.r_obs_sense)
@@ -186,7 +186,7 @@ class DoubleIntegrator(Env):
 				p_i = self.agents[result[0]].p
 				p_j = self.agents[result[1]].p
 				dist = np.linalg.norm(p_i-p_j)
-				# print('   a2a dist {} at time {}'.format(dist,self.times[self.time_step]))
+				print('   a2a dist {} at time {} a {} and a {}'.format(dist,self.times[self.time_step], self.agents[result[0]].i, self.agents[result[1]].i))
 				# exit()
 			return -1
 
@@ -201,7 +201,7 @@ class DoubleIntegrator(Env):
 				coll, dist = not_batch_is_collision_circle_rectangle(np.array(agent.p), self.param.r_agent, np.array(o), np.array(o) + np.array([1.0,1.0]))
 				inc = np.count_nonzero(coll)
 				if inc > 0:
-					# print('   a2o dist {} at time {}'.format(dist,self.times[self.time_step]))
+					print('   a2o dist {} at time {} a {}'.format(dist,self.times[self.time_step], agent.i))
 					# exit()
 					return -inc 
 
@@ -244,7 +244,10 @@ class DoubleIntegrator(Env):
 				
 
 		self.obstacles_np = np.array([np.array(o) + np.array([0.5,0.5]) for o in self.obstacles])
-		self.kd_tree_obstacles = spatial.KDTree(self.obstacles_np)
+		if len(self.obstacles) > 0:
+			self.kd_tree_obstacles = spatial.KDTree(self.obstacles_np)
+		else:
+			self.kd_tree_obstacles = None
 
 		self.update_agents(self.s)
 		return np.copy(self.s)

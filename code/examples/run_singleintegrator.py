@@ -32,9 +32,6 @@ class SingleIntegratorParam(Param):
 		self.r_obs_sense = 3.
 		self.r_agent = 0.15
 		self.r_obstacle = 0.5
-		
-		self.a_max = 0.5
-		self.a_min = -1*self.a_max
 
 		# sim 
 		self.sim_t0 = 0
@@ -45,27 +42,41 @@ class SingleIntegratorParam(Param):
 		self.plots_fn = 'plots.pdf'
 
 		# safety
-		
-		self.Delta_R = 2*self.a_max*self.sim_dt
 		self.safety = "cf_si" # "potential", "fdbk_si", "cf_si"
-		self.rollout_batch_on = True
+		self.default_instance = "map_8by8_obst12_agents4_ex0007.yaml"
+		self.rollout_batch_on = False
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
 
-
 		# Barrier function stuff
-		self.kp = 0.005 *2.85
-		self.pi_max = 0.5
+		if self.safety == "cf_si":
+			self.a_max = 0.5
+			self.pi_max = 1.5
+			self.sigmoid_scale = 0.25
+			self.kp = 0.025 # 0.1
+			self.cbf_kp = 0.5 # (pi control is usually saturated)
+
+			# pimax = norm(b) = kp / h  @ |p^ji| = 0.05
+			pi_max_thresh = self.kp / ((0.2 - self.r_agent) / (self.r_comm - self.r_agent))
+			print('pi_max_thresh = ',pi_max_thresh)
+			print('pi_max = ',self.pi_max)
+
+		elif self.safety == "potential":
+			self.a_max = 0.5
+			self.pi_max = 0.05
+			self.sigmoid_scale = 0.5
+			self.kp = 0.01
+			self.cbf_kp = 0.5
+
+		self.Delta_R = 2*self.a_max*self.sim_dt
+		self.a_min  = -self.a_max
 		self.pi_min = -self.pi_max
 		self.sigmoid_scale = 2
 
-		# obsolete barrier param 
-		self.b_gamma = .005 # 0.005 # for potential: 0.005,
-		self.b_eps = 50.
-		self.b_exph = 1.0 # 1.0
-		self.cbf_kp = 1.0
-		self.cbf_kd = 0.5			
+		# obsolete
+		self.b_gamma = 0.005
+		self.b_exph = 1.0
 		
 		# old
 		self.D_robot = 1.*(self.r_agent+self.r_agent)
@@ -80,10 +91,10 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 4096*2
-		self.il_n_epoch = 100
+		self.il_batch_size = 4096*8
+		self.il_n_epoch = 200
 		self.il_lr = 1e-3
-		self.il_wd = 0*0.00002
+		self.il_wd = 0#0.0001
 		self.il_n_data = None # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
@@ -157,10 +168,12 @@ def load_instance(param, env, instance):
 			map_data = yaml.load(map_file,Loader=yaml.SafeLoader)
 	else:
 		# default
-		instance = "map_8by8_obst6_agents4_ex0007.yaml"
+		# instance = "map_8by8_obst6_agents4_ex0007.yaml"
 		# instance = "map_8by8_obst12_agents64_ex0004.yaml"
 		# instance = "map_8by8_obst6_agents32_ex0000.yaml"
-		with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
+		
+		# with open("../results/singleintegrator/instances/{}".format(instance)) as map_file:
+		with open("../results/singleintegrator/instances/{}".format(param.default_instance)) as map_file:
 		# test map test dataset
 			map_data = yaml.load(map_file)
 
@@ -194,11 +207,11 @@ def run_batch(param, env, instance, controllers):
 		print("Running simulation with " + name)
 
 		states, observations, actions, step = run_sim(param, env, controller, s0)
-		states_and_actions = np.zeros((step, states.shape[1] + actions.shape[1]), dtype=states.dtype)
-		states_and_actions[:,0::4] = states[:step,0::2]
-		states_and_actions[:,1::4] = states[:step,1::2]
-		states_and_actions[:,2::4] = actions[:step,0::2]
-		states_and_actions[:,3::4] = actions[:step,1::2]
+		states_and_actions = np.zeros((step, 4*param.n_agents), dtype=np.float32)
+		states_and_actions[:,0::4] = states[:step,0::env.state_dim_per_agent]
+		states_and_actions[:,1::4] = states[:step,1::env.state_dim_per_agent]
+		states_and_actions[:,2::4] = actions[:step,0::env.action_dim_per_agent]
+		states_and_actions[:,3::4] = actions[:step,1::env.action_dim_per_agent]
 
 		result = np.hstack((param.sim_times[0:step].reshape(-1,1), states_and_actions))
 

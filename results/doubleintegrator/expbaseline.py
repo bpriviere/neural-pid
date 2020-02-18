@@ -48,8 +48,11 @@ if __name__ == '__main__':
 		controller = {
 			'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env))}
 
+		files = []
 		for agent in agents_lst:
 			for obst in obst_lst:
-				files = glob.glob("singleintegrator/instances/*obst{}_agents{}_*.yaml".format(obst,agent), recursive=True)
-				with Pool(cpu_count()) as p:
-					p.starmap(run_doubleintegrator.run_batch, zip(repeat(param), repeat(env), files, repeat(controller)))
+				files.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*.yaml".format(obst,agent), recursive=True))
+
+		with concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count()) as executor:
+			for _ in executor.map(run_doubleintegrator.run_batch, repeat(param), repeat(env), files, repeat(controller)):
+				pass

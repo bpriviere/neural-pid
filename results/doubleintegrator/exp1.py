@@ -68,7 +68,7 @@ if __name__ == "__main__":
     }
 
     # default fig size is [6.4, 4.8]
-    fig, axs = plt.subplots(2, len(obst_lst), sharex='all', sharey='row', figsize = [6.4 * 1.4, 4.8 * 1.4])
+    fig, axs = plt.subplots(2, 2, sharex='all', sharey='row', figsize = [6.4 * 1.4, 4.8 * 1.4])
 
     pp = PdfPages("exp1_collisions_di.pdf")
     for column, obst in enumerate(obst_lst):
@@ -150,8 +150,8 @@ if __name__ == "__main__":
 
       print(test_loss_std)
 
-      # line1 = ax.plot(data[:,1], train_loss_mean, label="train loss",linewidth=1)[0]
-      line2 = ax.plot(data[:,1], test_loss_mean, label=solvers[solver],linewidth=1)[0]
+      line1 = ax.plot(data[:,1], train_loss_mean, label="train loss " + solvers[solver],linewidth=1)[0]
+      line2 = ax.plot(data[:,1], test_loss_mean, label="test loss " + solvers[solver],linewidth=1)[0]
 
       # ax.fill_between(data[:,1],
       #   train_loss_mean-train_loss_std,
@@ -180,16 +180,26 @@ if __name__ == "__main__":
 
     # state space plot
     pp = PdfPages("exp1_statespace_di.pdf")
-    instance = "map_8by8_obst6_agents8_ex0000"
-    map_filename = "singleintegrator/instances/{}.yaml".format(instance)
-    with open(map_filename) as map_file:
-      map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
 
-    for key, value in solvers.items():
-      if key != "apf":
-        key += "_0"
-      data = np.load("doubleintegrator/{}/{}.npy".format(key, instance))
-      add_state_space(pp, map_data, data, value)
+    instances = [
+      'map_8by8_obst6_agents8_ex0000',
+      'map_8by8_obst6_agents16_ex0000',
+      'map_8by8_obst6_agents16_ex0002',
+      'map_8by8_obst6_agents16_ex0004',
+      'map_8by8_obst6_agents16_ex0006',
+      'map_8by8_obst6_agents16_ex0008']
+
+    for instance in instances:
+      map_filename = "singleintegrator/instances/{}.yaml".format(instance)
+      with open(map_filename) as map_file:
+        map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
+
+      for key, value in solvers.items():
+        if key != "apf":
+          key += "_0"
+        data = np.load("doubleintegrator/{}/{}.npy".format(key, instance))
+        add_state_space(pp, map_data, data, value)
+
     pp.close()
 
     exit()
@@ -200,13 +210,14 @@ if __name__ == "__main__":
       datadir.extend(glob.glob("singleintegrator/instances/*obst{}_agents{}_*".format(obst,agents)))
   instances = sorted(datadir)
 
-  first_training = True
+  first_training = False
   for i in range(0,1):
       # train policy
       param = run_doubleintegrator.DoubleIntegratorParam()
       env = DoubleIntegrator(param)
       if args.train:
-        for cc in ['Empty', 'Barrier']:
+        # for cc in ['Empty', 'Barrier']:
+        for cc in ['Barrier']:
           param = run_doubleintegrator.DoubleIntegratorParam()
           param.il_controller_class = cc
           param.il_train_model_fn = 'doubleintegrator/exp1{}_{}/il_current.pt'.format(cc,i)

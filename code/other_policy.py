@@ -75,10 +75,10 @@ class Empty_Net_wAPF():
 				empty_action = self.bf.torch_scale(empty_action, self.param.pi_max)
 
 				cf_alpha = self.bf.torch_get_cf_si(x,P,H,empty_action,barrier_action)
-				if torch.min(cf_alpha) < 5e-4:
-					cf_alpha = cf_alpha.detach()
-				if torch.max(cf_alpha) > 1-5e-4:
-					cf_alpha = cf_alpha.detach()
+				# if torch.min(cf_alpha) < 5e-4:
+				# 	cf_alpha = cf_alpha.detach()
+				# if torch.max(cf_alpha) > 1-5e-4:
+				# 	cf_alpha = cf_alpha.detach()
 
 				action = torch.mul(cf_alpha,empty_action) + torch.mul(1-cf_alpha,barrier_action)
 				action = self.bf.torch_scale(action, self.param.a_max)
@@ -97,10 +97,10 @@ class Empty_Net_wAPF():
 				empty_action = self.bf.torch_scale(empty_action, self.param.pi_max)
 
 				cf_alpha = self.bf.torch_get_cf_di(x,P,H,empty_action,barrier_action)
-				if torch.min(cf_alpha) < 5e-4:
-					cf_alpha = cf_alpha.detach()
-				if torch.max(cf_alpha) > 1-5e-4:
-					cf_alpha = cf_alpha.detach()
+				# if torch.min(cf_alpha) < 5e-4:
+				# 	cf_alpha = cf_alpha.detach()
+				# if torch.max(cf_alpha) > 1-5e-4:
+				# 	cf_alpha = cf_alpha.detach()
 
 				action = torch.mul(cf_alpha,empty_action) + torch.mul(1-cf_alpha,barrier_action)
 				action = self.bf.torch_scale(action, self.param.a_max)
