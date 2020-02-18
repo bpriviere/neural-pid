@@ -16,6 +16,7 @@ plt.rcParams['lines.linewidth'] = 4
 r_comm = 3
 max_neighbors = 5
 max_obstacles = 5 
+max_v = 0.5 # 0.5
 
 
 def collision(p,o_lst):
@@ -200,26 +201,55 @@ if __name__ == '__main__':
 	# 	[-0.1,1.12]
 	# ])
 
+
+	# -----------------------------------DI----------------------------
 	# head-on
 	start = np.array([
-		[1.0,0.0,0,0],
-		# [-1.0,0.0,0,0],
+		[2.,0.0,0,0],
+		[-2.0,0.0,0,0],
 		])
 	goal = np.array([
-		[-1.0,0.0,0,0],
-		[1.0,0.0,0,0],
+		[-2.0,0.0,0,0],
+		[2.0,0.0,0,0],
 		])
 	obstacles = np.array([
-		[0,0]
+		# [0,0.]
 	])
+
+	# raytheon exp1
+	# start = np.array([
+	# 	[0.8,0.9,0,0],
+	# 	[-0.9,-0.5,0,0],
+	# 	])
+	# goal = np.array([
+	# 	[-0.9,-0.1,0,0],
+	# 	[1.2,0.8,0,0],
+	# 	])
+	# obstacles = np.array([
+	# 	# [0.52,-0.53],
+	# 	# [-0.1,1.12]
+	# ])
+
+	# # exp 3: ring
+	# num_agents = 3
+	# r = 1.0
+	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
+	# start = np.zeros((num_agents,4))
+	# start[:,0] = r * np.cos(theta)
+	# start[:,1] = r * np.sin(theta)
+	# goal = -start
+	# obstacles = np.array([
+	# 	[0,0.0]
+	# 	])	
 
 
 	num_agents = len(start)
 
-	dt = 0.05
+	dt = 0.025
 	vel_dt = 2.0
-	ts = np.arange(0,30,dt)
+	ts = np.arange(0,50,dt)
 	result = np.zeros((len(ts), 6 * num_agents))
+	dbg_result = np.zeros((len(ts), 3 * num_agents))
 	for i in range(num_agents):
 		idx = i*6
 		result[0,idx:idx+4] = start[i]
@@ -253,10 +283,28 @@ if __name__ == '__main__':
 					nnexport.nn_add_obstacle(np.concatenate((relative_obstacle, -v_i)))
 
 			relative_goal = goal[i] - s_i
-			acceleration = nnexport.nn_eval(relative_goal)
-			print(i, acceleration)
+			normg = np.linalg.norm(relative_goal[0:2])
+			if normg > 0:
+				relative_goal[0:2] = relative_goal[0:2] * np.min((r_comm/normg,1))
+			print('relative_goal',relative_goal)
+			print('r_comm',r_comm)
+
+			# acceleration = nnexport.nn_eval(relative_goal)
+			dbg = nnexport.nn_eval(relative_goal)
+			acceleration = np.array(dbg)[0:2]
+			dbg_result[k+1,i*3:(i+1)*3] = np.array(dbg)[2:5]
+			# print(i, acceleration)
+
 			result[k+1,idx:idx+2] = result[k,idx:idx+2] + result[k,idx+2:idx+4] * dt
-			result[k+1,idx+2:idx+4] = result[k,idx+2:idx+4] + np.array(acceleration) * dt
+
+			# result[k+1,idx+2:idx+4] = np.clip(result[k,idx+2:idx+4] + np.array(acceleration) * dt, -max_v, max_v)
+
+			v = result[k,idx+2:idx+4] + np.array(acceleration) * dt
+			normv = np.linalg.norm(v)
+			if normv > 0:
+				v = v * np.min((max_v / normv, 1))
+			result[k+1,idx+2:idx+4] = v 
+
 			result[k+1,idx+4:idx+6] = np.array(acceleration)
 
 	# collision checker
@@ -278,8 +326,8 @@ if __name__ == '__main__':
 	# ax.set_xlim([-1,1.5])
 	# ax.set_ylim([-1,1])
 
-	ax.set_xlim([-1.25,1.25])
-	ax.set_ylim([-0.7,1.5])
+	# ax.set_xlim([-1.25,1.25])
+	# ax.set_ylim([-0.7,1.5])
 
 	for o in obstacles:
 		ax.add_patch(Rectangle(o-0.5, 1.0, 1.0, facecolor='gray', alpha=0.5))
@@ -333,5 +381,34 @@ if __name__ == '__main__':
 		idx = i*6
 		acc = np.linalg.norm(result[:,idx+4:idx+6],axis=1)
 		line = ax.plot(ts, acc)
+
+	plt.show()
+
+
+
+	fig, ax = plt.subplots()
+	ax.set_title('alpha')
+
+	for i in range(num_agents):
+		idx = i*3
+		line = ax.plot(ts, dbg_result[:,idx+0])
+
+	plt.show()
+
+	fig, ax = plt.subplots()
+	ax.set_title('||pi||')
+
+	for i in range(num_agents):
+		idx = i*3
+		line = ax.plot(ts, dbg_result[:,idx+1])
+
+	plt.show()
+
+	fig, ax = plt.subplots()
+	ax.set_title('||b||')
+
+	for i in range(num_agents):
+		idx = i*3
+		line = ax.plot(ts, dbg_result[:,idx+2])
 
 	plt.show()
