@@ -42,27 +42,34 @@ class DoubleIntegratorParam(Param):
 		# sim 
 		self.sim_t0 = 0
 		self.sim_tf = 100
-		self.sim_dt = 0.05
+		self.sim_dt = 0.025
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
 
 		# safety
-		self.Delta_R = 2*(self.v_max*self.sim_dt + 1/2*self.a_max*self.sim_dt**2) + 1e-6
+		# self.Delta_R = 2*(self.v_max*self.sim_dt + 1/2*self.a_max*self.sim_dt**2) + 1e-6
+		# first term accounts for discretization; second term for breaking distance
+		self.Delta_R = 2*self.v_max*self.sim_dt + self.v_max**2 / (2 * self.a_max)
+
+		# self.Delta_R *= 2
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
 		
 		# cbf 
-		self.cbf_kp = 2.0
-		self.cbf_kd = 20.0
+		self.cbf_kp = 0.5
+		self.cbf_kd = 2.0
 		
 		self.pi_max = 0.05 #0.5 #0.5 #0.10 #1.0*self.a_max
+		self.sigmoid_scale = 0.5
 		
 		self.safety = "cf_di" # potential, fdbk_di, cf_di
-		self.rollout_batch_on = True
-		self.kp = 0.005
-		self.kv = 0.005
+		self.rollout_batch_on = True #False # TODO: FIX ME
+		self.kp = 0.01 #0.1
+		self.kv = 2.0  #2.0
+
+		# empty good gains: kp=0.005, kv=0.5, kh = 0.5, pi_max: 0.1
 
 		# obsolete parameters 
 		self.b_gamma = .05 
@@ -207,7 +214,7 @@ def run_batch(param, env, instance, controllers):
 	for name, controller in controllers.items():
 		print("Running simulation with " + name)
 
-		states, observations, actions, step = run_sim(param, env, controller, s0)
+		states, observations, actions, step = run_sim(param, env, controller, s0, name=instance)
 		# print(states[0:step].shape)
 		# print(param.sim_times[0:step].shape)
 		# exit()

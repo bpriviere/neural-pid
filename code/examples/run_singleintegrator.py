@@ -55,9 +55,10 @@ class SingleIntegratorParam(Param):
 
 
 		# Barrier function stuff
-		self.kp = 0.005 *2.85
+		self.kp = 0.05
 		self.pi_max = 0.5
 		self.pi_min = -self.pi_max
+		self.sigmoid_scale = 4
 
 		# obsolete barrier param 
 		self.b_gamma = .005 # 0.005 # for potential: 0.005,
@@ -79,10 +80,10 @@ class SingleIntegratorParam(Param):
 		self.il_imitate_model_fn = '../models/singleintegrator/rl_current.pt'
 		self.il_load_dataset_on = True
 		self.il_test_train_ratio = 0.85
-		self.il_batch_size = 4096*2
-		self.il_n_epoch = 100
+		self.il_batch_size = 4096*8
+		self.il_n_epoch = 200
 		self.il_lr = 1e-3
-		self.il_wd = 0*0.00002
+		self.il_wd = 0#0.0001
 		self.il_n_data = None # 100000 # 100000000
 		self.il_log_interval = 1
 		self.il_load_dataset = ['orca','centralplanner'] # 'random','ring','centralplanner'
@@ -91,7 +92,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 7000000 # 100000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 40000000 # 100000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -193,11 +194,11 @@ def run_batch(param, env, instance, controllers):
 		print("Running simulation with " + name)
 
 		states, observations, actions, step = run_sim(param, env, controller, s0)
-		states_and_actions = np.zeros((step, states.shape[1] + actions.shape[1]), dtype=states.dtype)
-		states_and_actions[:,0::4] = states[:step,0::2]
-		states_and_actions[:,1::4] = states[:step,1::2]
-		states_and_actions[:,2::4] = actions[:step,0::2]
-		states_and_actions[:,3::4] = actions[:step,1::2]
+		states_and_actions = np.zeros((step, 4*param.n_agents), dtype=np.float32)
+		states_and_actions[:,0::4] = states[:step,0::env.state_dim_per_agent]
+		states_and_actions[:,1::4] = states[:step,1::env.state_dim_per_agent]
+		states_and_actions[:,2::4] = actions[:step,0::env.action_dim_per_agent]
+		states_and_actions[:,3::4] = actions[:step,1::env.action_dim_per_agent]
 
 		result = np.hstack((param.sim_times[0:step].reshape(-1,1), states_and_actions))
 

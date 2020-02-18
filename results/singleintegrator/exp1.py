@@ -61,12 +61,14 @@ if __name__ == "__main__":
 
     solvers = {
       # 'central': 'Global',
+      #'orcaR3': 'ORCA',
+      'apf': 'Barrier',
       'exp1Empty': 'Two-stage GTL',
       'exp1Barrier': 'End-to-end GTL',
     }
 
     # default fig size is [6.4, 4.8]
-    fig, axs = plt.subplots(2, len(obst_lst), sharex='all', sharey='row', figsize = [6.4 * 1.4, 4.8 * 1.4])
+    fig, axs = plt.subplots(2, 2, sharex='all', sharey='row', figsize = [6.4 * 1.4, 4.8 * 1.4])
 
     pp = PdfPages("exp1_collisions_si.pdf")
     for column, obst in enumerate(obst_lst):
@@ -89,10 +91,10 @@ if __name__ == "__main__":
       # create plots
       add_line_plot_agg(None, result_by_instance, "percent_agents_success",
         ax=axs[0, column])
-      add_line_plot_agg(None, result_by_instance, "control_effort_mean",
-        ax=axs[1, column], aggregrate_successful_agent=False)
-      # add_line_plot_agg(None, result_by_instance, "control_effort",
-      #   ax=axs[1, column], aggregrate_successful_agent=True)
+      # add_line_plot_agg(None, result_by_instance, "control_effort_mean",
+        # ax=axs[1, column], aggregrate_successful_agent=False)
+      add_line_plot_agg(None, result_by_instance, "control_effort",
+        ax=axs[1, column], aggregrate_successful_agent=True)
       add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
     
     pp.close()
@@ -147,8 +149,8 @@ if __name__ == "__main__":
 
       print(test_loss_std)
 
-      # line1 = ax.plot(data[:,1], train_loss_mean, label="train loss",linewidth=1)[0]
-      line2 = ax.plot(data[:,1], test_loss_mean, label=solvers[solver],linewidth=1)[0]
+      line1 = ax.plot(data[:,1], train_loss_mean, label="train loss " + solvers[solver],linewidth=1)[0]
+      line2 = ax.plot(data[:,1], test_loss_mean, label="test loss " + solvers[solver],linewidth=1)[0]
 
       # ax.fill_between(data[:,1],
       #   train_loss_mean-train_loss_std,

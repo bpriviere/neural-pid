@@ -14,7 +14,7 @@ import utilities as util
 from other_policy import ZeroPolicy, LCP_Policy
 from learning.ppo_v2 import PPO
 
-def run_sim(param, env, controller, initial_state):
+def run_sim(param, env, controller, initial_state, name=None):
 	states = np.empty((len(param.sim_times), env.n))
 	actions = np.empty((len(param.sim_times)-1,env.m))
 	observations = [] 
@@ -23,7 +23,7 @@ def run_sim(param, env, controller, initial_state):
 	env.reset(initial_state)
 	states[0] = np.copy(env.s)
 	for step, time in enumerate(param.sim_times[:-1]):
-		print('t: {}/{}'.format(time,param.sim_times[-1]))
+		# print('t: {}/{}'.format(time,param.sim_times[-1]))
 
 		state = states[step]
 		observation = env.observe()
@@ -39,7 +39,7 @@ def run_sim(param, env, controller, initial_state):
 		if done:
 			break
 
-	print('reward: ',reward)
+	print('reward: ',reward, name)
 	env.close()
 	return states, observations, actions, step
 
@@ -199,7 +199,7 @@ def sim(param, env, controllers, initial_state, visualize):
 						U.append(observation[idx+2])
 						V.append(observation[idx+3])
 						# print(np.linalg.norm(observation[idx+2:idx+4]))
-						ax.add_patch(Circle(pos, 0.25, facecolor='gray', edgecolor='red', alpha=0.5))
+						ax.add_patch(Circle(pos, param.r_agent, facecolor='gray', edgecolor='red', alpha=0.5))
 						idx += 4
 
 					for i in range(num_obstacles):
