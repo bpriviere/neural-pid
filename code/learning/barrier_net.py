@@ -278,7 +278,7 @@ class Barrier_Net(nn.Module):
 		rho_neighbors = self.model_neighbors.forward(x[:,self.bf.get_agent_idx_all(x)])
 		# rho_obstacles = self.model_obstacles.forward(x[:,self.bf.get_obstacle_idx_all(x)])
 		
-		vel = x[:,3:5]
+		vel = -x[:,3:5]
 		rho_obstacles = self.model_obstacles.forward(x[:,self.bf.get_obstacle_idx_all(x)], vel)
 
 		g = x[:,self.bf.get_goal_idx(x)]
