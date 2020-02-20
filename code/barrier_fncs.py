@@ -200,7 +200,8 @@ class Barrier_Fncs():
 		return adaptive_scaling.unsqueeze(1)
 
 	def torch_get_cf_si_2(self,x,pi,barrier_action,P,H):
-		adaptive_scaling = torch.ones((H.shape[0],1),device=self.device)
+		epsilon = 0.01
+		adaptive_scaling = torch.ones((H.shape[0],1),device=self.device) - epsilon
 		# print('H',H)
 		if not H.nelement() == 0:
 			minH = torch.min(H,dim=1)[0]
@@ -209,10 +210,10 @@ class Barrier_Fncs():
 			A1 = self.param.kp * torch.pow(torch.norm(grad_phi,p=2,dim=1),2).unsqueeze(1)
 			A2 = torch.bmm( grad_phi.unsqueeze(1), pi.unsqueeze(2)).squeeze(2)
 
-			idx = minH < self.param.Delta_R
+			idx = minH < self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
 			hidx = A2 > 0
 			adaptive_scaling[idx] = torch.min(\
-				torch.mul(A1[idx],torch.pow(A1[idx] + torch.abs(A2[idx]),-1)),torch.ones(1,device=self.device))
+				torch.mul(A1[idx],torch.pow(A1[idx] + torch.abs(A2[idx]),-1)),torch.ones(1,device=self.device) - epsilon)
 			# adaptive_scaling[idx] = torch.min(\
 			# 	torch.mul(A1[idx],torch.pow(A1[idx] + torch.mul(A2[idx],hidx[idx]),-1)),torch.ones(1,device=self.device))			
 		return adaptive_scaling
@@ -350,7 +351,7 @@ class Barrier_Fncs():
 
 	def numpy_get_cf_di_2(self,x,P,H,pi,b):
 		adaptive_scaling = 1.0 
-		if not H.size == 0 and np.min(H) < self.param.Delta_R:
+		if not H.size == 0 and np.min(H) < self.param.Delta_R / (self.param.r_comm - self.param.r_agent):
 			grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
 			grad_phi_dot = self.numpy_get_grad_phi_dot(x,P,H) # 1x2		
 			v = -x[:,3:5]
@@ -361,12 +362,14 @@ class Barrier_Fncs():
 		return adaptive_scaling	
 
 	def numpy_get_cf_si_2(self,x,P,H,pi,b):
-		adaptive_scaling = 1.0 
-		if not H.size == 0 and np.min(H) < self.param.Delta_R:
+		epsilon = 0.01
+		adaptive_scaling = 1.0 - epsilon
+		if not H.size == 0 and np.min(H) < self.param.Delta_R / (self.param.r_comm - self.param.r_agent):
 			grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
 			A1 = self.param.kp*np.dot(grad_phi, grad_phi.T)
 			A2 = np.dot(grad_phi,pi.T)
-			adaptive_scaling = np.min((A1/(A1 + np.abs(A2)),1))
+			adaptive_scaling = np.min((A1/(A1 + np.abs(A2)),1 - epsilon))
+			# print(adaptive_scaling)
 			# adaptive_scaling = np.min((A1/(A1 + np.heaviside(A2,1/2)*A2),1))
 		return adaptive_scaling	
 

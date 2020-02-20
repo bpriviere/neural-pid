@@ -36,13 +36,13 @@ class SingleIntegratorParam(Param):
 		# sim 
 		self.sim_t0 = 0
 		self.sim_tf = 100
-		self.sim_dt = 0.05
+		self.sim_dt = 0.025
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
 
 		# safety
-		self.safety = "fdbk_si" # "potential", "fdbk_si", "cf_si"
+		self.safety = "cf_si_2" # "potential", "fdbk_si", "cf_si"
 		self.default_instance = "map_8by8_obst12_agents8_ex0000.yaml"
 		self.rollout_batch_on = False
 
@@ -68,13 +68,19 @@ class SingleIntegratorParam(Param):
 			self.kp = 0.005 * 2.85
 			self.cbf_kp = 0.5
 
+		elif self.safety == "cf_si_2":
+			self.a_max = 0.5	# 0.5
+			self.pi_max = 0.5	# 0.5
+			self.kp = 1.0		# 0.015
+			self.cbf_kp = 0.5
+
 		elif self.safety == "potential":
 			self.a_max = 0.5
 			self.pi_max = 0.45
 			self.kp = 0.005 * 2.85
 			self.cbf_kp = 1.0
 
-		self.Delta_R = self.a_max*self.sim_dt
+		self.Delta_R = 2*self.a_max*self.sim_dt
 		self.a_min  = -self.a_max
 		self.pi_min = -self.pi_max
 
