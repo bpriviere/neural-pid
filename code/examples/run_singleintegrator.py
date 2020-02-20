@@ -42,8 +42,8 @@ class SingleIntegratorParam(Param):
 		self.plots_fn = 'plots.pdf'
 
 		# safety
-		self.safety = "cf_si" # "potential", "fdbk_si", "cf_si"
-		self.default_instance = "map_8by8_obst12_agents4_ex0007.yaml"
+		self.safety = "fdbk_si" # "potential", "fdbk_si", "cf_si"
+		self.default_instance = "map_8by8_obst12_agents8_ex0000.yaml"
 		self.rollout_batch_on = False
 
 		self.max_neighbors = 6
@@ -52,9 +52,9 @@ class SingleIntegratorParam(Param):
 		# Barrier function stuff
 		if self.safety == "cf_si":
 			self.a_max = 0.5
-			self.pi_max = 1.5
-			self.sigmoid_scale = 1.0
-			self.kp = 0.025 # 0.1
+			self.pi_max = 1.0
+			self.sigmoid_scale = 0.2
+			self.kp = 0.02 # 0.1
 			self.cbf_kp = 0.5 # (pi control is usually saturated)
 
 			# pimax = norm(b) = kp / h  @ |p^ji| = 0.05
@@ -62,14 +62,19 @@ class SingleIntegratorParam(Param):
 			print('pi_max_thresh = ',pi_max_thresh)
 			print('pi_max = ',self.pi_max)
 
-		elif self.safety == "potential":
+		elif self.safety == "fdbk_si":
 			self.a_max = 0.5
-			self.pi_max = 0.05
-			self.sigmoid_scale = 0.5
-			self.kp = 0.01
+			self.pi_max = 0.45
+			self.kp = 0.005 * 2.85
 			self.cbf_kp = 0.5
 
-		self.Delta_R = 2*self.a_max*self.sim_dt
+		elif self.safety == "potential":
+			self.a_max = 0.5
+			self.pi_max = 0.45
+			self.kp = 0.005 * 2.85
+			self.cbf_kp = 1.0
+
+		self.Delta_R = self.a_max*self.sim_dt
 		self.a_min  = -self.a_max
 		self.pi_min = -self.pi_max
 
@@ -128,7 +133,7 @@ class SingleIntegratorParam(Param):
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 	
 		# learning hyperparameters
-		n,m,h,l,p = 2,2,64,16,16 # state dim, action dim, hidden layer, output phi, output rho
+		n,m,h,l,p = 2,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(2,h),
 			nn.Linear(h,h),

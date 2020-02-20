@@ -70,8 +70,8 @@ class DoubleIntegratorParam(Param):
 			self.cbf_kp = 0.5 # 0.5
 			self.cbf_kd = 2.0 # 2.0 
 
-		self.Delta_R = 2*self.v_max*self.sim_dt + \
-			(2*self.v_max)**2 / (2 * self.a_max) 
+		self.Delta_R = 2*(self.v_max*self.sim_dt + \
+			self.v_max**2 / (2 * self.a_max)) 
 
 		# obsolete parameters 
 		self.b_gamma = .05 
@@ -170,6 +170,33 @@ class DoubleIntegratorParam(Param):
 
 
 def load_instance(param, env, instance):
+
+	# # exp 3: ring
+	# num_agents = 2
+	# r = 1.0
+	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
+	# start = np.zeros((num_agents,4))
+	# start[:,0] = r * np.cos(theta)
+	# start[:,1] = r * np.sin(theta)
+	# goal = -start
+
+	# InitialState = namedtuple('InitialState', ['start', 'goal'])
+	# s0 = InitialState._make((start.flatten(), goal.flatten()))
+
+	# param.n_agents = num_agents
+	# env.reset_param(param)
+
+	# env.obstacles = []
+	# # for x in range(-1,8+1):
+	# # 	env.obstacles.append([x,-1])
+	# # 	env.obstacles.append([x,8])
+	# # for y in range(8):
+	# # 	env.obstacles.append([-1,y])
+	# # 	env.obstacles.append([8,y])
+
+	# # print(s0)
+	# return s0
+
 	import yaml
 	if instance:
 		with open(instance) as map_file:

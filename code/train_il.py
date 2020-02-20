@@ -250,6 +250,15 @@ def train_il(param, env, device):
 					datadir = glob.glob("../data/doubleintegrator/central3/*{}*.npy".format(datapattern))
 				random.shuffle(datadir)
 
+				# # Filter by modification time
+				# datadir_filtered = []
+				# for file in datadir:
+				# 	file_time = time.localtime(os.path.getmtime(file))
+				# 	if file_time.tm_mon < 2:
+				# 		datadir_filtered.append(file)
+
+				# datadir = datadir_filtered
+
 				len_case = 0
 				with concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count()) as executor:
 					for dataset in executor.map(env.load_dataset_action_loss, datadir):
@@ -305,6 +314,8 @@ def train_il(param, env, device):
 		model.load_weights(param.il_pretrain_weights_fn)
 
 	optimizer = torch.optim.Adam(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
+	# optimizer = torch.optim.AdamW(model.parameters(), lr=param.il_lr, weight_decay = param.il_wd)
+	# optimizer = torch.optim.SGD(model.parameters(), lr=param.il_lr, momentum=0.9,weight_decay = param.il_wd)
 	adaptive_dataset_len_lst = []
 	num_unique_points_lst = []
 	if param.adaptive_dataset_on:
