@@ -1,9 +1,37 @@
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 from matplotlib.backends.backend_pdf import PdfPages
 plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
+
+# load training data:
+datadir = glob.glob("../preprocessed_data/batch_test*.npy")
+num_examples = dict()
+for file in datadir: 
+	batch = np.load(file)
+	num_neighbors = int(batch[0,0])
+	num_obstacles = int((batch.shape[1] - 1 - 2 - num_neighbors*2 - 2) / 2)
+	num_examples[(num_neighbors,num_obstacles)] =  batch.shape[0]
+
+max_neighbors = np.max([nn for nn, _ in num_examples.keys()])
+max_obstacles = np.max([no for _, no in num_examples.keys()])
+num_examples_array = np.zeros((max_neighbors+1, max_obstacles+1))
+for (nn, no), value in num_examples.items():
+	num_examples_array[nn,no] = value
+
+plt.imshow(num_examples_array / num_examples_array.sum(),cmap=matplotlib.cm.hot)
+plt.colorbar()
+plt.ylabel("# neighbors")
+plt.xlabel("# obstacles")
+plt.show()
+
+print("# data: ", num_examples_array.sum())
+
+exit()
+
+
 
 
 pp = PdfPages("preprocessed_data_stats.pdf")

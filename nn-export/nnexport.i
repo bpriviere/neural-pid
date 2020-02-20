@@ -26,8 +26,8 @@
 %typemap(out) float const *nn_eval {
   int i;
   //$1, $1_dim0, $1_dim1
-  $result = PyList_New(2);
-  for (i = 0; i < 2; i++) {
+  $result = PyList_New(5);
+  for (i = 0; i < 5; i++) {
     PyObject *o = PyFloat_FromDouble((double) $1[i]);
     PyList_SetItem($result,i,o);
   }

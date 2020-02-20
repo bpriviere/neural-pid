@@ -182,7 +182,7 @@ class SingleIntegrator(Env):
 				p_i = self.agents[result[0]].p
 				p_j = self.agents[result[1]].p
 				dist = np.linalg.norm(p_i-p_j)
-				print('a2a dist {} at time {}'.format(dist,self.times[self.time_step]))
+				print('   a2a dist {} at time {} a {} and a {}'.format(dist,self.times[self.time_step], self.agents[result[0]].i, self.agents[result[1]].i))
 				# exit()
 			return -1
 
@@ -197,7 +197,7 @@ class SingleIntegrator(Env):
 				coll, dist = not_batch_is_collision_circle_rectangle(np.array(agent.p), self.param.r_agent, np.array(o), np.array(o) + np.array([1.0,1.0]))
 				inc = np.count_nonzero(coll)
 				if inc > 0:
-					print('a2o dist {} at time {}'.format(dist,self.times[self.time_step]))
+					print('   a2o dist {} at time {} a {}'.format(dist,self.times[self.time_step], agent.i))
 					# exit()
 					return -inc 
 
