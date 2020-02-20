@@ -33,6 +33,8 @@ def run_sim(param, env, controller, initial_state, name=None):
 		reward += r
 		
 		states[step + 1] = next_state
+		if action.shape[1] == 2:
+			action = np.hstack((action, np.zeros((action.shape[0],3))))
 		actions[step] = action.flatten()
 		observations.append(observation)
 

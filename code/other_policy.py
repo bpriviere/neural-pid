@@ -113,13 +113,16 @@ class Empty_Net_wAPF():
 			else:
 				exit('self.param.safety: {} not recognized'.format(self.param.safety))
 
-			action = torch.cat((action, cf_alpha, empty_action.norm(p=2,dim=1,keepdim=True), barrier_action.norm(p=2,dim=1,keepdim=True)),dim=1)
+			# action = torch.cat((action, cf_alpha, empty_action.norm(p=2,dim=1,keepdim=True), barrier_action.norm(p=2,dim=1,keepdim=True)),dim=1)
+			action = torch.cat((action, adaptive_scaling,
+				empty_action.norm(p=2,dim=1,keepdim=True),
+				barrier_action.norm(p=2,dim=1,keepdim=True)),dim=1)
 
 		elif type(x) is np.ndarray:
 
 			if self.param.safety == "potential":
 				P,H = self.bf.numpy_get_relative_positions_and_safety_functions(x)
-				barrier_action = -1*self.param.b_gamma*self.bf.numpy_get_grad_phi(x,P,H)
+				barrier_action = -1*self.param.kp*self.bf.numpy_get_grad_phi(x,P,H)
 
 				empty_action = self.empty(torch.tensor(x).float()).detach().numpy()
 				empty_action = self.bf.numpy_scale(empty_action, self.param.pi_max)
@@ -179,7 +182,10 @@ class Empty_Net_wAPF():
 			else:
 				exit('self.param.safety: {} not recognized'.format(self.param.safety))
 
-			action = np.concatenate((action, cf_alpha, np.linalg.norm(empty_action,axis=1,keepdims=True), np.linalg.norm(barrier_action,axis=1,keepdims=True)),axis=1)
+			# action = np.concatenate((action, cf_alpha, np.linalg.norm(empty_action,axis=1,keepdims=True), np.linalg.norm(barrier_action,axis=1,keepdims=True)),axis=1)
+			action = np.concatenate((action, np.array([[adaptive_scaling]]),
+				np.linalg.norm(empty_action,axis=1,keepdims=True),
+				np.linalg.norm(barrier_action,axis=1,keepdims=True)),axis=1)
 
 		else:
 			exit('type(x) not recognized: ', type(x))
