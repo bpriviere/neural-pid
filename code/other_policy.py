@@ -86,7 +86,7 @@ class Empty_Net_wAPF():
 				empty_action = self.empty(x)
 				empty_action = self.bf.torch_scale(empty_action, self.param.pi_max)
 
-				cf_alpha = self.bf.torch_get_cf_si_2(x,P,H,empty_action,barrier_action)
+				cf_alpha = self.bf.torch_get_cf_si_2(x,empty_action,barrier_action,P,H)
 				action = torch.mul(cf_alpha,empty_action) + torch.mul(1-cf_alpha,barrier_action)
 				action = self.bf.torch_scale(action, self.param.a_max)				
 
