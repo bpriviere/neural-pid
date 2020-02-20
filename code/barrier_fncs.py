@@ -199,7 +199,7 @@ class Barrier_Fncs():
 				torch.mul(normb[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
 		return adaptive_scaling.unsqueeze(1)
 
-	def torch_get_cf_si_2(self,x,empty_action,barrier_action,P,H):
+	def torch_get_cf_si_2(self,x,pi,barrier_action,P,H):
 		adaptive_scaling = torch.ones((H.shape[0],1),device=self.device)
 		# print('H',H)
 		if not H.nelement() == 0:
@@ -210,8 +210,11 @@ class Barrier_Fncs():
 			A2 = torch.bmm( grad_phi.unsqueeze(1), pi.unsqueeze(2)).squeeze(2)
 
 			idx = minH < self.param.Delta_R
+			hidx = A2 > 0
 			adaptive_scaling[idx] = torch.min(\
 				torch.mul(A1[idx],torch.pow(A1[idx] + torch.abs(A2[idx]),-1)),torch.ones(1,device=self.device))
+			# adaptive_scaling[idx] = torch.min(\
+			# 	torch.mul(A1[idx],torch.pow(A1[idx] + torch.mul(A2[idx],hidx[idx]),-1)),torch.ones(1,device=self.device))			
 		return adaptive_scaling
 
 	def torch_get_adaptive_scaling_di(self,x,empty_action,barrier_action,P,H):
@@ -364,6 +367,7 @@ class Barrier_Fncs():
 			A1 = self.param.kp*np.dot(grad_phi, grad_phi.T)
 			A2 = np.dot(grad_phi,pi.T)
 			adaptive_scaling = np.min((A1/(A1 + np.abs(A2)),1))
+			# adaptive_scaling = np.min((A1/(A1 + np.heaviside(A2,1/2)*A2),1))
 		return adaptive_scaling	
 
 	def numpy_sigmoid(self,x):
