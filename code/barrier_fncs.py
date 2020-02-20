@@ -199,6 +199,21 @@ class Barrier_Fncs():
 				torch.mul(normb[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
 		return adaptive_scaling.unsqueeze(1)
 
+	def torch_get_cf_si_2(self,x,empty_action,barrier_action,P,H):
+		adaptive_scaling = torch.ones((H.shape[0],1),device=self.device)
+		# print('H',H)
+		if not H.nelement() == 0:
+			minH = torch.min(H,dim=1)[0]
+
+			grad_phi = self.torch_get_grad_phi(x,P,H)  
+			A1 = self.param.kp * torch.pow(torch.norm(grad_phi,p=2,dim=1),2).unsqueeze(1)
+			A2 = torch.bmm( grad_phi.unsqueeze(1), pi.unsqueeze(2)).squeeze(2)
+
+			idx = minH < self.param.Delta_R
+			adaptive_scaling[idx] = torch.min(\
+				torch.mul(A1[idx],torch.pow(A1[idx] + torch.abs(A2[idx]),-1)),torch.ones(1,device=self.device))
+		return adaptive_scaling
+
 	def torch_get_adaptive_scaling_di(self,x,empty_action,barrier_action,P,H):
 		adaptive_scaling = torch.ones(H.shape[0],device=self.device)
 		# print('H',H)
@@ -210,7 +225,28 @@ class Barrier_Fncs():
 			idx = minH < self.param.Delta_R
 			adaptive_scaling[idx] = torch.min(\
 				torch.mul(normLgV[idx],torch.pow(normpi[idx],-1)),torch.ones(1,device=self.device))
-		return adaptive_scaling.unsqueeze(1)		
+		return adaptive_scaling.unsqueeze(1)
+
+	def torch_get_cf_di_2(self,x,pi,b,P,H):
+		cf_alpha = torch.ones((H.shape[0],1),device=self.device)
+		# print('H',H)
+		if not H.nelement() == 0:
+			minH = torch.min(H,dim=1)[0]
+
+			grad_phi = self.torch_get_grad_phi(x,P,H) 
+			grad_phi_dot = self.torch_get_grad_phi_dot(x,P,H) 
+			v = -x[:,3:5]
+			vmk = v + self.param.kp * grad_phi 
+			A1 = self.param.kp**2 * torch.pow(torch.norm(grad_phi,p=2,dim=1,keepdim=True),2) + \
+				self.param.kv * torch.pow(torch.norm(vmk,p=2,dim=1,keepdim=True),2)
+			A2 = (torch.bmm(vmk.unsqueeze(1), (pi + self.param.kp*grad_phi_dot).unsqueeze(2)) + \
+				self.param.kp * torch.bmm(grad_phi.unsqueeze(1), v.unsqueeze(2))).squeeze(2)
+
+			idx = minH < self.param.Delta_R
+			cf_alpha[idx] = torch.min(\
+				torch.mul(A1[idx],torch.pow(A1[idx] + torch.abs(A2[idx]),-1)),torch.ones(1,device=self.device))
+
+		return cf_alpha 
 
 	def torch_scale(self,action,max_action):
 		action_norm = action.norm(p=2,dim=1)
@@ -303,14 +339,32 @@ class Barrier_Fncs():
 		A1 = self.param.kp**2 * np.dot(grad_phi,grad_phi.T) + self.param.kv * np.dot( vmk,vmk.T)
 		A2 = np.dot(vmk, (pi + self.param.kp*grad_phi_dot).T) + self.param.kp * np.dot(grad_phi, v.T)
 
-		if np.abs(A2) == 0:
-			return cf_alpha
-
-		logterm = np.log( A1 / np.abs(A2) )
+		logterm = np.log( A1 / np.abs(A2))
 		if ni > 0:
 			dh = np.min(H - dr,axis=1)
-			cf_alpha = self.numpy_sigmoid(dh / dr * self.param.sigmoid_scale + logterm)
+			cf_alpha = self.numpy_sigmoid(self.param.sigmoid_scale * dh / dr + logterm)
 		return cf_alpha
+
+	def numpy_get_cf_di_2(self,x,P,H,pi,b):
+		adaptive_scaling = 1.0 
+		if not H.size == 0 and np.min(H) < self.param.Delta_R:
+			grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
+			grad_phi_dot = self.numpy_get_grad_phi_dot(x,P,H) # 1x2		
+			v = -x[:,3:5]
+			vmk = v + self.param.kp * grad_phi 			
+			A1 = self.param.kp**2 * np.dot(grad_phi,grad_phi.T) + self.param.kv * np.dot( vmk,vmk.T)
+			A2 = np.dot(vmk, (pi + self.param.kp*grad_phi_dot).T) + self.param.kp * np.dot(grad_phi, v.T)
+			adaptive_scaling = np.min((A1/(A1 + np.abs(A2)),1))
+		return adaptive_scaling	
+
+	def numpy_get_cf_si_2(self,x,P,H,pi,b):
+		adaptive_scaling = 1.0 
+		if not H.size == 0 and np.min(H) < self.param.Delta_R:
+			grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
+			A1 = self.param.kp*np.dot(grad_phi, grad_phi.T)
+			A2 = np.dot(grad_phi,pi.T)
+			adaptive_scaling = np.min((A1/(A1 + np.abs(A2)),1))
+		return adaptive_scaling	
 
 	def numpy_sigmoid(self,x):
 		return 1/(1 + np.exp(-x))

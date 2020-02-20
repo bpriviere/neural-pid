@@ -42,7 +42,7 @@ class DoubleIntegratorParam(Param):
 		# sim 
 		self.sim_t0 = 0
 		self.sim_tf = 100
-		self.sim_dt = 0.05
+		self.sim_dt = 0.025
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -50,16 +50,16 @@ class DoubleIntegratorParam(Param):
 		self.max_neighbors = 6
 		self.max_obstacles = 6
 				
-		self.safety = "fdbk_di" # potential, fdbk_di, cf_di
+		self.safety = "cf_di_2" # potential, fdbk_di, cf_di, cf_di_2
 		self.rollout_batch_on = True
-		self.default_instance = "map_8by8_obst6_agents4_ex0001.yaml"
+		self.default_instance = "map_8by8_obst12_agents32_ex0009.yaml"
 		self.current_model = 'il_current.pt'
 
 		if self.safety == "fdbk_di":
 			self.pi_max = 0.015 # 0.25
 			self.kp = 0.005 # 0.002
 			self.kv = 0.050 # 0.025
-			self.cbf_kp = 0.5 
+			self.cbf_kp = 0.5
 			self.cbf_kd = 2.0
 
 		elif self.safety == "cf_di": # 'working di' parameters
@@ -68,10 +68,17 @@ class DoubleIntegratorParam(Param):
 			self.kp = 0.01 # 0.01 
 			self.kv = 1.0 # 2.0 
 			self.cbf_kp = 0.5 # 0.5
-			self.cbf_kd = 2.0 # 2.0 
+			self.cbf_kd = 2.0 # 2.0
+
+		elif self.safety == "cf_di_2": # 'working di 2' parameters
+			self.pi_max = 0.5 # 0.05 
+			self.kp = 0.005 # 0.01 
+			self.kv = 2.0 # 2.0 
+			self.cbf_kp = 0.5 # 0.5
+			self.cbf_kd = 2.0 # 2.0			 
 
 		self.Delta_R = 2*(self.v_max*self.sim_dt + \
-			self.v_max**2 / (2 * self.a_max)) 
+			self.v_max**2 / (2 * self.a_max))
 
 		# obsolete parameters 
 		self.b_gamma = .05 
@@ -170,33 +177,6 @@ class DoubleIntegratorParam(Param):
 
 
 def load_instance(param, env, instance):
-
-	# # exp 3: ring
-	# num_agents = 2
-	# r = 1.0
-	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
-	# start = np.zeros((num_agents,4))
-	# start[:,0] = r * np.cos(theta)
-	# start[:,1] = r * np.sin(theta)
-	# goal = -start
-
-	# InitialState = namedtuple('InitialState', ['start', 'goal'])
-	# s0 = InitialState._make((start.flatten(), goal.flatten()))
-
-	# param.n_agents = num_agents
-	# env.reset_param(param)
-
-	# env.obstacles = []
-	# # for x in range(-1,8+1):
-	# # 	env.obstacles.append([x,-1])
-	# # 	env.obstacles.append([x,8])
-	# # for y in range(8):
-	# # 	env.obstacles.append([-1,y])
-	# # 	env.obstacles.append([8,y])
-
-	# # print(s0)
-	# return s0
-
 	import yaml
 	if instance:
 		with open(instance) as map_file:
@@ -269,15 +249,14 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		# 'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
-		# 'e2e':torch.load('../results/doubleintegrator/exp1Barrier_0/il_current.pt'),
-		# 'empty':torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt'),
+		'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
+		'e2e':torch.load('../results/doubleintegrator/exp1Barrier_0/il_current.pt'),
+		'empty':torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt'),
 
-		# 'current':torch.load(param.current_model),
 		# 'current':torch.load(param.il_train_model_fn),
 		# 'current_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 		# 'gg': GoToGoalPolicy(param,env),
-		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'zero': Empty_Net_wAPF(param,env,ZeroPolicy(env))
 	}
 
