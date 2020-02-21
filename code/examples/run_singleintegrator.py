@@ -1,3 +1,8 @@
+# We use process parallelism, so multi-threading tends to hurt our performance
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 from param import Param
 from run import run, parse_args
@@ -44,7 +49,7 @@ class SingleIntegratorParam(Param):
 		# safety
 		self.safety = "cf_si_2" # "potential", "fdbk_si", "cf_si"
 		self.default_instance = "map_8by8_obst12_agents8_ex0000.yaml"
-		self.rollout_batch_on = False
+		self.rollout_batch_on = True
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
@@ -70,9 +75,12 @@ class SingleIntegratorParam(Param):
 
 		elif self.safety == "cf_si_2":
 			self.a_max = 0.5	# 0.5
-			self.pi_max = 0.5	# 0.5
-			self.kp = 1.0		# 0.015
+			self.pi_max = 0.8	# 0.5
+			self.kp = 1.5		# 1.0
 			self.cbf_kp = 0.5
+
+			pi_max_thresh = self.kp / (0.2 - self.r_agent) * 0.01 # 0.01 = epsilon
+			print('pi_max_thresh = ',pi_max_thresh)
 
 		elif self.safety == "potential":
 			self.a_max = 0.5
@@ -114,7 +122,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 7000000 # 100000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 40000000 # 100000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -140,7 +148,7 @@ class SingleIntegratorParam(Param):
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 	
 		# learning hyperparameters
-		n,m,h,l,p = 2,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
+		n,m,h,l,p = 2,2,64,16,16 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(2,h),
 			nn.Linear(h,h),
@@ -246,12 +254,13 @@ if __name__ == '__main__':
 
 	controllers = {
 		# exp1 
-		# 'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt')),
+		'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt')),
+		# 'empty': torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt'),
+		# 'empty': torch.load('/home/whoenig/pCloudDrive/caltech/neural_pid_results/exp1/exp1Empty_0/il_current.pt'),
 		# 'barrier': torch.load('../results/singleintegrator/exp1Barrier_0/il_current.pt'),
 		# 
 		# testing
-		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
-		# 'goToGoal': GoToGoalPolicy(param,env),
+		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'current': torch.load(param.il_train_model_fn),
 		# 'currentwapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 	}
@@ -288,5 +297,6 @@ if __name__ == '__main__':
 	# 	model.export_to_onnx("IL")
 
 	else:
+		torch.set_num_threads(1)
 		run(param, env, controllers, s0, args)
 

@@ -14,7 +14,7 @@ plt.rcParams['lines.linewidth'] = 4
 
 # some parameters
 r_comm = 3
-max_neighbors = 5
+max_neighbors = 6
 max_obstacles = 5 
 max_v = 0.5 # 0.5
 
@@ -203,22 +203,10 @@ if __name__ == '__main__':
 
 
 	# -----------------------------------DI----------------------------
-	# head-on
-	start = np.array([
-		[2.,0.0,0,0],
-		[-2.0,0.0,0,0],
-		])
-	goal = np.array([
-		[-2.0,0.0,0,0],
-		[2.0,0.0,0,0],
-		])
-	obstacles = np.array([
-		# [0,0.]
-	])
 
-	# raytheon exp1
+	# exp1: swap
 	# start = np.array([
-	# 	[0.8,0.9,0,0],
+	# 	[0.8,1.2,0,0],
 	# 	[-0.9,-0.5,0,0],
 	# 	])
 	# goal = np.array([
@@ -226,28 +214,66 @@ if __name__ == '__main__':
 	# 	[1.2,0.8,0,0],
 	# 	])
 	# obstacles = np.array([
-	# 	# [0.52,-0.53],
-	# 	# [-0.1,1.12]
+	# 	[ 0.52, -0.53],
+	# 	[ -0.1, 1.12]
 	# ])
 
-	# # exp 3: ring
-	# num_agents = 3
-	# r = 1.0
+	# # exp 2: ring
+	# num_agents = 12
+	# r = 2.0
 	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
 	# start = np.zeros((num_agents,4))
 	# start[:,0] = r * np.cos(theta)
 	# start[:,1] = r * np.sin(theta)
 	# goal = -start
 	# obstacles = np.array([
-	# 	[0,0.0]
+	# 	# [0,0.0]
 	# 	])	
+
+
+	# exp2.5: go to ring from grid
+	# num_agents = 12
+	# r = 2.0
+	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
+	# start = np.zeros((num_agents,4))
+	# start[:,0] = r * np.cos(theta)
+	# start[:,1] = r * np.sin(theta)
+	# goal = -start
+	# n_x = 4
+	# n_y = 3
+	# l_x = (n_x-1)/4
+	# l_y = (n_y-1)/4
+	# temp = np.meshgrid(np.linspace(-l_x,l_x,n_x),np.linspace(-l_y,l_y,n_y))
+	# start[:,0] = temp[0].flatten()
+	# start[:,1] = temp[1].flatten()
+	# obstacles = np.array([
+	# 	# [0,0.0]
+	# 	])	
+
+	# exp3: mean motion planning 
+	# n_agents = 8
+	# nd2 = int(n_agents/2)
+	# start = np.zeros((n_agents,4))
+	# start[0:nd2,0:2] = np.array([
+	# 	[-2.,0.],
+	# 	[-2.,1.],
+	# 	[-1.,1.],
+	# 	[-1.,-1.2],
+	# 	])
+	# start[nd2:,0:2] = -start[0:nd2,0:2]
+	# goal = -start
+	# obstacles = np.array([
+	# 	[0,0.0],
+	# 	[0,1.75],
+	# 	[0,-1.75],
+	# 	])
 
 
 	num_agents = len(start)
 
 	dt = 0.025
 	vel_dt = 2.0
-	ts = np.arange(0,50,dt)
+	ts = np.arange(0,60,dt)
 	result = np.zeros((len(ts), 6 * num_agents))
 	dbg_result = np.zeros((len(ts), 3 * num_agents))
 	for i in range(num_agents):
@@ -265,6 +291,7 @@ if __name__ == '__main__':
 			# apply policy
 			nnexport.nn_reset()
 			
+			relative_neighbors = [] 
 			for j in range(num_agents):
 				if j != i:
 					idxj = j*6
@@ -274,23 +301,36 @@ if __name__ == '__main__':
 					if dist < r_comm:
 						s_j = result[k,idxj:idxj+4]
 						# print(s_j - s_i)
-						nnexport.nn_add_neighbor(s_j - s_i)
+						# print('add n',s_j-s_i)
+						relative_neighbors.append( s_j-s_i)
+
+			if len(relative_neighbors)>max_neighbors:
+				relative_neighbors = sorted(relative_neighbors, key=lambda x: np.linalg.norm(x))
+				relative_neighbors = relative_neighbors[0:max_neighbors]
+
+			for rn in relative_neighbors:
+				nnexport.nn_add_neighbor(rn)
 
 			for o in obstacles:
 				relative_obstacle = o - p_i
 				dist = np.linalg.norm(relative_obstacle)
 				if dist < r_comm:
-					nnexport.nn_add_obstacle(np.concatenate((relative_obstacle, -v_i)))
+					# nnexport.nn_add_obstacle(np.concatenate((relative_obstacle, -v_i)))
+					# print('add o',np.concatenate((relative_obstacle, -v_i)))
+					nnexport.nn_add_obstacle(np.concatenate((relative_obstacle, v_i)))
+					# print('add o',np.concatenate((relative_obstacle, v_i)))
 
 			relative_goal = goal[i] - s_i
 			normg = np.linalg.norm(relative_goal[0:2])
 			if normg > 0:
 				relative_goal[0:2] = relative_goal[0:2] * np.min((r_comm/normg,1))
-			print('relative_goal',relative_goal)
-			print('r_comm',r_comm)
+			# print('relative_goal',relative_goal)
+			# print('r_comm',r_comm)
 
 			# acceleration = nnexport.nn_eval(relative_goal)
 			dbg = nnexport.nn_eval(relative_goal)
+			# print('empty_action: ', dbg[0:2])
+
 			acceleration = np.array(dbg)[0:2]
 			dbg_result[k+1,i*3:(i+1)*3] = np.array(dbg)[2:5]
 			# print(i, acceleration)
@@ -306,6 +346,8 @@ if __name__ == '__main__':
 			result[k+1,idx+2:idx+4] = v 
 
 			result[k+1,idx+4:idx+6] = np.array(acceleration)
+
+	# exit()
 
 	# collision checker
 	for k, t in enumerate(ts):

@@ -362,7 +362,7 @@ class DoubleIntegrator(Env):
 		for i, agent in enumerate(map_data["agents"]):
 			goal = np.array([0.5,0.5,0,0]) + np.array(agent["goal"] + [0,0])
 			distances = np.linalg.norm(data[:,(i*4+1):(i*4+5)] - goal, axis=1)
-			goalIdx = np.argwhere(distances > 0.1)
+			goalIdx = np.argwhere(distances > 0.01)
 			if len(goalIdx) == 0:
 				goalIdx = np.array([0])
 			lastIdx = np.max(goalIdx)
@@ -377,7 +377,7 @@ class DoubleIntegrator(Env):
 		dataset = []
 		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
-		for t in range(50,data.shape[0]-1):
+		for t in range(0,data.shape[0]-1):
 			if t%self.param.training_time_downsample != 0:
 				continue
 
