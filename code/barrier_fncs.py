@@ -232,7 +232,8 @@ class Barrier_Fncs():
 		return adaptive_scaling.unsqueeze(1)
 
 	def torch_get_cf_di_2(self,x,pi,b,P,H):
-		cf_alpha = torch.ones((H.shape[0],1),device=self.device)
+		epsilon = 0.01
+		cf_alpha = torch.ones((H.shape[0],1),device=self.device) - epsilon
 		# print('H',H)
 		if not H.nelement() == 0:
 			minH = torch.min(H,dim=1)[0]
@@ -246,9 +247,9 @@ class Barrier_Fncs():
 			A2 = (torch.bmm(vmk.unsqueeze(1), (pi + self.param.kp*grad_phi_dot).unsqueeze(2)) + \
 				self.param.kp * torch.bmm(grad_phi.unsqueeze(1), v.unsqueeze(2))).squeeze(2)
 
-			idx = minH < self.param.Delta_R
+			idx = minH < self.param.Delta_R / (self.param.r_comm - self.param.r_agent)
 			cf_alpha[idx] = torch.min(\
-				torch.mul(A1[idx],torch.pow(A1[idx] + torch.abs(A2[idx]),-1)),torch.ones(1,device=self.device))
+				torch.mul(A1[idx],torch.pow(A1[idx] + torch.abs(A2[idx]),-1)),torch.ones(1,device=self.device)-epsilon) 
 
 		return cf_alpha 
 
@@ -350,20 +351,23 @@ class Barrier_Fncs():
 		return cf_alpha
 
 	def numpy_get_cf_di_2(self,x,P,H,pi,b):
-		adaptive_scaling = 1.0 
+		epsilon = 0.01
+		adaptive_scaling = 1 - epsilon
 		if not H.size == 0 and np.min(H) < self.param.Delta_R / (self.param.r_comm - self.param.r_agent):
 			grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
-			grad_phi_dot = self.numpy_get_grad_phi_dot(x,P,H) # 1x2		
+			grad_phi_dot = self.numpy_get_grad_phi_dot(x,P,H) # 1x2
 			v = -x[:,3:5]
-			vmk = v + self.param.kp * grad_phi 			
+			vmk = v + self.param.kp * grad_phi
 			A1 = self.param.kp**2 * np.dot(grad_phi,grad_phi.T) + self.param.kv * np.dot( vmk,vmk.T)
 			A2 = np.dot(vmk, (pi + self.param.kp*grad_phi_dot).T) + self.param.kp * np.dot(grad_phi, v.T)
-			adaptive_scaling = np.min((A1/(A1 + np.abs(A2)),1))
+
+			adaptive_scaling = np.min((A1/(A1 + np.abs(A2)),1-epsilon))
+			
 		return adaptive_scaling	
 
 	def numpy_get_cf_si_2(self,x,P,H,pi,b):
 		epsilon = 0.01
-		adaptive_scaling = 1.0 - epsilon
+		adaptive_scaling = 1 - epsilon
 		if not H.size == 0 and np.min(H) < self.param.Delta_R / (self.param.r_comm - self.param.r_agent):
 			grad_phi = self.numpy_get_grad_phi(x,P,H) # 1x2
 			A1 = self.param.kp*np.dot(grad_phi, grad_phi.T)

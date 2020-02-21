@@ -33,7 +33,7 @@ class DoubleIntegratorParam(Param):
 		self.r_agent = 0.15 #0.2
 		self.r_obstacle = 0.5
 		self.v_max = 0.5
-		self.a_max = 7.5 # 7.5
+		self.a_max = 10.0 # 7.5
 		# self.v_max = 100 
 		# self.a_max = 100
 		self.v_min = -1*self.v_max
@@ -41,8 +41,8 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100
-		self.sim_dt = 0.025
+		self.sim_tf = 50 # 0.1
+		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -51,8 +51,8 @@ class DoubleIntegratorParam(Param):
 		self.max_obstacles = 6
 				
 		self.safety = "cf_di_2" # potential, fdbk_di, cf_di, cf_di_2
-		self.rollout_batch_on = True
-		self.default_instance = "map_8by8_obst12_agents32_ex0009.yaml"
+		self.rollout_batch_on = False
+		self.default_instance = "map_8by8_obst12_agents4_ex0009.yaml"
 		self.current_model = 'il_current.pt'
 
 		if self.safety == "fdbk_di":
@@ -67,18 +67,22 @@ class DoubleIntegratorParam(Param):
 			self.sigmoid_scale = 5.0 #0.1 # 0.5 
 			self.kp = 0.01 # 0.01 
 			self.kv = 1.0 # 2.0 
-			self.cbf_kp = 0.5 # 0.5
-			self.cbf_kd = 2.0 # 2.0
+			self.cbf_kp = 0.5 # 0.5 
+			self.cbf_kd = 2.0 # 2.0 
 
 		elif self.safety == "cf_di_2": # 'working di 2' parameters
-			self.pi_max = 0.5 # 0.05 
-			self.kp = 0.005 # 0.01 
-			self.kv = 2.0 # 2.0 
+			self.pi_max = 0.2 # 0.05 
+			self.kp = 0.01 # 0.01 
+			self.kv = 1.0 # 2.0 
 			self.cbf_kp = 0.5 # 0.5
 			self.cbf_kd = 2.0 # 2.0			 
 
-		self.Delta_R = 2*(self.v_max*self.sim_dt + \
-			self.v_max**2 / (2 * self.a_max))
+		self.Delta_R = 2*(0.5*0.05 + 0.05**2/(2*2.0))
+		# ^^ technically incorrect, should be: self.Delta_R = 2*(0.5*0.05 + 0.5**2/(2*2.0))
+		# self.Delta_R = 2*(self.v_max*self.sim_dt + \
+		# 	self.v_max**2 / (2 * self.a_max)) 
+		# self.Delta_R = self.v_max*self.sim_dt + \
+		# 	self.v_max**2 / (2 * self.a_max)
 
 		# obsolete parameters 
 		self.b_gamma = .05 
@@ -177,6 +181,36 @@ class DoubleIntegratorParam(Param):
 
 
 def load_instance(param, env, instance):
+
+	num_agents = 12
+	r = 2.0
+	theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
+	start = np.zeros((num_agents,4))
+	start[:,0] = r * np.cos(theta)
+	start[:,1] = r * np.sin(theta)
+	goal = -start
+
+	# exp3: go to ring from grid
+	# n_x = 4
+	# n_y = 3
+	# l_x = (n_x-1)/4
+	# l_y = (n_y-1)/4
+	# temp = np.meshgrid(np.linspace(-l_x,l_x,n_x),np.linspace(-l_y,l_y,n_y))
+	# start[:,0] = temp[0].flatten()
+	# start[:,1] = temp[1].flatten()
+
+	obstacles = np.array([
+		# [0,0.0]
+		])	
+
+	# obstacles -= [0.5,0.5]
+	InitialState = namedtuple('InitialState', ['start', 'goal'])
+	s0 = InitialState._make((start.flatten(), goal.flatten()))
+	param.n_agents = start.shape[0]
+	env.reset_param(param)
+	env.obstacles = obstacles
+	return s0 
+
 	import yaml
 	if instance:
 		with open(instance) as map_file:
@@ -250,14 +284,14 @@ if __name__ == '__main__':
 		exit()
 
 	controllers = {
-		'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
+		# 'emptywapf': Empty_Net_wAPF(param,env,torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt')),
 		'e2e':torch.load('../results/doubleintegrator/exp1Barrier_0/il_current.pt'),
-		'empty':torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt'),
+		# 'empty':torch.load('../results/doubleintegrator/exp1Empty_0/il_current.pt'),
 
 		# 'current':torch.load(param.il_train_model_fn),
 		# 'current_wapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 		# 'gg': GoToGoalPolicy(param,env),
-		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'zero': Empty_Net_wAPF(param,env,ZeroPolicy(env))
 	}
 
@@ -291,7 +325,11 @@ if __name__ == '__main__':
 	elif args.export:
 		# model = torch.load('/home/whoenig/pCloudDrive/caltech/neural_pid_results/doubleintegrator/il_current.pt')
 		# change path 
-		model = torch.load('/home/ben/pCloudDrive/arcl/neural_pid/results/neural_pid_results/doubleintegrator/il_current.pt')
+		# model = torch.load('/home/ben/pCloudDrive/arcl/neural_pid/results/neural_pid_results/doubleintegrator/il_current.pt')
+		# model = torch.load('/home/ben/projects/caltech/neural-pid/results/doubleintegrator/exp1Empty_0/il_current.pt')
+		model = torch.load('/home/ben/projects/caltech/neural-pid/results/doubleintegrator/exp1Barrier_0/il_current.pt')
+		# model = torch.load('/home/ben/pCloudDrive/arcl/neural_pid/results/neural_pid_results/di_investigation/40m_cf_2/exp1Empty_0/il_current.pt')
+		# model = torch.load('/home/ben/pCloudDrive/arcl/neural_pid/results/neural_pid_results/di_investigation/40m_comp_filter/empty.pt')
 		model.export_to_onnx("IL")
 
 	else:
