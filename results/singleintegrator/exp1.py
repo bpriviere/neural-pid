@@ -211,7 +211,7 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
   first_training = True
-  for i in range(0,1):
+  for i in range(0,5):
       # train policy
       param = run_singleintegrator.SingleIntegratorParam()
       env = SingleIntegrator(param)
