@@ -52,8 +52,11 @@ if __name__ == "__main__":
   else:
     device = torch.device('cpu')
 
-  agents_lst = [2,4,8,16,32,64]
-  obst_lst = [6,12]
+  agents_lst = [2,4,8,16,32]#,64]
+  obst_lst = [6,12]#,12]
+
+  # agents_lst = [2,4,8,16,32]
+  # obst_lst = [12]
 
   if args.plot:
     plt.rcParams.update({'font.size': 14})
@@ -88,16 +91,27 @@ if __name__ == "__main__":
         else:
           result_by_instance[instance] = [result]
 
+      for instance, results in result_by_instance.items():
+        results_by_solver = dict()
+        for r in results:
+          results_by_solver[r["solver"]] = r
+
+        if results_by_solver['End-to-end GTL']["percent_agents_success"] < results_by_solver["Two-stage GTL"]["percent_agents_success"]:
+          print(instance, results_by_solver['End-to-end GTL']["percent_agents_success"], results_by_solver["Two-stage GTL"]["percent_agents_success"])
+
       # create plots
       add_line_plot_agg(None, result_by_instance, "percent_agents_success",
         ax=axs[0, column])
-      # add_line_plot_agg(None, result_by_instance, "control_effort_mean",
-        # ax=axs[1, column], aggregrate_successful_agent=False)
-      add_line_plot_agg(None, result_by_instance, "control_effort",
-        ax=axs[1, column], aggregrate_successful_agent=True)
+      add_line_plot_agg(None, result_by_instance, "control_effort_mean",
+        ax=axs[1, column], aggregrate_successful_agent=False)
+      # add_line_plot_agg(None, result_by_instance, "control_effort",
+        # ax=axs[1, column], aggregrate_successful_agent=True)
       add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
     
     pp.close()
+
+
+
     
     pp = PdfPages("exp1_si.pdf")
 
@@ -176,7 +190,7 @@ if __name__ == "__main__":
 
     # state space plot
     pp = PdfPages("exp1_statespace_si.pdf")
-    instance = "map_8by8_obst6_agents8_ex0000"
+    instance = "map_8by8_obst12_agents2_ex0006"
     map_filename = "singleintegrator/instances/{}.yaml".format(instance)
     with open(map_filename) as map_file:
       map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
@@ -231,6 +245,7 @@ if __name__ == "__main__":
         controller1 = "exp1Empty_{0},EmptyAPF,../results/singleintegrator/exp1Empty_{0}/il_current.pt".format(i)
         controller2 = "exp1Barrier_{0},torch,../results/singleintegrator/exp1Barrier_{0}/il_current.pt".format(i)
         rolloutargs = "--controller {} --controller {}".format(controller1, controller2)
+        # rolloutargs = "--controller {}".format(controller2)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=cpu_count()) as executor:
           for _ in executor.map(rollout_instance, instances, repeat(rolloutargs)):
