@@ -1,3 +1,8 @@
+# We use process parallelism, so multi-threading tends to hurt our performance
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 from param import Param
 from run import run, parse_args
@@ -44,7 +49,7 @@ class SingleIntegratorParam(Param):
 		# safety
 		self.safety = "cf_si_2" # "potential", "fdbk_si", "cf_si"
 		self.default_instance = "map_8by8_obst12_agents8_ex0000.yaml"
-		self.rollout_batch_on = False
+		self.rollout_batch_on = True
 
 		self.max_neighbors = 6
 		self.max_obstacles = 6
@@ -70,9 +75,12 @@ class SingleIntegratorParam(Param):
 
 		elif self.safety == "cf_si_2":
 			self.a_max = 0.5	# 0.5
-			self.pi_max = 0.5	# 0.5
-			self.kp = 1.0		# 0.015
+			self.pi_max = 0.8	# 0.5
+			self.kp = 1.5		# 1.0
 			self.cbf_kp = 0.5
+
+			pi_max_thresh = self.kp / (0.2 - self.r_agent) * 0.01 # 0.01 = epsilon
+			print('pi_max_thresh = ',pi_max_thresh)
 
 		elif self.safety == "potential":
 			self.a_max = 0.5
@@ -113,7 +121,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 7000000 # 100000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 10000000000000 # 100000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -286,5 +294,6 @@ if __name__ == '__main__':
 	# 	model.export_to_onnx("IL")
 
 	else:
+		torch.set_num_threads(1)
 		run(param, env, controllers, s0, args)
 
