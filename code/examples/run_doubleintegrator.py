@@ -41,7 +41,7 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 50 # 0.1
+		self.sim_tf = 100 
 		self.sim_dt = 0.01
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
@@ -51,7 +51,7 @@ class DoubleIntegratorParam(Param):
 		self.max_obstacles = 6
 				
 		self.safety = "cf_di_2" # potential, fdbk_di, cf_di, cf_di_2
-		self.rollout_batch_on = False
+		self.rollout_batch_on = True
 		self.default_instance = "map_8by8_obst12_agents4_ex0009.yaml"
 		self.current_model = 'il_current.pt'
 
@@ -71,14 +71,13 @@ class DoubleIntegratorParam(Param):
 			self.cbf_kd = 2.0 # 2.0 
 
 		elif self.safety == "cf_di_2": # 'working di 2' parameters
-			self.pi_max = 0.2 # 0.05 
-			self.kp = 0.01 # 0.01 
+			self.pi_max = 3.0 # 0.05 
+			self.kp = 0.05 # 0.01 
 			self.kv = 1.0 # 2.0 
 			self.cbf_kp = 0.5 # 0.5
 			self.cbf_kd = 2.0 # 2.0			 
 
-		self.Delta_R = 2*(0.5*0.05 + 0.05**2/(2*2.0))
-		# ^^ technically incorrect, should be: self.Delta_R = 2*(0.5*0.05 + 0.5**2/(2*2.0))
+		self.Delta_R = 2*(0.5*0.05 + 0.5**2/(2*2.0))
 		# self.Delta_R = 2*(self.v_max*self.sim_dt + \
 		# 	self.v_max**2 / (2 * self.a_max)) 
 		# self.Delta_R = self.v_max*self.sim_dt + \
@@ -148,7 +147,7 @@ class DoubleIntegratorParam(Param):
 		# self.il_adaptive_model_fn = '../models/singleintegrator/adaptive.pt'
 
 		# learning hyperparameters
-		n,m,h,l,p = 4,2,64,16,16 # state dim, action dim, hidden layer, output phi, output rho
+		n,m,h,l,p = 4,2,128,32,32 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(4,h),
 			nn.Linear(h,h),
@@ -182,34 +181,34 @@ class DoubleIntegratorParam(Param):
 
 def load_instance(param, env, instance):
 
-	num_agents = 12
-	r = 2.0
-	theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
-	start = np.zeros((num_agents,4))
-	start[:,0] = r * np.cos(theta)
-	start[:,1] = r * np.sin(theta)
-	goal = -start
+	# num_agents = 12
+	# r = 2.0
+	# theta = np.linspace(0, 2*np.pi, num_agents, endpoint=False)
+	# start = np.zeros((num_agents,4))
+	# start[:,0] = r * np.cos(theta)
+	# start[:,1] = r * np.sin(theta)
+	# goal = -start
 
-	# exp3: go to ring from grid
-	# n_x = 4
-	# n_y = 3
-	# l_x = (n_x-1)/4
-	# l_y = (n_y-1)/4
-	# temp = np.meshgrid(np.linspace(-l_x,l_x,n_x),np.linspace(-l_y,l_y,n_y))
-	# start[:,0] = temp[0].flatten()
-	# start[:,1] = temp[1].flatten()
+	# # exp3: go to ring from grid
+	# # n_x = 4
+	# # n_y = 3
+	# # l_x = (n_x-1)/4
+	# # l_y = (n_y-1)/4
+	# # temp = np.meshgrid(np.linspace(-l_x,l_x,n_x),np.linspace(-l_y,l_y,n_y))
+	# # start[:,0] = temp[0].flatten()
+	# # start[:,1] = temp[1].flatten()
 
-	obstacles = np.array([
-		# [0,0.0]
-		])	
+	# obstacles = np.array([
+	# 	# [0,0.0]
+	# 	])	
 
-	# obstacles -= [0.5,0.5]
-	InitialState = namedtuple('InitialState', ['start', 'goal'])
-	s0 = InitialState._make((start.flatten(), goal.flatten()))
-	param.n_agents = start.shape[0]
-	env.reset_param(param)
-	env.obstacles = obstacles
-	return s0 
+	# # obstacles -= [0.5,0.5]
+	# InitialState = namedtuple('InitialState', ['start', 'goal'])
+	# s0 = InitialState._make((start.flatten(), goal.flatten()))
+	# param.n_agents = start.shape[0]
+	# env.reset_param(param)
+	# env.obstacles = obstacles
+	# return s0 
 
 	import yaml
 	if instance:
