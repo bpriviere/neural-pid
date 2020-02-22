@@ -1,3 +1,8 @@
+# # We use process parallelism, so multi-threading tends to hurt our performance
+# import os
+# os.environ["OMP_NUM_THREADS"] = "1"
+# os.environ["MKL_NUM_THREADS"] = "1"
+# os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 from param import Param
 from run import run, parse_args
@@ -33,7 +38,7 @@ class DoubleIntegratorParam(Param):
 		self.r_agent = 0.15 #0.2
 		self.r_obstacle = 0.5
 		self.v_max = 0.5
-		self.a_max = 10.0 # 7.5
+		self.a_max = 2.0 # 7.5
 		# self.v_max = 100 
 		# self.a_max = 100
 		self.v_min = -1*self.v_max
@@ -41,8 +46,8 @@ class DoubleIntegratorParam(Param):
 
 		# sim 
 		self.sim_t0 = 0
-		self.sim_tf = 100 
-		self.sim_dt = 0.01
+		self.sim_tf = 100 # 0.1
+		self.sim_dt = 0.05
 		self.sim_times = np.arange(self.sim_t0,self.sim_tf,self.sim_dt)
 		self.sim_nt = len(self.sim_times)
 		self.plots_fn = 'plots.pdf'
@@ -71,15 +76,15 @@ class DoubleIntegratorParam(Param):
 			self.cbf_kd = 2.0 # 2.0 
 
 		elif self.safety == "cf_di_2": # 'working di 2' parameters
-			self.pi_max = 3.0 # 0.05 
-			self.kp = 0.05 # 0.01 
+			self.pi_max = 1.5 # 0.05 
+			self.kp = 0.025 # 0.01 
 			self.kv = 1.0 # 2.0 
 			self.cbf_kp = 0.5 # 0.5
 			self.cbf_kd = 2.0 # 2.0			 
 
 		self.Delta_R = 2*(0.5*0.05 + 0.5**2/(2*2.0))
 		# self.Delta_R = 2*(self.v_max*self.sim_dt + \
-		# 	self.v_max**2 / (2 * self.a_max)) 
+			# self.v_max**2 / (2 * self.a_max))
 		# self.Delta_R = self.v_max*self.sim_dt + \
 		# 	self.v_max**2 / (2 * self.a_max)
 
@@ -92,7 +97,7 @@ class DoubleIntegratorParam(Param):
 		self.circle_obstacles_on = True # square obstacles batch not implemented		
 
 		# IL
-		self.il_load_loader_on = True
+		self.il_load_loader_on = False
 		self.training_time_downsample = 50 #10
 		self.il_train_model_fn = '../models/doubleintegrator/il_current.pt'
 		self.il_imitate_model_fn = '../models/doubleintegrator/rl_current.pt'
@@ -110,7 +115,7 @@ class DoubleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 7000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 20000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -147,7 +152,7 @@ class DoubleIntegratorParam(Param):
 		# self.il_adaptive_model_fn = '../models/singleintegrator/adaptive.pt'
 
 		# learning hyperparameters
-		n,m,h,l,p = 4,2,128,32,32 # state dim, action dim, hidden layer, output phi, output rho
+		n,m,h,l,p = 4,2,64,16,16 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(4,h),
 			nn.Linear(h,h),
