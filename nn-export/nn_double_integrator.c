@@ -25,14 +25,14 @@ static float barrier_grad_phi[2];
 static float barrier_grad_phi_dot[2];
 static float minp;
 // static bool barrier_alpha_condition;
-static const float deltaR = 2*(0.5*0.05 + 0.05*0.05/(2*2.0));
+static const float deltaR = 2*(0.5*0.05 + 0.5*0.5/(2*2.0));
 static const float Rsense = 3.0;
 // static const float barrier_gamma = 0.01;//0.005;
-static const float barrier_kp = 0.01;//0.005;
+static const float barrier_kp = 0.025;//0.005;
 static const float barrier_kv = 1.0;//0.005;
 // static const float barrier_kh = 0.5; 
 static const float epsilon = 0.01;
-static const float pi_max = 0.2;
+static const float pi_max = 1.5;
 
 static float relu(float num) {
 	if (num > 0) {
@@ -130,7 +130,8 @@ void nn_add_neighbor(const float input[4])
 	const float dist = sqrtf(powf(input[0], 2) + powf(input[1], 2)) - robot_radius;
 
 	if (dist > Rsafe) {
-		const float denominator = dist * (dist - Rsafe) / (Rsense - Rsafe);
+		const float h = (dist - Rsafe) / (Rsense - Rsafe);
+		const float denominator = dist * (dist - Rsafe);
 		// compute vector to the closest contact point
 		float x = input[0] * (1 - robot_radius / (dist+robot_radius));
 		float y = input[1] * (1 - robot_radius / (dist+robot_radius));
@@ -145,6 +146,14 @@ void nn_add_neighbor(const float input[4])
 
 		barrier_grad_phi_dot[0] += input[2]/d1 - x*ptv/d2 - x*ptv/d3;
 		barrier_grad_phi_dot[1] += input[3]/d1 - y*ptv/d2 - y*ptv/d3;
+
+		printf("h = {%f}\n",h);
+		printf("p = {%f,%f}\n",x,y);
+		printf("v_rel = {%f,%f}\n",input[2],input[3]);
+
+
+		printf("barrier_grad_phi = {%f,%f}\n",barrier_grad_phi[0],barrier_grad_phi[1]);
+		printf("barrier_grad_phi_dot = {%f,%f}\n",barrier_grad_phi_dot[0],barrier_grad_phi_dot[1]);
 
 		// if (dist < Rsafe + deltaR) {
 		// 	barrier_alpha_condition = true;
@@ -172,9 +181,10 @@ void nn_add_obstacle(const float input[4])
 	const float dist = sqrtf(powf(closest_x, 2) + powf(closest_y, 2));
 
 	if (dist > Rsafe) {
-		const float denominator = dist * (dist - Rsafe) / (Rsense - Rsafe);
-		barrier_grad_phi[0] += closest_x / denominator;
-		barrier_grad_phi[1] += closest_y / denominator;
+		const float h = (dist - Rsafe) / (Rsense - Rsafe);
+		const float denominator = dist * (dist - Rsafe);
+		barrier_grad_phi[0] += (closest_x / denominator);
+		barrier_grad_phi[1] += (closest_y / denominator);
 
 		const float ptv = closest_x*input[2] + closest_y*input[3];
 		const float d1 = dist*(dist - Rsafe);
@@ -183,6 +193,12 @@ void nn_add_obstacle(const float input[4])
 
 		barrier_grad_phi_dot[0] += input[2]/d1 - closest_x*ptv/d2 - closest_x*ptv/d3;
 		barrier_grad_phi_dot[1] += input[3]/d1 - closest_y*ptv/d2 - closest_y*ptv/d3;
+
+		// printf("h = {%f}\n",h);
+		// printf("p = {%f,%f}\n",closest_x,closest_y);		
+
+		// printf("barrier_grad_phi = {%f,%f}\n",barrier_grad_phi[0],barrier_grad_phi[1]);
+		// printf("barrier_grad_phi_dot = {%f,%f}\n",barrier_grad_phi_dot[0],barrier_grad_phi_dot[1]);
 
 		// if (dist < Rsafe + deltaR) {
 		// 	barrier_alpha_condition = true;
@@ -220,6 +236,7 @@ const float* nn_eval(const float goal[4])
 
 	// 
 	float pi[2] = {empty[0],empty[1]};
+	// float pi[2] = {-0.10127574 ,-0.07786834};
 	float u[2] = {0,0};
 
 	// Scale empty to pi_max:
@@ -269,9 +286,9 @@ const float* nn_eval(const float goal[4])
 	}
 
 	// Composite Control Law (temp1 = pi -> temp1 = u)
-	// alpha = 1.;
-	// b[0] = 0.;
-	// b[1] = 0.;
+	alpha = 1.;
+	b[0] = 0.;
+	b[1] = 0.;
 
 	u[0] = (1. - alpha) * b[0] + alpha * pi[0];
 	u[1] = (1. - alpha) * b[1] + alpha * pi[1];
@@ -286,11 +303,11 @@ const float* nn_eval(const float goal[4])
 	u[1] *= alpha2;
 
 	// fprintf('alpha,minp,b,pi');
-	// printf("alpha = %f\n",alpha);
+	printf("alpha = %f\n",alpha);
 	// printf("minp = %f\n",minp);
-	// printf("b = {%f,%f}\n",b[0],b[1]);
-	// printf("pi = {%f,%f}\n",pi[0],pi[1]);
-	// printf("u = {%f,%f}\n",u[0],u[1]);
+	printf("b = {%f,%f}\n",b[0],b[1]);
+	printf("pi = {%f,%f}\n",pi[0],pi[1]);
+	printf("u = {%f,%f}\n",u[0],u[1]);
 
 	memcpy(temp_dbg, u, 2 * sizeof(float));
 	temp_dbg[2] = alpha;
