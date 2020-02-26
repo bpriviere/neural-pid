@@ -121,7 +121,7 @@ class SingleIntegratorParam(Param):
 		
 		self.datadict = dict()
 		# self.datadict["4"] = 10000 #self.il_n_data
-		self.datadict["obst"] = 10000000000000 # 100000000000 #10000000 #750000 #self.il_n_data
+		self.datadict["obst"] = 40000000 # 100000000000 #10000000 #750000 #self.il_n_data
 		# self.datadict["10"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["15"] = 10000000 #250000 #self.il_n_data
 		# self.datadict["012"] = 1000000 #250000 #self.il_n_data
@@ -147,7 +147,7 @@ class SingleIntegratorParam(Param):
 		self.sim_il_model_fn = '../models/singleintegrator/il_current.pt'
 	
 		# learning hyperparameters
-		n,m,h,l,p = 2,2,32,8,8 # state dim, action dim, hidden layer, output phi, output rho
+		n,m,h,l,p = 2,2,64,16,16 # state dim, action dim, hidden layer, output phi, output rho
 		self.il_phi_network_architecture = nn.ModuleList([
 			nn.Linear(2,h),
 			nn.Linear(h,h),
@@ -253,11 +253,13 @@ if __name__ == '__main__':
 
 	controllers = {
 		# exp1 
-		# 'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt')),
+		'empty': Empty_Net_wAPF(param,env,torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt')),
+		# 'empty': torch.load('../results/singleintegrator/exp1Empty_0/il_current.pt'),
+		# 'empty': torch.load('/home/whoenig/pCloudDrive/caltech/neural_pid_results/exp1/exp1Empty_0/il_current.pt'),
 		# 'barrier': torch.load('../results/singleintegrator/exp1Barrier_0/il_current.pt'),
 		# 
 		# testing
-		'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
+		# 'apf': Empty_Net_wAPF(param,env,GoToGoalPolicy(param,env)),
 		# 'current': torch.load(param.il_train_model_fn),
 		# 'currentwapf': Empty_Net_wAPF(param,env,torch.load(param.il_train_model_fn)),
 	}

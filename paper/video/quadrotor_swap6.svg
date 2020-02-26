@@ -16,8 +16,8 @@
    id="svg3583"
    version="1.1"
    inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
-   sodipodi:docname="quadrotor_corridor_swapping.svg"
-   inkscape:export-filename="/home/whoenig/projects/caltech/neural-pid/paper/video/quadrotor_corridor_swapping.svg.png"
+   sodipodi:docname="quadrotor_swap6.svg"
+   inkscape:export-filename="/home/whoenig/projects/caltech/neural-pid/paper/video/quadrotor_swap6.svg.png"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96">
   <defs
@@ -97,11 +97,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.36918541"
-     inkscape:cx="1123.8959"
-     inkscape:cy="522.44248"
+     inkscape:zoom="0.4405278"
+     inkscape:cx="561.31834"
+     inkscape:cy="441.01905"
      inkscape:document-units="px"
-     inkscape:current-layer="g56-8"
+     inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="1850"
      inkscape:window-height="1016"
@@ -137,30 +137,31 @@
          y="206.37434"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';fill:#ffffff" /></text>
     <g
+       transform="translate(-5.9868761,-6.5656111)"
        id="g56">
       <rect
          ry="10.7082"
          y="21.892576"
          x="16.358034"
          height="72.722168"
-         width="1692.0795"
-         id="rect865"
+         width="1406.059"
+         id="rect865-0"
          style="opacity:0.5;fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-width:1.88976383;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <text
-         id="text3466"
+         id="text3466-2"
          y="75.35405"
-         x="857.85608"
-         style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;"
+         x="725.85608"
+         style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1"
          xml:space="preserve"><tspan
-           id="tspan927"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1;"
+           id="tspan927-8"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-opacity:1"
            y="75.35405"
-           x="866.34564"
-           sodipodi:role="line">5. Deploy: Two robots swapping positions with narrow corridor </tspan></text>
+           x="734.3457"
+           sodipodi:role="line">5. Deploy: Six robots navigating an obstacle course  </tspan></text>
     </g>
     <g
        id="g51"
-       transform="translate(0,4.8381348)">
+       transform="translate(-5.9868761,-1.7274711)">
       <rect
          ry="10.7082"
          y="17.054502"
@@ -181,8 +182,5 @@
            x="1853.6031"
            sodipodi:role="line">2x</tspan></text>
     </g>
-    <g
-       transform="translate(93.76135,972.99035)"
-       id="g56-8" />
   </g>
 </svg>

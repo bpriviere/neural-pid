@@ -357,7 +357,7 @@ class SingleIntegrator(Env):
 		dataset = []
 		# Observation_Action_Pair = namedtuple('Observation_Action_Pair', ['observation', 'action']) 
 		# Observation = namedtuple('Observation',['relative_goal','time_to_goal','relative_neighbors','relative_obstacles']) 
-		for t in range(50,data.shape[0]-1):
+		for t in range(0,data.shape[0]-1):
 			if t%self.param.training_time_downsample != 0:
 				continue
 

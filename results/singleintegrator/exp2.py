@@ -52,7 +52,7 @@ if __name__ == "__main__":
   agents_lst = [4, 8, 16]
   obst_lst = [6,12]
   radii = [1,2,3,4,6,8]
-  training_data = [30000, 300000, 3000000]
+  # training_data = [30000, 300000, 3000000]
   training_data = [30000, 300000, 3000000, 30000000]
 
   if args.plot:
@@ -76,13 +76,13 @@ if __name__ == "__main__":
               map_filename = "singleintegrator/instances/{}.yaml".format(instance)
               result = stats.stats(map_filename, file)
               if td == 30000:
-                result["solver"] = "|D| = 30k"
+                result["solver"] = "|D| = 30 k"
               elif td == 300000:
-                result["solver"] = "|D| = 300k"
+                result["solver"] = "|D| = 300 k"
               elif td == 3000000:
-                result["solver"] = "|D| = 3M"
+                result["solver"] = "|D| = 3 M"
               elif td == 30000000:
-                result["solver"] = "|D| = 30M"
+                result["solver"] = "|D| = 30 M"
               else:
                 result["solver"] = "Empty{}".format(td)
               result["Rsense"] = r
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     pp = PdfPages("exp2.pdf")
 
     for column in range(0, 2):
-      axs[0,column].set_xlabel("$R_{sense}$ [m]")
+      axs[0,column].set_xlabel("$r_{sense}$ [m]")
     
     axs[0,0].set_ylabel("robot success [%]")
     axs[0,0].set_ylim([25,105])
@@ -147,7 +147,7 @@ if __name__ == "__main__":
   instances = sorted(datadir)
 
 
-  for i in range(0,1):
+  for i in range(3,5):
     # train policy
     for r in radii:
       for td in training_data:
