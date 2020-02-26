@@ -14,8 +14,11 @@
    height="1080px"
    id="svg3583"
    version="1.1"
-   inkscape:version="0.92.3 (2405546, 2018-03-11)"
-   sodipodi:docname="step2_observations.svg">
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
+   sodipodi:docname="step2_observations.svg"
+   inkscape:export-filename="/home/whoenig/projects/caltech/neural-pid/paper/video/step2_observations.svg.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96">
   <defs
      id="defs3585">
     <marker
@@ -146,15 +149,15 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.49161708"
-     inkscape:cx="759.77975"
-     inkscape:cy="428.73993"
+     inkscape:zoom="0.34762577"
+     inkscape:cx="617.85001"
+     inkscape:cy="356.93407"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1853"
-     inkscape:window-height="1145"
-     inkscape:window-x="67"
+     inkscape:window-width="1850"
+     inkscape:window-height="1016"
+     inkscape:window-x="70"
      inkscape:window-y="27"
      inkscape:window-maximized="1" />
   <metadata
@@ -184,20 +187,27 @@
          x="639.45612"
          y="206.37434"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:60px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';fill:#ffffff" /></text>
+    <rect
+       style="fill:#ffffff;stroke-linecap:butt;stroke-linejoin:round"
+       id="rect8002"
+       width="1928.1582"
+       height="1087.4154"
+       x="-1.948208"
+       y="1.3230761" />
     <text
        xml:space="preserve"
-       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none"
-       x="617.10205"
-       y="1056.6968"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-linecap:butt;stroke-linejoin:round"
+       x="648.08881"
+       y="61.373562"
        id="text3466"><tspan
          sodipodi:role="line"
-         x="617.10205"
-         y="1056.6968"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#ffffff"
+         x="648.08881"
+         y="61.373562"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';text-align:center;text-anchor:middle;fill:#000000;stroke-linecap:butt;stroke-linejoin:round"
          id="tspan927">2. We extract <tspan
-   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum Bold'"
+   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum Bold';fill:#000000;stroke-linecap:butt;stroke-linejoin:round"
    id="tspan850">local observations <tspan
-   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';stroke-linecap:butt;stroke-linejoin:round"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum';fill:#000000;stroke-linecap:butt;stroke-linejoin:round"
    id="tspan1694">and </tspan>actions</tspan></tspan></text>
   </g>
 </svg>

@@ -117,9 +117,9 @@ def get_observations(map_data, data, sampling = 100, Robs = 3, max_neighbors = 5
 		kd_tree_neighbors = spatial.KDTree(positions)
 
 		for i in range(num_agents):
-			# skip datapoints where agents are just sitting at goal
-			if i in reached_goal:
-				continue
+			# # skip datapoints where agents are just sitting at goal
+			# if i in reached_goal:
+			# 	continue
 
 			s_i = data[t,i*4+1:i*4+3]   # state i 
 			# s_g = data[-1,i*4+1:i*4+5]  # goal state i 

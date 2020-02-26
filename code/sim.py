@@ -36,7 +36,7 @@ def run_sim(param, env, controller, initial_state, name=None):
 		actions[step] = action.flatten()
 		observations.append(observation)
 
-		if done:
+		if done:# or r < 0:
 			break
 
 	print('reward: ',reward, name)

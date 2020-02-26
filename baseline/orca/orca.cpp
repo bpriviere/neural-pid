@@ -19,7 +19,7 @@ std::vector<RVO::Vector2> goals;
 void setupScenario(RVO::RVOSimulator *sim, const std::string& inputFile, float Rsense, float robotRadius)
 {
   /* Specify the global time step of the simulation. */
-  sim->setTimeStep(0.05f);
+  sim->setTimeStep(0.025f);
 
   /* Specify the default parameters for agents that are subsequently added. */
   sim->setAgentDefaults(

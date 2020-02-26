@@ -64,10 +64,10 @@ if __name__ == "__main__":
 
     solvers = {
       # 'central': 'Global',
-      #'orcaR3': 'ORCA',
-      'apf': 'Barrier',
-      'exp1Empty': 'Two-stage GTL',
-      'exp1Barrier': 'End-to-end GTL',
+      'orcaR3': 'ORCA',
+      'apf': 'GLAS Barrier',
+      'exp1Empty': 'GLAS Two-stage',
+      'exp1Barrier': 'GLAS End-to-end',
     }
 
     # default fig size is [6.4, 4.8]
@@ -96,16 +96,16 @@ if __name__ == "__main__":
         for r in results:
           results_by_solver[r["solver"]] = r
 
-        if results_by_solver['End-to-end GTL']["percent_agents_success"] < results_by_solver["Two-stage GTL"]["percent_agents_success"]:
-          print(instance, results_by_solver['End-to-end GTL']["percent_agents_success"], results_by_solver["Two-stage GTL"]["percent_agents_success"])
+        if results_by_solver['GLAS End-to-end']["percent_agents_success"] < results_by_solver["GLAS Two-stage"]["percent_agents_success"]:
+          print(instance, results_by_solver['GLAS End-to-end']["percent_agents_success"], results_by_solver["GLAS Two-stage"]["percent_agents_success"])
 
       # create plots
       add_line_plot_agg(None, result_by_instance, "percent_agents_success",
         ax=axs[0, column])
-      add_line_plot_agg(None, result_by_instance, "control_effort_mean",
-        ax=axs[1, column], aggregrate_successful_agent=False)
-      # add_line_plot_agg(None, result_by_instance, "control_effort",
-        # ax=axs[1, column], aggregrate_successful_agent=True)
+      #add_line_plot_agg(None, result_by_instance, "control_effort_mean",
+      #  ax=axs[1, column], aggregrate_successful_agent=False)
+      add_line_plot_agg(None, result_by_instance, "control_effort",
+        ax=axs[1, column], aggregrate_successful_agent=True)
       add_scatter(pp, result_by_instance, "num_collisions", "# collisions")
     
     pp.close()

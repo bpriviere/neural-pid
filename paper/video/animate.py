@@ -14,7 +14,7 @@ plt.rcParams['lines.linewidth'] = 4
 
 
 class Animation:
-	def __init__(self, instance, schedule):
+	def __init__(self, instance, schedule, duration):
 
 		with open(instance) as map_file:
 			map_data = yaml.load(map_file, Loader=yaml.SafeLoader)
@@ -61,9 +61,14 @@ class Animation:
 			self.ax.add_patch(self.robots[-1])
 			self.ax.add_patch(Rectangle(goal + np.array([0.3,0.3]), 0.4, 0.4, alpha=0.5, color=color))
 
+		if duration < 0:
+			duration = int(self.data[-1,0])
+		else:
+			duration = int(duration)
+
 		self.anim = animation.FuncAnimation(self.fig, self.animate_func,
 															 init_func=self.init_func,
-															 frames=int(self.data[-1,0]) * 10,
+															 frames=duration * 10,
 															 interval=100,
 															 blit=True)
 
@@ -88,7 +93,7 @@ class Animation:
 		# return self.patches + self.artists
 
 	def animate_func(self, i):
-		idx = i * int(0.1 / self.dt)
+		idx = min(i * int(0.1 / self.dt), self.data.shape[0] - 1)
 		for k in range(self.num_agents):
 			self.robots[k].center = self.data[idx,1+4*k+0:1+4*k+2]
 
@@ -101,6 +106,7 @@ if __name__ == "__main__":
 	parser.add_argument("schedule", help="input file containing trajectories (npy)")
 	parser.add_argument('--video', dest='video', default=None, help="output video file (or leave empty to show on screen)")
 	parser.add_argument("--speed", type=int, default=1, help="speedup-factor")
+	parser.add_argument("--duration", type=float, default=-1, help="duration of video")
 	args = parser.parse_args()
 
 	import sys
@@ -110,7 +116,7 @@ if __name__ == "__main__":
 	results = stats.stats(args.instance, args.schedule)
 	print(args.schedule, results["percent_agents_success"])
 
-	animation = Animation(args.instance, args.schedule)
+	animation = Animation(args.instance, args.schedule, args.duration)
 
 	if args.video:
 		animation.save(args.video, args.speed)
