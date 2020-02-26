@@ -163,7 +163,7 @@ if __name__ == '__main__':
 	env = SingleIntegrator(param)
 
 	if args.barrier:
-		policy_fn = '../results/singleintegrator/exp1Barrier_3/il_current.pt'
+		policy_fn = '../results/singleintegrator/exp1Barrier_0/il_current.pt'
 		policy = torch.load(policy_fn)
 	elif args.empty:
 		policy_fn = '../models/singleintegrator/empty.pt'

@@ -16,9 +16,9 @@ static float deepset_sum_obstacle[16];
 
 // static const float b_gamma = 0.1;
 // static const float b_exph = 1.0;
-static const float robot_radius = 0.15; // m
-static const float max_v = 0.5; //0.5; // m/s
-static const float max_a = 2.0;
+static float robot_radius = 0.15; // m
+static float max_v = 0.5; //0.5; // m/s
+static float max_a = 2.0;
 
 // Barrier stuff
 static float barrier_grad_phi[2];
@@ -177,6 +177,10 @@ void nn_add_obstacle(const float input[4])
 	float closest_x = clip(0, input[0] - 0.5f, input[0] + 0.5f);
 	float closest_y = clip(0, input[1] - 0.5f, input[1] + 0.5f);
 
+	// hack to fix sign inconsistency in learned policy
+	float v_x = -input[2];
+	float v_y = -input[3];
+
 	const float Rsafe = robot_radius;
 	const float dist = sqrtf(powf(closest_x, 2) + powf(closest_y, 2));
 
@@ -186,13 +190,13 @@ void nn_add_obstacle(const float input[4])
 		barrier_grad_phi[0] += (closest_x / denominator);
 		barrier_grad_phi[1] += (closest_y / denominator);
 
-		const float ptv = closest_x*input[2] + closest_y*input[3];
+		const float ptv = closest_x*v_x + closest_y*v_y;
 		const float d1 = dist*(dist - Rsafe);
 		const float d2 = powf(dist,3)*(dist - Rsafe);
 		const float d3 = powf(dist,2)*powf(dist - Rsafe,2);
 
-		barrier_grad_phi_dot[0] += input[2]/d1 - closest_x*ptv/d2 - closest_x*ptv/d3;
-		barrier_grad_phi_dot[1] += input[3]/d1 - closest_y*ptv/d2 - closest_y*ptv/d3;
+		barrier_grad_phi_dot[0] += v_x/d1 - closest_x*ptv/d2 - closest_x*ptv/d3;
+		barrier_grad_phi_dot[1] += v_y/d1 - closest_y*ptv/d2 - closest_y*ptv/d3;
 
 		// printf("h = {%f}\n",h);
 		// printf("p = {%f,%f}\n",closest_x,closest_y);		
@@ -256,17 +260,18 @@ const float* nn_eval(const float goal[4])
 	b[1] = -barrier_kv * (v[1] + barrier_kp * barrier_grad_phi[1]) - barrier_kp * barrier_grad_phi[1] - barrier_kp * barrier_grad_phi_dot[1];
 
 	// Complementary Filter
-	// float grad_phi_norm = powf(barrier_grad_phi[0], 2) + powf(barrier_grad_phi[1], 2);
-	// float vmk_norm = powf(v[0] + barrier_kp * barrier_grad_phi[0], 2) + powf(v[1] + barrier_kp * barrier_grad_phi[1], 2);
-	// float a1 = barrier_kv * vmk_norm + barrier_kp * barrier_kp * grad_phi_norm;
-	// float a2_1 = \
-	// 	barrier_kp*(v[0]*barrier_grad_phi[0] + v[1]*barrier_grad_phi[1]);
-	// float a2_2 = \
-	// 	(v[0] + barrier_kp*barrier_grad_phi[0]) * (pi[0] + barrier_kp*barrier_grad_phi_dot[0]) + \
-	// 	(v[1] + barrier_kp*barrier_grad_phi[1]) * (pi[1] + barrier_kp*barrier_grad_phi_dot[1]);
-	// float dr = deltaR / (Rsense - robot_radius);
-	// float minh = ((minp - robot_radius - deltaR) / (Rsense - robot_radius)) / dr;
-
+	/*
+	float grad_phi_norm = powf(barrier_grad_phi[0], 2) + powf(barrier_grad_phi[1], 2);
+	float vmk_norm = powf(v[0] + barrier_kp * barrier_grad_phi[0], 2) + powf(v[1] + barrier_kp * barrier_grad_phi[1], 2);
+	float a1 = barrier_kv * vmk_norm + barrier_kp * barrier_kp * grad_phi_norm;
+	float a2_1 = \
+		barrier_kp*(v[0]*barrier_grad_phi[0] + v[1]*barrier_grad_phi[1]);
+	float a2_2 = \
+		(v[0] + barrier_kp*barrier_grad_phi[0]) * (pi[0] + barrier_kp*barrier_grad_phi_dot[0]) + \
+		(v[1] + barrier_kp*barrier_grad_phi[1]) * (pi[1] + barrier_kp*barrier_grad_phi_dot[1]);
+	float dr = deltaR / (Rsense - robot_radius);
+	float minh = ((minp - robot_radius - deltaR) / (Rsense - robot_radius)) / dr;
+	*/
 
 	// Complementary Filter v 2 
 	float grad_phi_norm = powf(barrier_grad_phi[0], 2) + powf(barrier_grad_phi[1], 2);
@@ -280,18 +285,18 @@ const float* nn_eval(const float goal[4])
 	float a2 = a2_1 + a2_2;
 	float minh = minp - robot_radius - deltaR;
 	
-	float alpha = 1. - epsilon;
-	if (minh < 0. && fabsf(a2) > 0. && a1/(a1+fabs(a2)) < 1.-epsilon) {
-		alpha = a1/(a1+fabs(a2));
+	float alpha = 1.0f - epsilon;
+	if (minh < 0.0f && fabsf(a2) > 0.0f && a1/(a1+fabsf(a2)) < 1.0f - epsilon) {
+		alpha = a1/(a1+fabsf(a2));
 	}
 
 	// Composite Control Law (temp1 = pi -> temp1 = u)
-	alpha = 1.;
-	b[0] = 0.;
-	b[1] = 0.;
+	// alpha = 1.;
+	// b[0] = 0.;
+	// b[1] = 0.;
 
-	u[0] = (1. - alpha) * b[0] + alpha * pi[0];
-	u[1] = (1. - alpha) * b[1] + alpha * pi[1];
+	u[0] = (1.0f - alpha) * b[0] + alpha * pi[0];
+	u[1] = (1.0f - alpha) * b[1] + alpha * pi[1];
 
 	// final acceleration scaling
 	float u_norm = sqrtf(powf(u[0], 2) + powf(u[1], 2));

@@ -9,16 +9,14 @@ from matplotlib.patches import Rectangle, Circle
 
 import nnexport
 
-import torch
-
-
-# hack for package import 
-import sys
-sys.path.insert(1, os.path.join(os.getcwd(),'../code'))
-sys.path.insert(1, os.path.join(os.getcwd(),'../code/examples'))
-sys.path.insert(1, os.path.join(os.getcwd(),'../code/learning'))
-sys.path.insert(1, os.path.join(os.getcwd(),'../code/planning'))
-sys.path.insert(1, os.path.join(os.getcwd(),'../code/systems'))
+# import torch
+# # hack for package import 
+# import sys
+# sys.path.insert(1, os.path.join(os.getcwd(),'../code'))
+# sys.path.insert(1, os.path.join(os.getcwd(),'../code/examples'))
+# sys.path.insert(1, os.path.join(os.getcwd(),'../code/learning'))
+# sys.path.insert(1, os.path.join(os.getcwd(),'../code/planning'))
+# sys.path.insert(1, os.path.join(os.getcwd(),'../code/systems'))
 
 plt.rcParams.update({'font.size': 18})
 plt.rcParams['lines.linewidth'] = 4
@@ -215,19 +213,19 @@ if __name__ == '__main__':
 
 	# -----------------------------------DI----------------------------
 
-	# headon
-	start = np.array([
-		[4.,4.,0,0],
-		[2,2,0,0],
-		])
-	goal = np.array([
-		[2,2,0,0],
-		[4,4,0,0],
-		],dtype=np.float32)
-	obstacles = np.array([
-		[3., 3.],
-		# [ -0.1, 1.12]
-	])
+	# # headon
+	# start = np.array([
+	# 	[4.,4.,0,0],
+	# 	[2,2,0,0],
+	# 	])
+	# goal = np.array([
+	# 	[2,2,0,0],
+	# 	[4,4,0,0],
+	# 	],dtype=np.float32)
+	# obstacles = np.array([
+	# 	[3., 3.],
+	# 	# [ -0.1, 1.12]
+	# ])
 	# shift = np.array([0.5,0.5,0.,0.])
 	# start += shift
 	# goal += shift
@@ -281,30 +279,30 @@ if __name__ == '__main__':
 	# 	])	
 
 	# exp3: mean motion planning 
-	# n_agents = 8
-	# nd2 = int(n_agents/2)
-	# start = np.zeros((n_agents,4))
-	# start[0:nd2,0:2] = np.array([
-	# 	[-2.,0.],
-	# 	[-2.,1.],
-	# 	[-1.,1.],
-	# 	[-1.,-1.2],
-	# 	])
-	# start[nd2:,0:2] = -start[0:nd2,0:2]
-	# goal = -start
-	# obstacles = np.array([
-	# 	[0,0.0],
-	# 	[0,1.75],
-	# 	[0,-1.75],
-	# 	])
+	n_agents = 8
+	nd2 = int(n_agents/2)
+	start = np.zeros((n_agents,4))
+	start[0:nd2,0:2] = np.array([
+		[-2.,0.],
+		[-2.,1.],
+		[-1.,1.],
+		[-1.,-1.2],
+		])
+	start[nd2:,0:2] = -start[0:nd2,0:2]
+	goal = -start
+	obstacles = np.array([
+		[0,0.0],
+		[0,1.75],
+		[0,-1.75],
+		])
 
 	num_agents = len(start)
 
-	model = torch.load('/home/ben/projects/caltech/neural-pid/results/doubleintegrator/exp1Barrier_0/il_current.pt')
+	# model = torch.load('/home/ben/projects/caltech/neural-pid/results/doubleintegrator/exp1Barrier_0/il_current.pt')
 
 	dt = 0.025
 	vel_dt = 2.0
-	ts = np.arange(0,10*dt,dt)
+	ts = np.arange(0,30,dt)
 	result = np.zeros((len(ts), 6 * num_agents))
 	dbg_result = np.zeros((len(ts), 3 * num_agents))
 	for i in range(num_agents):
@@ -353,7 +351,7 @@ if __name__ == '__main__':
 				if dist < r_comm:
 					# nnexport.nn_add_obstacle(np.concatenate((relative_obstacle, -v_i)))
 					# print('add o',np.concatenate((relative_obstacle, -v_i)))
-					nnexport.nn_add_obstacle(np.concatenate((relative_obstacle, -v_i)))
+					nnexport.nn_add_obstacle(np.concatenate((relative_obstacle, v_i)))
 					# print('add o',np.concatenate((relative_obstacle, v_i)))
 
 			relative_goal = goal[i] - s_i
@@ -369,33 +367,32 @@ if __name__ == '__main__':
 
 			acceleration = np.array(dbg)[0:2]
 
-			# convert to numpy array format
-			num_neighbors = len(relative_neighbors)
-			num_obstacles = len(relative_obstacles)
-			obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
-			obs_array[0] = num_neighbors
-			idx = 1
-			obs_array[idx:idx+4] = relative_goal
-			idx += 4
-			# obs_array[4] = observation_i.time_to_goal
-			for i in range(num_neighbors):
-				obs_array[idx:idx+4] = relative_neighbors[i]
-				idx += 4
-			for i in range(num_obstacles):
-				obs_array[idx:idx+2] = relative_obstacles[i]
-				idx += 2
+			# # convert to numpy array format
+			# num_neighbors = len(relative_neighbors)
+			# num_obstacles = len(relative_obstacles)
+			# obs_array = np.zeros(5+4*num_neighbors+2*num_obstacles)
+			# obs_array[0] = num_neighbors
+			# idx = 1
+			# obs_array[idx:idx+4] = relative_goal
+			# idx += 4
+			# # obs_array[4] = observation_i.time_to_goal
+			# for i in range(num_neighbors):
+			# 	obs_array[idx:idx+4] = relative_neighbors[i]
+			# 	idx += 4
+			# for i in range(num_obstacles):
+			# 	obs_array[idx:idx+2] = relative_obstacles[i]
+			# 	idx += 2
 
-			obs_array = np.reshape(obs_array,(-1,len(obs_array)))			
-			obs_array = [obs_array]
+			# obs_array = np.reshape(obs_array,(-1,len(obs_array)))			
+			# obs_array = [obs_array]
 
-			torch_a = model.policy(obs_array)
-			print(torch_a)
-			print('acceleration',acceleration)
-			exit()
+			# torch_a = model.policy(obs_array)
+			# print(torch_a)
+			# print('acceleration',acceleration)
+			# exit()
 
 			dbg_result[k+1,i*3:(i+1)*3] = np.array(dbg)[2:5]
 			# print(i, acceleration)
-
 
 			result[k+1,idx:idx+2] = result[k,idx:idx+2] + result[k,idx+2:idx+4] * dt
 			# result[k+1,idx+2:idx+4] = np.clip(result[k,idx+2:idx+4] + np.array(acceleration) * dt, -max_v, max_v)
@@ -494,7 +491,7 @@ if __name__ == '__main__':
 
 	for i in range(num_agents):
 		idx = i*3
-		line = ax.plot(ts, dbg_result[:,idx+0])
+		line = ax.plot(ts[1:], dbg_result[1:,idx+0])
 
 	plt.show()
 
@@ -503,7 +500,7 @@ if __name__ == '__main__':
 
 	for i in range(num_agents):
 		idx = i*3
-		line = ax.plot(ts, dbg_result[:,idx+1])
+		line = ax.plot(ts[1:], dbg_result[1:,idx+1])
 
 	plt.show()
 
@@ -512,6 +509,6 @@ if __name__ == '__main__':
 
 	for i in range(num_agents):
 		idx = i*3
-		line = ax.plot(ts, dbg_result[:,idx+2])
+		line = ax.plot(ts[1:], dbg_result[1:,idx+2])
 
 	plt.show()
